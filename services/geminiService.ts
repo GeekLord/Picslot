@@ -352,8 +352,11 @@ export const generateCompCard = async (
 
 **CRITICAL RULE 3: PROFESSIONAL WARDROBE**
 *   For all four poses, realistically replace the subject's original clothing with a consistent, professional, industry-standard wardrobe.
-*   Choose one of the following styles: **"form-fitting athletic wear"** (e.g., a simple bodysuit, or a clean sports top and leggings) OR **"classic studio wardrobe"** (e.g., a simple black dress, or a timeless blouse and trousers).
-*   The clothing must appear natural, flattering, and be consistent across all four shots to create a cohesive look.
+    *   Replace the subject's original clothing with minimalist, form-fitting athletic wear or simple swimwear.
+    *   For males, this could be athletic shorts or briefs.
+    *   For females, this could be a simple sports bra and shorts, a unitard, or a basic bikini.
+    *   The attire's purpose is to clearly and accurately showcase the model's physique, muscle definition, and body shape without distraction.
+    *   The clothing must appear natural, flattering, and be consistent across all four shots to create a cohesive look.
 
 **CRITICAL RULE 4: ESTIMATE PHYSICAL ATTRIBUTES**
 *   Based on your visual analysis of the original photo, provide realistic estimates for the following professional modeling statistics in the text block at the bottom:
@@ -395,8 +398,8 @@ export const generateThreeViewShot = async (
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     
     const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an expert AI character generator specializing in creating professional, three-view character turnarounds. Your task is to transform a single user-uploaded image into a high-resolution, three-view full body shot on a white background.
-
+    const prompt = `You are an elite AI art director and graphic designer, specializing in creating industry-standard modeling composite cards (comp cards) and photoshoots. Your task is to transform a single user-uploaded image into a high-resolution full-body, three-view turnaround of the person. Your primary directive is to ensure the model's facial identity is perfectly preserved and rendered with extreme clarity across three-view full body shot on a white background.
+    
 **Objective:** From a user-uploaded image, generate a full-body, three-view turnaround of the person. The final image should feature the subject in a neutral standing pose from the front, side, and back, dressed in form-fitting attire on a white background.
 
 **Core Instructions:**
@@ -416,7 +419,7 @@ export const generateThreeViewShot = async (
     *   For females, this could be a simple sports bra and shorts, a unitard, or a basic bikini.
     *   The attire's purpose is to clearly and accurately showcase the model's physique, muscle definition, and body shape without distraction.
 
-5.  **Ensure a Transparent Background:** The final generated image must have a completely white background. This is essential for versatility and professional use. The output format MUST be a PNG with an alpha channel.
+5.  **Ensure a White Background:** The final generated image must have a completely white background. This is essential for versatility and professional use. The output format MUST be a PNG with an alpha channel.
 
 6.  **Final Output:**
     *   Combine the front, side, and back views into a single, cohesive, high-resolution image file.
@@ -424,10 +427,9 @@ export const generateThreeViewShot = async (
     *   Ensure consistent lighting and proportion across all three figures in the final output.
 
 Safety & Ethics Policy:
-- You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
-- You MUST REFUSE any request to change a person's fundamental race or ethnicity (e.g., 'make me look Asian', 'change this person to be Black'). Do not perform these edits. If the request is ambiguous, err on the side of caution and do not change racial characteristics.
+- Do not change the person's fundamental race or ethnicity.
 
-Output: Return ONLY the final, single composite image showing the three poses on a transparent background. Do not return text.`;
+Output: Return ONLY the final, single composite image showing the three poses on a white background. Do not return text.`;
     const textPart = { text: prompt };
 
     console.log('Sending image and 3-View Shot prompt to the model...');
