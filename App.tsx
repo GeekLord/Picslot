@@ -6,13 +6,13 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
-import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait } from './services/geminiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot } from './services/geminiService';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 
@@ -249,6 +249,50 @@ const App: React.FC = () => {
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to create studio portrait. ${errorMessage}`);
+        console.error(err);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [currentImage, addImageToHistory]);
+
+  const handleGenerateCompCard = useCallback(async () => {
+    if (!currentImage) {
+      setError('No image loaded to create a comp card from.');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+        const compCardImageUrl = await generateCompCard(currentImage);
+        const newImageFile = dataURLtoFile(compCardImageUrl, `comp-card-${Date.now()}.png`);
+        addImageToHistory(newImageFile);
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to create comp card. ${errorMessage}`);
+        console.error(err);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [currentImage, addImageToHistory]);
+
+  const handleGenerateThreeViewShot = useCallback(async () => {
+    if (!currentImage) {
+      setError('No image loaded to create a 3-view shot from.');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+        const threeViewImageUrl = await generateThreeViewShot(currentImage);
+        const newImageFile = dataURLtoFile(threeViewImageUrl, `3-view-${Date.now()}.png`);
+        addImageToHistory(newImageFile);
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to create 3-view shot. ${errorMessage}`);
         console.error(err);
     } finally {
         setIsLoading(false);
@@ -557,6 +601,26 @@ const App: React.FC = () => {
             >
                 <PortraitIcon className="w-5 h-5 mr-2" />
                 Studio Portrait
+            </button>
+
+            <button
+                onClick={handleGenerateCompCard}
+                disabled={!currentImage || isLoading}
+                className="flex items-center justify-center text-center bg-gradient-to-br from-red-500 to-orange-400 text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-red-500/20 hover:shadow-xl hover:shadow-red-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:from-red-700 disabled:to-orange-600 disabled:shadow-none disabled:transform-none"
+                aria-label="Create modeling comp card"
+            >
+                <CompCardIcon className="w-5 h-5 mr-2" />
+                Comp Card
+            </button>
+
+            <button
+                onClick={handleGenerateThreeViewShot}
+                disabled={!currentImage || isLoading}
+                className="flex items-center justify-center text-center bg-gradient-to-br from-sky-500 to-indigo-500 text-white font-bold py-3 px-5 rounded-md transition-all duration-300 ease-in-out shadow-lg shadow-sky-500/20 hover:shadow-xl hover:shadow-sky-500/40 hover:-translate-y-px active:scale-95 active:shadow-inner text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:from-sky-700 disabled:to-indigo-600 disabled:shadow-none disabled:transform-none"
+                aria-label="Create 3-view full body shot"
+            >
+                <ThreeViewIcon className="w-5 h-5 mr-2" />
+                3-View Shot
             </button>
 
             <button 
