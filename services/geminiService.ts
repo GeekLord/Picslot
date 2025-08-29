@@ -395,9 +395,9 @@ export const generateThreeViewShot = async (
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     
     const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an expert AI character generator specializing in creating professional, three-view character turnarounds. Your task is to transform a single user-uploaded image into a high-resolution, three-view full body shot on a transparent background.
+    const prompt = `You are an expert AI character generator specializing in creating professional, three-view character turnarounds. Your task is to transform a single user-uploaded image into a high-resolution, three-view full body shot on a white background.
 
-**Objective:** From a user-uploaded image, generate a full-body, three-view turnaround of the person. The final image should feature the subject in a neutral standing pose from the front, side, and back, dressed in form-fitting attire on a transparent background.
+**Objective:** From a user-uploaded image, generate a full-body, three-view turnaround of the person. The final image should feature the subject in a neutral standing pose from the front, side, and back, dressed in form-fitting attire on a white background.
 
 **Core Instructions:**
 
@@ -416,7 +416,7 @@ export const generateThreeViewShot = async (
     *   For females, this could be a simple sports bra and shorts, a unitard, or a basic bikini.
     *   The attire's purpose is to clearly and accurately showcase the model's physique, muscle definition, and body shape without distraction.
 
-5.  **Ensure a Transparent Background:** The final generated image must have a completely transparent background. This is essential for versatility and professional use. The output format MUST be a PNG with an alpha channel.
+5.  **Ensure a Transparent Background:** The final generated image must have a completely white background. This is essential for versatility and professional use. The output format MUST be a PNG with an alpha channel.
 
 6.  **Final Output:**
     *   Combine the front, side, and back views into a single, cohesive, high-resolution image file.
