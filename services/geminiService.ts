@@ -1,66 +1,82 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ */
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 // Helper function to convert a File object to a Gemini API Part
-const fileToPart = async (file: File): Promise<{ inlineData: { mimeType: string; data: string; } }> => {
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-    
-    const arr = dataUrl.split(',');
-    if (arr.length < 2) throw new Error("Invalid data URL");
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch || !mimeMatch[1]) throw new Error("Could not parse MIME type from data URL");
-    
-    const mimeType = mimeMatch[1];
-    const data = arr[1];
-    return { inlineData: { mimeType, data } };
+const fileToPart = async (
+  file: File
+): Promise<{ inlineData: { mimeType: string; data: string } }> => {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+
+  const arr = dataUrl.split(",");
+  if (arr.length < 2) throw new Error("Invalid data URL");
+
+  const mimeMatch = arr.match(/:(.*?);/);
+  if (!mimeMatch || !mimeMatch[1])
+    throw new Error("Could not parse MIME type from data URL");
+
+  const mimeType = mimeMatch[1];
+  const data = arr[1];
+
+  return { inlineData: { mimeType, data } };
 };
 
 const handleApiResponse = (
-    response: GenerateContentResponse,
-    context: string // e.g., "edit", "filter", "adjustment"
+  response: GenerateContentResponse,
+  context: string // e.g., "edit", "filter", "adjustment"
 ): string => {
-    // 1. Check for prompt blocking first
-    if (response.promptFeedback?.blockReason) {
-        const { blockReason, blockReasonMessage } = response.promptFeedback;
-        const errorMessage = `Request was blocked. Reason: ${blockReason}. ${blockReasonMessage || ''}`;
-        console.error(errorMessage, { response });
-        throw new Error(errorMessage);
-    }
-
-    // 2. Try to find the image part
-    const imagePartFromResponse = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
-
-    if (imagePartFromResponse?.inlineData) {
-        const { mimeType, data } = imagePartFromResponse.inlineData;
-        console.log(`Received image data (${mimeType}) for ${context}`);
-        return `data:${mimeType};base64,${data}`;
-    }
-
-    // 3. If no image, check for other reasons
-    const finishReason = response.candidates?.[0]?.finishReason;
-    if (finishReason && finishReason !== 'STOP') {
-        const errorMessage = `Image generation for ${context} stopped unexpectedly. Reason: ${finishReason}. This often relates to safety settings.`;
-        console.error(errorMessage, { response });
-        throw new Error(errorMessage);
-    }
-    
-    const textFeedback = response.text?.trim();
-    const errorMessage = `The AI model did not return an image for the ${context}. ` + 
-        (textFeedback 
-            ? `The model responded with text: "${textFeedback}"`
-            : "This can happen due to safety filters or if the request is too complex. Please try rephrasing your prompt to be more direct.");
-
-    console.error(`Model response did not contain an image part for ${context}.`, { response });
+  // 1) Check for prompt blocking
+  if (response.promptFeedback?.blockReason) {
+    const { blockReason, blockReasonMessage } = response.promptFeedback;
+    const errorMessage = `Request was blocked. Reason: ${blockReason}. ${
+      blockReasonMessage || ""
+    }`;
+    console.error(errorMessage, { response });
     throw new Error(errorMessage);
+  }
+
+  // 2) Try to find an inline image part in candidates
+  const candidates = response.candidates ?? [];
+  for (const cand of candidates) {
+    const parts = cand.content?.parts ?? [];
+    const imagePart = parts.find((p: any) => p?.inlineData);
+    if (imagePart?.inlineData) {
+      const { mimeType, data } = imagePart.inlineData;
+      console.log(`Received image data (${mimeType}) for ${context}`);
+      return `data:${mimeType};base64,${data}`;
+    }
+  }
+
+  // 3) If no image, check finishReason
+  const finishReason = response.candidates?.?.finishReason;
+  if (finishReason && finishReason !== "STOP") {
+    const errorMessage = `Image generation for ${context} stopped unexpectedly. Reason: ${finishReason}. This often relates to safety settings.`;
+    console.error(errorMessage, { response });
+    throw new Error(errorMessage);
+  }
+
+  // 4) If the model returned text only, surface it
+  const textFeedback = (response as any).text?.trim();
+  if (textFeedback) {
+    const errorMessage = `The AI model did not return an image for the ${context}. The model responded with text: "${textFeedback}"`;
+    console.error(errorMessage, { response });
+    throw new Error(errorMessage);
+  }
+
+  // 5) Generic fallback
+  const errorMessage = `The AI model did not return an image for the ${context}. This can happen due to safety filters or if the request is too complex. Please try rephrasing your prompt to be more direct.`;
+  console.error(`Model response did not contain an image part for ${context}.`, {
+    response,
+  });
+  throw new Error(errorMessage);
 };
 
 /**
@@ -71,36 +87,53 @@ const handleApiResponse = (
  * @returns A promise that resolves to the data URL of the edited image.
  */
 export const generateEditedImage = async (
-    originalImage: File,
-    userPrompt: string,
-    hotspot: { x: number, y: number }
+  originalImage: File,
+  userPrompt: string,
+  hotspot: { x: number; y: number }
 ): Promise<string> => {
-    console.log('Starting generative edit at:', hotspot);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    
-    const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an expert photo editor AI. Your task is to perform a natural, localized edit on the provided image based on the user's request.
-User Request: "${userPrompt}"
-Edit Location: Focus on the area around pixel coordinates (x: ${hotspot.x}, y: ${hotspot.y}).
+  console.log("Starting generative edit at:", hotspot);
 
-Editing Guidelines:
-- The edit must be realistic and blend seamlessly with the surrounding area.
-- The rest of the image (outside the immediate edit area) must remain identical to the original.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+  const originalImagePart = await fileToPart(originalImage);
 
-Safety & Ethics Policy:
-- You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
+  const prompt = `ROLE: Senior photographic retoucher.
+OBJECTIVE: Perform a natural, LOCALIZED edit focused around the specified hotspot while keeping the rest of the image unchanged.
 
-Output: Return ONLY the final edited image. Do not return text.`;
-    const textPart = { text: prompt };
+INPUTS:
+- User request: "${userPrompt}"
+- Focus area: Center at (x: ${hotspot.x}, y: ${hotspot.y}); soft, feathered falloff.
 
-    console.log('Sending image and prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model.', response);
+SCOPE:
+- Edit only within a circular region centered at the hotspot with a soft feather; use ~10–15% of the shorter image side as a guiding radius and adapt to context for realism.
+- Outside this region MUST remain pixel-identical except for imperceptible blending needed for a seamless result.
 
-    return handleApiResponse(response, 'edit');
+QUALITY TARGETS:
+- Photorealistic blending with consistent light direction, shadows, reflections, and texture continuity.
+- No halos, banding, compression artifacts, or over-smoothing; preserve natural skin texture and fine detail.
+- Maintain color harmony and white balance with the surrounding pixels.
+
+IDENTITY LOCK (NON-NEGOTIABLE):
+- Do NOT alter facial features, bone structure, proportions, expression, age, or identity.
+- Do NOT reshape body, change hairstyle density or hairline, or alter distinguishing marks unless the request explicitly asks for it.
+- Cosmetic skin-tone changes are allowed ONLY if explicitly requested; preserve undertones and do not change race or ethnicity.
+
+SAFETY & CONTENT INTEGRITY:
+- No addition of new objects or content outside the specified region.
+- No text in the image unless explicitly requested.
+
+OUTPUT:
+- Return ONLY the final edited image, no text.`;
+
+  const textPart = { text: prompt };
+
+  console.log("Sending image and prompt to the model...");
+  const response: GenerateContentResponse = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image-preview",
+    contents: { parts: [originalImagePart, textPart] },
+  });
+
+  console.log("Received response from model.", response);
+  return handleApiResponse(response, "edit");
 };
 
 /**
@@ -110,31 +143,47 @@ Output: Return ONLY the final edited image. Do not return text.`;
  * @returns A promise that resolves to the data URL of the filtered image.
  */
 export const generateFilteredImage = async (
-    originalImage: File,
-    filterPrompt: string,
+  originalImage: File,
+  filterPrompt: string
 ): Promise<string> => {
     console.log(`Starting filter generation: ${filterPrompt}`);
+
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    
     const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an expert photo editor AI. Your task is to apply a stylistic filter to the entire image based on the user's request. Do not change the composition or content, only apply the style.
-Filter Request: "${filterPrompt}"
 
-Safety & Ethics Policy:
-- Filters may subtly shift colors, but you MUST ensure they do not alter a person's fundamental race or ethnicity.
+    const prompt = `ROLE: Expert colorist.
+OBJECTIVE: Apply a stylistic, global COLOR GRADE only; do NOT change composition or content.
 
-Output: Return ONLY the final filtered image. Do not return text.`;
+INPUT:
+- Filter request: "${filterPrompt}"
+
+STYLE & COLOR MANAGEMENT:
+- Operate like a film-grade/LUT: adjust color balance, contrast, tone curve, and ambiance.
+- Preserve neutrals and accurate white balance; avoid color casts unless they are part of the requested style.
+- Skin fidelity: maintain natural skin tones and texture; avoid hue shifts that change ethnicity or undertones.
+
+CONSTRAINTS:
+- No geometry changes, relighting that changes time-of-day context, or identity alterations.
+- No background replacement or object insertion; do not add text or graphics.
+
+QUALITY TARGETS:
+- No halos, clipped highlights/shadows, posterization, or banding.
+- Retain fine detail; avoid plastic skin and over-sharpening.
+
+OUTPUT:
+- Return ONLY the final filtered image, no text.`;
+
     const textPart = { text: prompt };
 
-    console.log('Sending image and filter prompt to the model...');
+    console.log("Sending image and filter prompt to the model...");
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
+      model: "gemini-2.5-flash-image-preview",
+      contents: { parts: [originalImagePart, textPart] },
     });
-    console.log('Received response from model for filter.', response);
-    
-    return handleApiResponse(response, 'filter');
-};
+
+    console.log("Received response from model for filter.", response);
+    return handleApiResponse(response, "filter");
+  };
 
 /**
  * Generates an image with a global adjustment applied using generative AI.
@@ -143,34 +192,48 @@ Output: Return ONLY the final filtered image. Do not return text.`;
  * @returns A promise that resolves to the data URL of the adjusted image.
  */
 export const generateAdjustedImage = async (
-    originalImage: File,
-    adjustmentPrompt: string,
+  originalImage: File,
+  adjustmentPrompt: string
 ): Promise<string> => {
-    console.log(`Starting global adjustment generation: ${adjustmentPrompt}`);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    
-    const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an expert photo editor AI. Your task is to perform a natural, global adjustment to the entire image based on the user's request.
-User Request: "${adjustmentPrompt}"
+  console.log(`Starting global adjustment generation: ${adjustmentPrompt}`);
 
-Editing Guidelines:
-- The adjustment must be applied across the entire image.
-- The result must be photorealistic.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+  const originalImagePart = await fileToPart(originalImage);
 
-Safety & Ethics Policy:
-- You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
+  const prompt = `ROLE: Senior photo finisher.
+OBJECTIVE: Apply NATURAL, GLOBAL adjustments across the entire image based on the user request.
 
-Output: Return ONLY the final adjusted image. Do not return text.`;
-    const textPart = { text: prompt };
+INPUT:
+- User request: "${adjustmentPrompt}"
 
-    console.log('Sending image and adjustment prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model for adjustment.', response);
-    
-    return handleApiResponse(response, 'adjustment');
+ALLOWED GLOBAL ADJUSTMENTS:
+- Exposure, contrast, highlights/shadows recovery with roll-off to avoid clipping.
+- White balance and tint normalization with subtle color balance refinement.
+- Tone curve and local contrast/clarity; gentle texture/sharpness; controlled noise reduction.
+- Subtle vignette, bloom, or haze reduction only if it serves realism.
+
+IDENTITY & CONTENT GUARDRAILS:
+- Do NOT alter facial identity, features, expression, age, body shape, or ethnicity.
+- Cosmetic skin-tone changes only if explicitly requested, keeping undertones natural.
+- No composition, pose, or background changes.
+
+QUALITY TARGETS:
+- Photorealistic finish: no halos, ringing, banding, waxy skin, or oversaturation.
+- Preserve detail in hair, eyes, and fabric; maintain consistent color harmony.
+
+OUTPUT:
+- Return ONLY the final adjusted image, no text.`;
+
+  const textPart = { text: prompt };
+
+  console.log("Sending image and adjustment prompt to the model...");
+  const response: GenerateContentResponse = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image-preview",
+    contents: { parts: [originalImagePart, textPart] },
+  });
+
+  console.log("Received response from model for adjustment.", response);
+  return handleApiResponse(response, "adjustment");
 };
 
 /**
@@ -179,36 +242,45 @@ Output: Return ONLY the final adjusted image. Do not return text.`;
  * @returns A promise that resolves to the data URL of the enhanced image.
  */
 export const generateAutoEnhancedImage = async (
-    originalImage: File,
+  originalImage: File
 ): Promise<string> => {
-    console.log(`Starting auto-enhancement`);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    
-    const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are a world-class AI photo editor. Your task is to perform a comprehensive, automatic enhancement of the provided image to elevate it to professional, studio quality.
+  console.log(`Starting auto-enhancement`);
 
-**Core Enhancement Guidelines:**
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+  const originalImagePart = await fileToPart(originalImage);
 
-1.  **Masterful Lighting Correction:** This is your highest priority.
-    *   **Fix Overexposure & Highlights:** Identify and correct any blown-out highlights or areas of overexposure. Recover detail in these bright areas.
-    *   **Balance Shadows:** Lift harsh, dark shadows, especially on faces, to reveal detail without making the image look flat.
-    *   **Apply Natural Studio Light:** Re-light the entire image with even, flattering, and natural-looking light, similar to a professional studio setup. The final lighting should be balanced and make the subject look their best.
-2.  **Enhance Clarity & Detail:** Subtly increase the overall sharpness and clarity of the image. Bring out fine details in hair, eyes, and clothing to make the image crisp and high-definition.
-3.  **Vibrant & Natural Colors:** Adjust the color balance to be vibrant, rich, and true-to-life. Correct any unnatural color casts.
-4.  **Intelligent Composition Enhancement (Optional):** If the original composition is tightly cropped or awkward, intelligently extend the image to create a more balanced and aesthetically pleasing frame (zoom out/uncrop). The extended background must be realistic, high-quality, and contextually appropriate.
-5.  **Absolute Identity Preservation:** This is a critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The enhanced person must be perfectly recognizable as the original.
+  const prompt = `ROLE: World-class photo editor.
+OBJECTIVE: Perform a comprehensive, automatic enhancement to achieve a polished, professional, studio-quality look while preserving the subject’s identity.
 
-Output: Return ONLY the final enhanced image. Do not return text.`;
-    const textPart = { text: prompt };
+PRIORITIES (IN ORDER):
+1) Lighting & Tonal Balance: recover blown highlights, lift blocked shadows, and normalize midtones with natural contrast.
+2) Color: neutral white balance, clean skin tones, remove unwanted color casts while keeping scene intent.
+3) Clarity & Detail: subtle texture and micro-contrast; sharpen eyes, hair, and key edges without halos.
+4) Noise & Artifacts: reduce noise and compression carefully without plastic smoothing; retain fine texture.
+5) Lens & Clean-up: correct minor chromatic aberration/moire and remove small distractions that do not change scene content.
 
-    console.log('Sending image and auto-enhance prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model for auto-enhancement.', response);
-    
-    return handleApiResponse(response, 'auto-enhance');
+OPTIONAL INTELLIGENT UN-CROP:
+- If framing is obviously cramped, extend background slightly for balance using contextually accurate continuation.
+- Do NOT invent new salient objects; keep extensions subtle, consistent in lighting and perspective.
+
+IDENTITY LOCK:
+- Absolutely no changes to facial structure, expression, age, hairstyle density/hairline, or body shape.
+- Do not add makeup or alter features unless such enhancement is clearly implied by “professional polish.”
+- Cosmetic tan/lighten/darken only if explicitly requested; keep undertones and ethnicity unchanged.
+
+OUTPUT:
+- Return ONLY the final enhanced image, no text.`;
+
+  const textPart = { text: prompt };
+
+  console.log("Sending image and auto-enhance prompt to the model...");
+  const response: GenerateContentResponse = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image-preview",
+    contents: { parts: [originalImagePart, textPart] },
+  });
+
+  console.log("Received response from model for auto-enhancement.", response);
+  return handleApiResponse(response, "auto-enhance");
 };
 
 /**
@@ -217,39 +289,47 @@ Output: Return ONLY the final enhanced image. Do not return text.`;
  * @returns A promise that resolves to the data URL of the restored image.
  */
 export const generateRestoredImage = async (
-    originalImage: File,
+  originalImage: File
 ): Promise<string> => {
-    console.log(`Starting image restoration`);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    
-    const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are a world-class photo restoration AI, specializing in creating flawless, photorealistic restorations. Your task is to restore the provided image, which may be old, low-quality, dark, overexposed, or damaged, to a perfect, modern, studio-quality state.
+  console.log(`Starting image restoration`);
 
-**Core Restoration Guidelines:**
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+  const originalImagePart = await fileToPart(originalImage);
 
-1.  **Flawless Imperfection Removal:** Eradicate all signs of damage. This includes scratches, dust, tears, stains, noise, grain, and digital compression artifacts. The result must be perfectly clean.
-2.  **Extreme Detail & Clarity:** Dramatically enhance the resolution and sharpness. The main subject, especially the face and eyes, must be in crisp, perfect focus. Bring out fine details like hair strands and fabric textures.
-3.  **Studio-Quality Lighting & Color:**
-    *   **Color Correction:** Restore faded colors to be natural, balanced, and vibrant. Eliminate any color casts or shifts.
-    *   **Lighting Correction:** Masterfully balance the lighting. Correct under-exposure (darkness) and over-exposure (blown highlights). Soften harsh shadows on faces to be more flattering, like professional portrait lighting.
-4.  **Absolute Identity Preservation:** This is the most critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The restored person must be perfectly recognizable as the original.
-5.  **Natural Textures:** Preserve and enhance natural textures. For portraits, skin should look realistic and retain its natural texture, not overly smoothed or "plastic".
-6.  **Intelligent Composition Enhancement (Optional):** If the original composition is tightly cropped, intelligently extend the image's background to create a more balanced and aesthetically pleasing frame (zoom out/uncrop). The extended background must be realistic and contextually appropriate.
+  const prompt = `ROLE: Archival photo restoration specialist.
+OBJECTIVE: Restore the image to a clean, high-definition, photorealistic state without altering identity or historical authenticity.
 
-Safety & Ethics Policy:
-- You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
+RESTORATION TASKS:
+- Remove damage: scratches, dust, tears, stains, noise, banding, and compression artifacts.
+- Resolve blur and improve clarity; upsample only as needed to reveal plausible detail (no over-invention).
+- Reconstruct missing micro-texture (skin, fabric, hair) naturally; avoid plastic smoothing.
 
-Output: Return ONLY the final restored image. Do not return text.`;
-    const textPart = { text: prompt };
+COLOR & LIGHT:
+- Rebuild faded color to natural, balanced, and vibrant levels; remove color casts.
+- Correct exposure with gentle highlight recovery and shadow lift; maintain period-accurate contrast if implied.
+- If input is B/W, keep B/W unless explicit colorization is requested.
 
-    console.log('Sending image and restoration prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model for restoration.', response);
-    
-    return handleApiResponse(response, 'restoration');
+IDENTITY LOCK:
+- Do NOT change facial features, expression, bone structure, age, moles/scars/unique marks (unless the user requests removal).
+- Preserve ethnicity and undertones; cosmetic tone shifts only on explicit request.
+
+QUALITY TARGETS:
+- No halos, ringing, oversharpening, or waxy skin.
+- Maintain film-like or natural texture as appropriate.
+
+OUTPUT:
+- Return ONLY the final restored image, no text.`;
+
+  const textPart = { text: prompt };
+
+  console.log("Sending image and restoration prompt to the model...");
+  const response: GenerateContentResponse = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image-preview",
+    contents: { parts: [originalImagePart, textPart] },
+  });
+
+  console.log("Received response from model for restoration.", response);
+  return handleApiResponse(response, "restoration");
 };
 
 /**
@@ -258,52 +338,45 @@ Output: Return ONLY the final restored image. Do not return text.`;
  * @returns A promise that resolves to the data URL of the portrait image.
  */
 export const generateStudioPortrait = async (
-    originalImage: File,
+  originalImage: File
 ): Promise<string> => {
-    console.log(`Starting studio portrait generation`);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    
-    const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are a world-class AI portrait photographer specializing in creating official, high-quality portraits suitable for passports, visas, and professional profiles like LinkedIn.
+  console.log(`Starting studio portrait generation`);
 
-**Your task is to transform the provided image by following these rules precisely:**
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+  const originalImagePart = await fileToPart(originalImage);
 
-**RULE 1: ABSOLUTE IDENTITY PRESERVATION (MOST IMPORTANT)**
-The person in the final portrait MUST be **perfectly and EXACTLY** the same as in the original photo. Do NOT alter their facial features, bone structure, unique characteristics, expression, or identity in any way. They must be 100% recognizable as the same person as original.
+  const prompt = `ROLE: Studio portrait photographer and retoucher.
+OBJECTIVE: Transform the provided image into a professional, half-body studio portrait suitable for official/professional use, while preserving exact identity.
 
-**RULE 2: ENHANCE AND RESTORE FIRST**
-If the input image is of poor quality (e.g., blurry, noisy, grainy, bad lighting, has scratches), your first step is to restore it to a high-definition, clean, and sharp state. Correct any lighting issues like overexposure or harsh shadows.
-**Absolute Identity Preservation:** This is a critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The enhanced person must be perfectly recognizable as the original.
+IDENTITY LOCK (MOST IMPORTANT):
+- The person must remain perfectly recognizable; no change to facial features, bone structure, expression, age, or hairstyle density/hairline.
+- Do NOT slim, reshape, or alter body proportions.
 
-**RULE 3: CREATE THE STUDIO PORTRAIT**
-After ensuring the image quality is high, apply the following transformations:
-*   **Composition:** Re-frame the image into a professional **half-body portrait**. The person must be centered, with their head and shoulders clearly visible. The photo should be from head to around the waist. This is a strict requirement for a passport-style photo.
-*   **Pose & Gaze:** This is crucial for a professional passport-style portrait.
-    *   **Body Posture:** The person's body and shoulders must be squared and facing directly forward towards the camera. Correct any leaning or angled postures.
-    *   **Head Position:** The head must be held straight and level, not tilted to the side, up, or down.
-    *   **Gaze:** The person must be looking directly forward into the camera lens.
-    *   **Neutral Arms:** The pose must be neutral. If the subject's hands are touching their face or head, or are raised in a non-neutral pose, you MUST realistically reposition their arms to a relaxed, neutral position at their sides, completely out of the frame. The face and shoulders must be completely unobstructed.
-*   **Lighting:** Apply even, flattering, professional studio lighting to the person.
-*   **Background:** Completely replace the original background with a uniform, single-color, and softly blurred background (bokeh effect). Use a neutral color like light gray, professional blue, or off-white.
-*   **Appearance & Grooming for Perfection:**
-    *   **Expression:** Ensure the final expression is a bit neutral, as required for official photos.
+COMPOSITION & POSE:
+- Reframe to a centered half-body portrait (head to around the waist), shoulders level, facing camera directly, neutral posture and gaze.
+- Remove obstructions from face/shoulders; reposition arms realistically out of frame if they obstruct.
 
-**FINAL CHECK:** Before outputting, confirm that RULE 1 (Absolute Identity Preservation) has been followed perfectly. The person's face must be untouched.
+LIGHTING & BACKGROUND:
+- Apply even, flattering, professional studio lighting with natural skin rendition and clean catchlights.
+- Replace background with a uniform, softly blurred neutral (light gray / professional blue / off-white) with subtle falloff; no patterns.
 
-Safety & Ethics Policy:
-- You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
+FINISHING:
+- Restore/denoise if needed; enhance clarity and detail without halos or plastic skin.
+- Keep grooming realistic: tame stray flyaways subtly; avoid artificial makeup unless implicitly present.
 
-**Output:** Return ONLY the final, edited portrait image. Do not return any text.`;
-    const textPart = { text: prompt };
+OUTPUT:
+- Return ONLY the final studio portrait image, no text.`;
 
-    console.log('Sending image and studio portrait prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model for studio portrait.', response);
-    
-    return handleApiResponse(response, 'studio-portrait');
+  const textPart = { text: prompt };
+
+  console.log("Sending image and studio portrait prompt to the model...");
+  const response: GenerateContentResponse = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image-preview",
+    contents: { parts: [originalImagePart, textPart] },
+  });
+
+  console.log("Received response from model for studio portrait.", response);
+  return handleApiResponse(response, "studio-portrait");
 };
 
 /**
@@ -312,68 +385,58 @@ Safety & Ethics Policy:
  * @returns A promise that resolves to the data URL of the comp card image.
  */
 export const generateCompCard = async (
-    originalImage: File,
+  originalImage: File
 ): Promise<string> => {
-    console.log(`Starting Comp Card generation`);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    
-    const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an elite AI art director and graphic designer, specializing in creating industry-standard modeling composite cards (comp cards). Your primary directive is to ensure the model's facial identity is perfectly preserved and rendered with extreme clarity across multiple poses.
+  console.log(`Starting Comp Card generation`);
 
-**Your task is to transform the single provided image of a person into a complete, professional 4-shot modeling comp card, formatted as a single composite image.**
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+  const originalImagePart = await fileToPart(originalImage);
 
-**CRITICAL RULE 1: ABSOLUTE FACIAL PRESERVATION & ULTRA-HIGH DEFINITION (NON-NEGOTIABLE)**
-*   The face of the person in the original uploaded image is the absolute source of truth.
-*   In **ALL FOUR** generated images on the comp card, the person's face MUST be a **PERFECT, IDENTICAL, FLAWLESS, and CRYSTAL-CLEAR** replica of the original.
-*   There shall be NO alterations, changes, or modifications to the facial features, bone structure, expression, or unique identity. The likeness must be 100% exact.
-*   All faces must be rendered in ultra-high definition. **There must be no blurriness or loss of facial detail.** This is the most important success metric.
+  const prompt = `ROLE: Elite art director and graphic designer.
+OBJECTIVE: From a single image, create ONE vertically oriented composite (comp card) on a pure white background with four poses plus a minimalist stats block, preserving exact facial identity.
 
-**CRITICAL RULE 2: DYNAMIC COLLAGE COMPOSITION ON A WHITE BACKGROUND**
-*   **Final Output:** You must generate a single, vertically oriented composite image. The entire image must have a **seamless, clean, and pure white background.**
-*   **Composition Technique:** To avoid overlapping issues, you must first conceptually generate each of the four required poses as if they have a **transparent background**. Then, you will artfully arrange and composite these four 'cutout' poses onto the final pure white canvas. This is crucial for creating a dynamic layout where poses can be placed closely or even overlap slightly without one image's rectangular background blocking another.
-*   **Layout:** The final arrangement must be a **dynamic and artful collage that utilizes the maximum available space. AVOID a rigid grid at all costs.** The individual poses should be composed together harmoniously, like a professional magazine layout.
-*   **Required Poses:** The collage must contain four distinct poses:
-    1.  **Main Headshot:** A professional, forward-facing studio headshot (shoulders up).
-    2.  **Full-Body Shot:** A full-length, standing studio shot.
-    3.  **Three-Quarter Shot:** A shot from the knees up, in a different pose.
-    4.  **Profile Shot:** A side-view profile shot of the head and shoulders.
-*   **Text Block:** At the bottom of the composite image, include a clean, minimalist text block with the model's estimated statistics.
+IDENTITY LOCK (NON-NEGOTIABLE):
+- The face must be an exact, crystal-clear match across ALL four poses; no changes to features, expression, bone structure, age, or ethnicity.
+- Maintain consistent proportions; no body reshaping or exaggeration.
 
-**CRITICAL RULE 3: PROFESSIONAL WARDROBE**
-*   For all four poses, realistically replace the subject's original clothing with a consistent, professional, industry-standard wardrobe.
-    *   Replace the subject's original clothing with minimalist, form-fitting athletic wear or simple swimwear.
-    *   For males, this could be athletic shorts or briefs.
-    *   For females, this could be a simple sports bra and shorts, a unitard, or a basic bikini.
-    *   The attire's purpose is to clearly and accurately showcase the model's physique, muscle definition, and body shape without distraction.
-    *   The clothing must appear natural, flattering, and be consistent across all four shots to create a cohesive look.
+LAYOUT & BACKGROUND:
+- Output a single composite image on PURE WHITE.
+- Generate each pose on transparent conceptually, then arrange into a dynamic magazine-like collage (avoid rigid grids); tasteful slight overlaps allowed.
 
-**CRITICAL RULE 4: ESTIMATE PHYSICAL ATTRIBUTES**
-*   Based on your visual analysis of the original photo, provide realistic estimates for the following professional modeling statistics in the text block at the bottom:
-    *   Height (in feet/inches and cm)
-    *   Measurements (Bust-Waist-Hips in inches)
-    *   Hair Color
-    *   Eye Color
-    *   Shoe Size (US)
+REQUIRED POSES:
+1) Main headshot (shoulders up), forward-facing.
+2) Full-body standing shot.
+3) Three-quarter (knees up), different pose.
+4) Profile head-and-shoulders (side view).
 
-**Final Output Instructions:**
-*   Assemble the four poses and the statistics text block into a single, professional, vertically-oriented comp card image with a dynamic collage layout on a pure white background, using the transparent background composition technique described in RULE 2.
-*   The final output must be ONE single image file. Do not return text.
+WARDROBE (CONSISTENT):
+- Replace clothing with minimalist, form-fitting professional wardrobe (e.g., athletic wear or simple swimwear) appropriate for industry standards; consistent across all four shots.
+- Keep tasteful and professional; no logos or distracting patterns.
 
-Safety & Ethics Policy:
-- Do not change the person's fundamental race or ethnicity.
-**Absolute Identity Preservation:** This is a critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The enhanced person must be perfectly recognizable as the original.
+STATS BLOCK (MINIMAL, LEGIBLE):
+- Include estimated: Height (ft/in + cm), Measurements (B-W-H in inches), Hair Color, Eye Color, Shoe Size (US).
+- Use clean typography; align neatly at the bottom; do not include external branding.
 
-**Output:** Return ONLY the final, single composite image showing the four poses and the statistics block.`;
-    const textPart = { text: prompt };
+QUALITY TARGETS:
+- Uniform lighting and scale across poses; preserve skin texture and detail; no halos or plastic smoothing.
 
-    console.log('Sending image and Comp Card prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model for Comp Card.', response);
-    
-    return handleApiResponse(response, 'comp-card');
+SAFETY:
+- Do not sexualize; maintain professional tone.
+- Preserve ethnicity; no race changes.
+
+OUTPUT:
+- Return ONLY the final single composite image, no text.`;
+
+  const textPart = { text: prompt };
+
+  console.log("Sending image and Comp Card prompt to the model...");
+  const response: GenerateContentResponse = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image-preview",
+    contents: { parts: [originalImagePart, textPart] },
+  });
+
+  console.log("Received response from model for Comp Card.", response);
+  return handleApiResponse(response, "comp-card");
 };
 
 /**
@@ -382,53 +445,43 @@ Safety & Ethics Policy:
  * @returns A promise that resolves to the data URL of the 3-view image.
  */
 export const generateThreeViewShot = async (
-    originalImage: File,
+  originalImage: File
 ): Promise<string> => {
-    console.log(`Starting 3-View Shot generation`);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    
-    const originalImagePart = await fileToPart(originalImage);
-    const prompt = `You are an elite AI art director and graphic designer, specializing in creating industry-standard modeling composite cards (comp cards) and photoshoots. Your task is to transform a single user-uploaded image into a high-resolution full-body, three-view turnaround of the person. Your primary directive is to ensure the model's facial identity is perfectly preserved and rendered with extreme clarity across three-view full body shot on a white background.
-    
-**Objective:** From a user-uploaded image, generate a full-body, three-view turnaround of the person. The final image should feature the subject in a neutral standing pose from the front, side, and back, dressed in form-fitting attire on a white background.
+  console.log(`Starting 3-View Shot generation`);
 
-**Core Instructions:**
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+  const originalImagePart = await fileToPart(originalImage);
 
-1.  **Preserve Exact Facial Identity:** Analyze the face in the user's uploaded image. It is critical that you lock and perfectly replicate the subject's facial features, structure, and identity across all generated views. No alteration of the face is permitted.
+  const prompt = `ROLE: Art director for turnarounds.
+OBJECTIVE: Generate a single composite image with three full-body views (Front, Side, Back) on a white background, preserving exact identity.
 
-2.  **Generate Three Specific Views:** Create three distinct, full-body shots of the person and present them side-by-side in a single image.
-    *   **Front View:** The person standing straight, facing forward, with arms at their sides (similar to a soldier at attention or a T-pose).
-    *   **Side View:** A complete profile shot of the person standing in the same neutral pose.
-    *   **Back View:** A shot from directly behind, again in the same neutral standing pose.
+IDENTITY LOCK:
+- Face must remain an exact match; no changes to features, expression, age, or ethnicity.
+- Maintain consistent body proportions; no slimming, muscle exaggeration, or reshaping.
 
-3.  **Standardize the Pose:** The subject must maintain a consistent, neutral, "anatomical" or "soldier at attention" pose across all three views to ensure a clear and comparable representation of their physique.
+POSE & ARRANGEMENT:
+- Neutral, standardized stance: arms at sides, shoulders level, feet comfortably apart (anatomical/soldier-at-attention style).
+- Arrange logically (Side | Front | Back) with consistent height and scale.
 
-4.  **Modify Clothing for Physique:**
-    *   Replace the subject's original clothing with minimalist, form-fitting athletic wear or simple swimwear.
-    *   For males, this could be athletic shorts or briefs.
-    *   For females, this could be a simple sports bra and shorts, a unitard, or a basic bikini.
-    *   The attire's purpose is to clearly and accurately showcase the model's physique, muscle definition, and body shape without distraction.
+WARDROBE & BACKGROUND:
+- Replace clothing with minimalist, form-fitting athletic wear or simple swimwear appropriate for professional digitals.
+- Pure white background; consistent, even lighting across all three views.
 
-5.  **Ensure a White Background:** The final generated image must have a completely white background. This is essential for versatility and professional use. The output format MUST be a PNG with an alpha channel.
+QUALITY TARGETS:
+- Clean edges; no halos; preserve skin texture and fabric detail.
+- Ensure perspective and proportions match across views.
 
-6.  **Final Output:**
-    *   Combine the front, side, and back views into a single, cohesive, high-resolution image file.
-    *   The views should be arranged logically (e.g., Side | Front | Back).
-    *   Ensure consistent lighting and proportion across all three figures in the final output.
+OUTPUT:
+- Return ONLY the final single composite image (PNG with transparency acceptable), no text.`;
 
-Safety & Ethics Policy:
-- Do not change the person's fundamental race or ethnicity.
-**Absolute Identity Preservation:** This is a critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The enhanced person must be perfectly recognizable as the original.
+  const textPart = { text: prompt };
 
-Output: Return ONLY the final, single composite image showing the three poses on a white background. Do not return text.`;
-    const textPart = { text: prompt };
+  console.log("Sending image and 3-View Shot prompt to the model...");
+  const response: GenerateContentResponse = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image-preview",
+    contents: { parts: [originalImagePart, textPart] },
+  });
 
-    console.log('Sending image and 3-View Shot prompt to the model...');
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
-    });
-    console.log('Received response from model for 3-View Shot.', response);
-    
-    return handleApiResponse(response, '3-view-shot');
+  console.log("Received response from model for 3-View Shot.", response);
+  return handleApiResponse(response, "3-view-shot");
 };
