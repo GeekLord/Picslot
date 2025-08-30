@@ -496,7 +496,7 @@ export const generateCompCard = async (
    - **Dynamic Layout:** Create sophisticated, magazine-quality arrangement avoiding rigid grid patterns
    - **Transparent Background Technique:** Conceptually generate each pose with transparent background, then artfully composite onto white canvas
    - **Maximum Space Utilization:** Apply professional layout design principles for optimal visual impact
-   - **Seamless Integration:** Allow poses to interact dynamically with potential slight overlaps for editorial sophistication
+   - **Clear Separation:** Ensure all four poses are distinct and do not overlap. Each image must have clear separation from the others to maintain a clean, professional layout.
 
 3. **INDUSTRY-STANDARD FOUR POSES:**
    - **Main Headshot:** Professional studio headshot (shoulders up) with perfect facial clarity
