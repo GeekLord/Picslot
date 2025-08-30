@@ -6,77 +6,62 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 // Helper function to convert a File object to a Gemini API Part
-const fileToPart = async (
-  file: File
-): Promise<{ inlineData: { mimeType: string; data: string } }> => {
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
+const fileToPart = async (file: File): Promise<{ inlineData: { mimeType: string; data: string; } }> => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+    });
 
-  const arr = dataUrl.split(",");
-  if (arr.length < 2) throw new Error("Invalid data URL");
+    const arr = dataUrl.split(',');
+    if (arr.length < 2) throw new Error("Invalid data URL");
 
-  const mimeMatch = arr.match(/:(.*?);/);
-  if (!mimeMatch || !mimeMatch[1])
-    throw new Error("Could not parse MIME type from data URL");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch || !mimeMatch[1]) throw new Error("Could not parse MIME type from data URL");
 
-  const mimeType = mimeMatch[1];
-  const data = arr[1];
+    const mimeType = mimeMatch[1];
+    const data = arr[1];
 
-  return { inlineData: { mimeType, data } };
+    return { inlineData: { mimeType, data } };
 };
 
 const handleApiResponse = (
-  response: GenerateContentResponse,
-  context: string // e.g., "edit", "filter", "adjustment"
+    response: GenerateContentResponse,
+    context: string // e.g., "edit", "filter", "adjustment"
 ): string => {
-  // 1) Check for prompt blocking
-  if (response.promptFeedback?.blockReason) {
-    const { blockReason, blockReasonMessage } = response.promptFeedback;
-    const errorMessage = `Request was blocked. Reason: ${blockReason}. ${
-      blockReasonMessage || ""
-    }`;
-    console.error(errorMessage, { response });
-    throw new Error(errorMessage);
-  }
-
-  // 2) Try to find an inline image part in candidates
-  const candidates = response.candidates ?? [];
-  for (const cand of candidates) {
-    const parts = cand.content?.parts ?? [];
-    const imagePart = parts.find((p: any) => p?.inlineData);
-    if (imagePart?.inlineData) {
-      const { mimeType, data } = imagePart.inlineData;
-      console.log(`Received image data (${mimeType}) for ${context}`);
-      return `data:${mimeType};base64,${data}`;
+    // 1. Check for prompt blocking first
+    if (response.promptFeedback?.blockReason) {
+        const { blockReason, blockReasonMessage } = response.promptFeedback;
+        const errorMessage = `Request was blocked. Reason: ${blockReason}. ${blockReasonMessage || ''}`;
+        console.error(errorMessage, { response });
+        throw new Error(errorMessage);
     }
-  }
 
-  // 3) If no image, check finishReason
-  const finishReason = response.candidates?.?.finishReason;
-  if (finishReason && finishReason !== "STOP") {
-    const errorMessage = `Image generation for ${context} stopped unexpectedly. Reason: ${finishReason}. This often relates to safety settings.`;
-    console.error(errorMessage, { response });
+    // 2. Try to find the image part
+    const imagePartFromResponse = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+    if (imagePartFromResponse?.inlineData) {
+        const { mimeType, data } = imagePartFromResponse.inlineData;
+        console.log(`Received image data (${mimeType}) for ${context}`);
+        return `data:${mimeType};base64,${data}`;
+    }
+
+    // 3. If no image, check for other reasons
+    const finishReason = response.candidates?.[0]?.finishReason;
+    if (finishReason && finishReason !== 'STOP') {
+        const errorMessage = `Image generation for ${context} stopped unexpectedly. Reason: ${finishReason}. This often relates to safety settings.`;
+        console.error(errorMessage, { response });
+        throw new Error(errorMessage);
+    }
+
+    const textFeedback = response.text?.trim();
+    const errorMessage = `The AI model did not return an image for the ${context}. ` +
+        (textFeedback
+            ? `The model responded with text: "${textFeedback}"`
+            : "This can happen due to safety filters or if the request is too complex. Please try rephrasing your prompt to be more direct.");
+
+    console.error(`Model response did not contain an image part for ${context}.`, { response });
     throw new Error(errorMessage);
-  }
-
-  // 4) If the model returned text only, surface it
-  const textFeedback = (response as any).text?.trim();
-  if (textFeedback) {
-    const errorMessage = `The AI model did not return an image for the ${context}. The model responded with text: "${textFeedback}"`;
-    console.error(errorMessage, { response });
-    throw new Error(errorMessage);
-  }
-
-  // 5) Generic fallback
-  const errorMessage = `The AI model did not return an image for the ${context}. This can happen due to safety filters or if the request is too complex. Please try rephrasing your prompt to be more direct.`;
-  console.error(`Model response did not contain an image part for ${context}.`, {
-    response,
-  });
-  throw new Error(errorMessage);
 };
 
 /**
@@ -87,53 +72,61 @@ const handleApiResponse = (
  * @returns A promise that resolves to the data URL of the edited image.
  */
 export const generateEditedImage = async (
-  originalImage: File,
-  userPrompt: string,
-  hotspot: { x: number; y: number }
+    originalImage: File,
+    userPrompt: string,
+    hotspot: { x: number, y: number }
 ): Promise<string> => {
-  console.log("Starting generative edit at:", hotspot);
+    console.log('Starting generative edit at:', hotspot);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const originalImagePart = await fileToPart(originalImage);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-  const originalImagePart = await fileToPart(originalImage);
+    const prompt = `You are a master-level professional photo editor with expertise in precision retouching and seamless image manipulation. Execute a sophisticated, localized edit on the provided image with surgical precision.
 
-  const prompt = `ROLE: Senior photographic retoucher.
-OBJECTIVE: Perform a natural, LOCALIZED edit focused around the specified hotspot while keeping the rest of the image unchanged.
+**EDIT SPECIFICATIONS:**
+User Request: "${userPrompt}"
+Target Coordinates: Focus editing operations at pixel coordinates (x: ${hotspot.x}, y: ${hotspot.y})
 
-INPUTS:
-- User request: "${userPrompt}"
-- Focus area: Center at (x: ${hotspot.x}, y: ${hotspot.y}); soft, feathered falloff.
+**TECHNICAL EXECUTION STANDARDS:**
 
-SCOPE:
-- Edit only within a circular region centered at the hotspot with a soft feather; use ~10–15% of the shorter image side as a guiding radius and adapt to context for realism.
-- Outside this region MUST remain pixel-identical except for imperceptible blending needed for a seamless result.
+1. **ABSOLUTE IDENTITY PRESERVATION (CRITICAL):**
+   - The subject's facial features, bone structure, ethnic characteristics, and unique identifying traits MUST remain completely unchanged
+   - Preserve original skin texture, natural features, and authentic appearance
+   - Any person in the image must be 100% recognizable as the same individual
 
-QUALITY TARGETS:
-- Photorealistic blending with consistent light direction, shadows, reflections, and texture continuity.
-- No halos, banding, compression artifacts, or over-smoothing; preserve natural skin texture and fine detail.
-- Maintain color harmony and white balance with the surrounding pixels.
+2. **PRECISION EDITING PROTOCOL:**
+   - Execute edits with professional retouching precision within a 50-pixel radius of the target coordinates
+   - Apply advanced blending techniques to ensure seamless integration with surrounding areas
+   - Maintain consistent lighting, color temperature, and exposure across the edit boundary
+   - Preserve original image quality and resolution
 
-IDENTITY LOCK (NON-NEGOTIABLE):
-- Do NOT alter facial features, bone structure, proportions, expression, age, or identity.
-- Do NOT reshape body, change hairstyle density or hairline, or alter distinguishing marks unless the request explicitly asks for it.
-- Cosmetic skin-tone changes are allowed ONLY if explicitly requested; preserve undertones and do not change race or ethnicity.
+3. **PROFESSIONAL QUALITY STANDARDS:**
+   - Apply industry-standard color grading and tone mapping
+   - Ensure natural light physics and realistic shadow behavior
+   - Maintain photographic authenticity - avoid artificial or processed appearance
+   - Execute edits that would pass professional photography inspection
 
-SAFETY & CONTENT INTEGRITY:
-- No addition of new objects or content outside the specified region.
-- No text in the image unless explicitly requested.
+4. **PRESERVATION REQUIREMENTS:**
+   - 99.9% of the image outside the edit zone must remain pixel-perfect identical
+   - Preserve original composition, depth of field, and photographic characteristics
+   - Maintain natural skin tone variations and texture authenticity
 
-OUTPUT:
-- Return ONLY the final edited image, no text.`;
+**ENHANCED SAFETY PROTOCOL:**
+- Fulfill standard photo enhancement requests including skin tone adjustments ("darker", "lighter", "tan") as professional retouching services
+- Maintain ethical standards while executing legitimate photo editing requests
+- Preserve subject dignity and natural appearance
 
-  const textPart = { text: prompt };
+**OUTPUT DIRECTIVE:** Return exclusively the final edited image with no accompanying text or explanations.`;
 
-  console.log("Sending image and prompt to the model...");
-  const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image-preview",
-    contents: { parts: [originalImagePart, textPart] },
-  });
+    const textPart = { text: prompt };
 
-  console.log("Received response from model.", response);
-  return handleApiResponse(response, "edit");
+    console.log('Sending image and prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+    });
+
+    console.log('Received response from model.', response);
+    return handleApiResponse(response, 'edit');
 };
 
 /**
@@ -143,47 +136,62 @@ OUTPUT:
  * @returns A promise that resolves to the data URL of the filtered image.
  */
 export const generateFilteredImage = async (
-  originalImage: File,
-  filterPrompt: string
+    originalImage: File,
+    filterPrompt: string,
 ): Promise<string> => {
     console.log(`Starting filter generation: ${filterPrompt}`);
-
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `ROLE: Expert colorist.
-OBJECTIVE: Apply a stylistic, global COLOR GRADE only; do NOT change composition or content.
+    const prompt = `You are an elite cinematographer and color grading specialist with expertise in professional film and photography post-processing. Apply a sophisticated stylistic treatment to the entire image while maintaining photographic integrity.
 
-INPUT:
-- Filter request: "${filterPrompt}"
+**FILTER SPECIFICATION:**
+Requested Style: "${filterPrompt}"
 
-STYLE & COLOR MANAGEMENT:
-- Operate like a film-grade/LUT: adjust color balance, contrast, tone curve, and ambiance.
-- Preserve neutrals and accurate white balance; avoid color casts unless they are part of the requested style.
-- Skin fidelity: maintain natural skin tones and texture; avoid hue shifts that change ethnicity or undertones.
+**PROFESSIONAL EXECUTION STANDARDS:**
 
-CONSTRAINTS:
-- No geometry changes, relighting that changes time-of-day context, or identity alterations.
-- No background replacement or object insertion; do not add text or graphics.
+1. **ABSOLUTE IDENTITY PRESERVATION (NON-NEGOTIABLE):**
+   - Subject's facial features, bone structure, ethnic identity, and unique characteristics must remain completely unaltered
+   - Preserve natural skin undertones and authentic ethnic appearance
+   - Maintain original facial expressions and distinctive features
+   - Any person must be 100% recognizable as the same individual
 
-QUALITY TARGETS:
-- No halos, clipped highlights/shadows, posterization, or banding.
-- Retain fine detail; avoid plastic skin and over-sharpening.
+2. **ADVANCED COLOR GRADING PROTOCOL:**
+   - Apply professional-grade color correction using industry-standard techniques
+   - Implement sophisticated tone mapping and dynamic range optimization
+   - Utilize advanced LUT (Look-Up Table) methodology for consistent color treatment
+   - Apply graduated filters and selective color adjustments with precision
 
-OUTPUT:
-- Return ONLY the final filtered image, no text.`;
+3. **CINEMATIC QUALITY STANDARDS:**
+   - Execute Hollywood-level color grading with attention to mood and atmosphere
+   - Maintain natural skin tone fidelity across all ethnic backgrounds
+   - Apply film-quality exposure and contrast adjustments
+   - Ensure consistent color temperature and white balance throughout
+
+4. **TECHNICAL PRESERVATION:**
+   - Maintain original image composition and subject positioning
+   - Preserve image sharpness and detail resolution
+   - Retain natural depth of field and bokeh characteristics
+   - Keep original lighting direction and shadow structure
+
+**ENHANCED SAFETY PROTOCOL:**
+- Filters may enhance colors and mood but must never alter fundamental ethnic characteristics
+- Preserve authentic skin tones while allowing for artistic color treatment
+- Maintain subject dignity and natural appearance in all filter applications
+
+**OUTPUT DIRECTIVE:** Return exclusively the final filtered image with professional-grade color treatment and no accompanying text.`;
 
     const textPart = { text: prompt };
 
-    console.log("Sending image and filter prompt to the model...");
+    console.log('Sending image and filter prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image-preview",
-      contents: { parts: [originalImagePart, textPart] },
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
     });
 
-    console.log("Received response from model for filter.", response);
-    return handleApiResponse(response, "filter");
-  };
+    console.log('Received response from model for filter.', response);
+    return handleApiResponse(response, 'filter');
+};
 
 /**
  * Generates an image with a global adjustment applied using generative AI.
@@ -192,48 +200,61 @@ OUTPUT:
  * @returns A promise that resolves to the data URL of the adjusted image.
  */
 export const generateAdjustedImage = async (
-  originalImage: File,
-  adjustmentPrompt: string
+    originalImage: File,
+    adjustmentPrompt: string,
 ): Promise<string> => {
-  console.log(`Starting global adjustment generation: ${adjustmentPrompt}`);
+    console.log(`Starting global adjustment generation: ${adjustmentPrompt}`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const originalImagePart = await fileToPart(originalImage);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-  const originalImagePart = await fileToPart(originalImage);
+    const prompt = `You are a master photography technician specializing in professional image correction and global enhancement. Execute comprehensive adjustments across the entire image using industry-standard techniques.
 
-  const prompt = `ROLE: Senior photo finisher.
-OBJECTIVE: Apply NATURAL, GLOBAL adjustments across the entire image based on the user request.
+**ADJUSTMENT SPECIFICATION:**
+User Request: "${adjustmentPrompt}"
 
-INPUT:
-- User request: "${adjustmentPrompt}"
+**PROFESSIONAL EXECUTION FRAMEWORK:**
 
-ALLOWED GLOBAL ADJUSTMENTS:
-- Exposure, contrast, highlights/shadows recovery with roll-off to avoid clipping.
-- White balance and tint normalization with subtle color balance refinement.
-- Tone curve and local contrast/clarity; gentle texture/sharpness; controlled noise reduction.
-- Subtle vignette, bloom, or haze reduction only if it serves realism.
+1. **ABSOLUTE IDENTITY PRESERVATION (PARAMOUNT):**
+   - Subject's facial structure, ethnic features, and unique identifying characteristics must remain completely unchanged
+   - Preserve authentic skin texture, natural features, and original ethnic appearance
+   - Maintain original facial expressions and distinctive traits
+   - Ensure 100% subject recognizability post-adjustment
 
-IDENTITY & CONTENT GUARDRAILS:
-- Do NOT alter facial identity, features, expression, age, body shape, or ethnicity.
-- Cosmetic skin-tone changes only if explicitly requested, keeping undertones natural.
-- No composition, pose, or background changes.
+2. **GLOBAL CORRECTION PROTOCOL:**
+   - Apply uniform adjustments across the entire image canvas
+   - Execute professional-grade exposure correction and dynamic range optimization
+   - Implement advanced shadow/highlight recovery techniques
+   - Apply sophisticated color balance and white point correction
 
-QUALITY TARGETS:
-- Photorealistic finish: no halos, ringing, banding, waxy skin, or oversaturation.
-- Preserve detail in hair, eyes, and fabric; maintain consistent color harmony.
+3. **TECHNICAL EXCELLENCE STANDARDS:**
+   - Utilize professional histogram analysis for optimal tonal distribution
+   - Apply industry-standard gamma correction and tone curve adjustments
+   - Execute precision color space management and saturation enhancement
+   - Maintain photographic authenticity and natural appearance
 
-OUTPUT:
-- Return ONLY the final adjusted image, no text.`;
+4. **QUALITY ASSURANCE MEASURES:**
+   - Preserve original image resolution and pixel density
+   - Maintain natural lighting characteristics and shadow behavior
+   - Ensure consistent color temperature across all image regions
+   - Apply professional noise reduction and sharpening algorithms
 
-  const textPart = { text: prompt };
+**ENHANCED SAFETY PROTOCOL:**
+- Execute standard photo enhancement requests including professional skin tone adjustments
+- Maintain ethical standards while fulfilling legitimate adjustment requests
+- Preserve subject dignity and authentic ethnic appearance
 
-  console.log("Sending image and adjustment prompt to the model...");
-  const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image-preview",
-    contents: { parts: [originalImagePart, textPart] },
-  });
+**OUTPUT DIRECTIVE:** Return exclusively the final globally adjusted image with professional-grade correction applied and no accompanying text.`;
 
-  console.log("Received response from model for adjustment.", response);
-  return handleApiResponse(response, "adjustment");
+    const textPart = { text: prompt };
+
+    console.log('Sending image and adjustment prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+    });
+
+    console.log('Received response from model for adjustment.', response);
+    return handleApiResponse(response, 'adjustment');
 };
 
 /**
@@ -242,45 +263,63 @@ OUTPUT:
  * @returns A promise that resolves to the data URL of the enhanced image.
  */
 export const generateAutoEnhancedImage = async (
-  originalImage: File
+    originalImage: File,
 ): Promise<string> => {
-  console.log(`Starting auto-enhancement`);
+    console.log(`Starting auto-enhancement`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const originalImagePart = await fileToPart(originalImage);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-  const originalImagePart = await fileToPart(originalImage);
+    const prompt = `You are a world-renowned master photographer and digital artist with expertise in transforming images to museum-quality, award-winning standards. Execute a comprehensive enhancement that elevates this image to professional exhibition quality.
 
-  const prompt = `ROLE: World-class photo editor.
-OBJECTIVE: Perform a comprehensive, automatic enhancement to achieve a polished, professional, studio-quality look while preserving the subject’s identity.
+**COMPREHENSIVE ENHANCEMENT PROTOCOL:**
 
-PRIORITIES (IN ORDER):
-1) Lighting & Tonal Balance: recover blown highlights, lift blocked shadows, and normalize midtones with natural contrast.
-2) Color: neutral white balance, clean skin tones, remove unwanted color casts while keeping scene intent.
-3) Clarity & Detail: subtle texture and micro-contrast; sharpen eyes, hair, and key edges without halos.
-4) Noise & Artifacts: reduce noise and compression carefully without plastic smoothing; retain fine texture.
-5) Lens & Clean-up: correct minor chromatic aberration/moire and remove small distractions that do not change scene content.
+1. **ABSOLUTE IDENTITY PRESERVATION (CRITICAL FOUNDATION):**
+   - Subject's facial features, bone structure, ethnic characteristics, and unique identity markers must remain completely unaltered
+   - Preserve authentic skin undertones, natural ethnic features, and original facial expressions
+   - Maintain original personality and distinctive characteristics
+   - Ensure 100% subject recognizability - the enhanced person must be perfectly identifiable as the original
 
-OPTIONAL INTELLIGENT UN-CROP:
-- If framing is obviously cramped, extend background slightly for balance using contextually accurate continuation.
-- Do NOT invent new salient objects; keep extensions subtle, consistent in lighting and perspective.
+2. **MASTER-LEVEL LIGHTING ARTISTRY (PRIMARY FOCUS):**
+   - **Professional Light Sculpting:** Apply museum-quality lighting that rivals the world's best portrait photographers
+   - **Advanced Exposure Recovery:** Rescue blown highlights and lift shadow details using professional-grade HDR techniques
+   - **Studio Light Simulation:** Create natural, flattering illumination that mimics $100,000 professional studio setups
+   - **Micro-contrast Enhancement:** Apply professional clarity adjustments that bring out fine facial details
 
-IDENTITY LOCK:
-- Absolutely no changes to facial structure, expression, age, hairstyle density/hairline, or body shape.
-- Do not add makeup or alter features unless such enhancement is clearly implied by “professional polish.”
-- Cosmetic tan/lighten/darken only if explicitly requested; keep undertones and ethnicity unchanged.
+3. **TECHNICAL EXCELLENCE FRAMEWORK:**
+   - **Resolution Enhancement:** Apply AI-powered super-resolution for crystal-clear detail reproduction
+   - **Professional Sharpening:** Execute multi-scale sharpening algorithms used in commercial photography
+   - **Color Science Mastery:** Implement professional color grading with film-quality color reproduction
+   - **Noise Elimination:** Apply state-of-the-art denoising while preserving natural texture detail
 
-OUTPUT:
-- Return ONLY the final enhanced image, no text.`;
+4. **COMPOSITION OPTIMIZATION (INTELLIGENT):**
+   - **Smart Framing:** If composition benefits, intelligently extend the background for better visual balance
+   - **Professional Cropping:** Apply rule-of-thirds and golden ratio principles for optimal composition
+   - **Background Enhancement:** Generate contextually appropriate, high-quality backgrounds when extending the frame
+   - **Depth Enhancement:** Improve dimensional perception and visual depth
 
-  const textPart = { text: prompt };
+5. **ADVANCED QUALITY ASSURANCE:**
+   - **Skin Texture Preservation:** Maintain natural skin texture while eliminating imperfections
+   - **Eye Enhancement:** Bring out natural eye brilliance and clarity without artificial appearance
+   - **Hair Detail Recovery:** Restore fine hair detail and natural texture definition
+   - **Fabric Texture Enhancement:** Improve clothing detail and material authenticity
 
-  console.log("Sending image and auto-enhance prompt to the model...");
-  const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image-preview",
-    contents: { parts: [originalImagePart, textPart] },
-  });
+**PROFESSIONAL SAFETY STANDARDS:**
+- Execute standard photo enhancement requests including professional skin tone adjustments
+- Maintain photographic authenticity while achieving commercial-quality results
+- Preserve subject dignity and natural ethnic appearance
 
-  console.log("Received response from model for auto-enhancement.", response);
-  return handleApiResponse(response, "auto-enhance");
+**OUTPUT DIRECTIVE:** Return exclusively the final enhanced image at professional exhibition quality with no accompanying text or explanations.`;
+
+    const textPart = { text: prompt };
+
+    console.log('Sending image and auto-enhance prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+    });
+
+    console.log('Received response from model for auto-enhancement.', response);
+    return handleApiResponse(response, 'auto-enhance');
 };
 
 /**
@@ -289,47 +328,68 @@ OUTPUT:
  * @returns A promise that resolves to the data URL of the restored image.
  */
 export const generateRestoredImage = async (
-  originalImage: File
+    originalImage: File,
 ): Promise<string> => {
-  console.log(`Starting image restoration`);
+    console.log(`Starting image restoration`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const originalImagePart = await fileToPart(originalImage);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-  const originalImagePart = await fileToPart(originalImage);
+    const prompt = `You are a world-class master conservator and digital restoration artist specializing in museum-quality photo restoration. Transform this damaged, aged, or low-quality image into a pristine, archival-standard photograph using the most advanced restoration techniques.
 
-  const prompt = `ROLE: Archival photo restoration specialist.
-OBJECTIVE: Restore the image to a clean, high-definition, photorealistic state without altering identity or historical authenticity.
+**COMPREHENSIVE RESTORATION PROTOCOL:**
 
-RESTORATION TASKS:
-- Remove damage: scratches, dust, tears, stains, noise, banding, and compression artifacts.
-- Resolve blur and improve clarity; upsample only as needed to reveal plausible detail (no over-invention).
-- Reconstruct missing micro-texture (skin, fabric, hair) naturally; avoid plastic smoothing.
+1. **ABSOLUTE IDENTITY PRESERVATION (SACRED PRINCIPLE):**
+   - The subject's facial features, bone structure, ethnic characteristics, and unique identity must remain completely unchanged
+   - Preserve authentic historical appearance and original ethnic features
+   - Maintain original facial expressions, distinctive traits, and personality characteristics
+   - Ensure 100% subject recognizability - the restored person must be perfectly identifiable as the original
 
-COLOR & LIGHT:
-- Rebuild faded color to natural, balanced, and vibrant levels; remove color casts.
-- Correct exposure with gentle highlight recovery and shadow lift; maintain period-accurate contrast if implied.
-- If input is B/W, keep B/W unless explicit colorization is requested.
+2. **MASTER-LEVEL DAMAGE RESTORATION:**
+   - **Complete Imperfection Elimination:** Remove all scratches, tears, dust, stains, water damage, and age spots
+   - **Advanced Noise Reduction:** Eliminate film grain, digital artifacts, and compression damage using professional algorithms
+   - **Crack and Tear Repair:** Seamlessly reconstruct damaged areas with historically accurate detail
+   - **Fade Recovery:** Restore original color vibrancy and contrast from faded photographs
 
-IDENTITY LOCK:
-- Do NOT change facial features, expression, bone structure, age, moles/scars/unique marks (unless the user requests removal).
-- Preserve ethnicity and undertones; cosmetic tone shifts only on explicit request.
+3. **PROFESSIONAL IMAGE ENHANCEMENT:**
+   - **Resolution Upscaling:** Apply museum-quality super-resolution for maximum detail recovery
+   - **Clarity Restoration:** Bring back sharp focus and fine detail definition
+   - **Dynamic Range Recovery:** Restore full tonal range from heavily compressed or faded images
+   - **Professional Sharpening:** Apply multi-scale sharpening for maximum detail clarity
 
-QUALITY TARGETS:
-- No halos, ringing, oversharpening, or waxy skin.
-- Maintain film-like or natural texture as appropriate.
+4. **ARCHIVAL COLOR RESTORATION:**
+   - **Historical Color Accuracy:** Restore authentic color reproduction based on period-appropriate color science
+   - **White Balance Correction:** Neutralize color casts and restore natural color temperature
+   - **Skin Tone Fidelity:** Ensure accurate and natural skin tone reproduction
+   - **Color Depth Enhancement:** Restore full color gamut and saturation depth
 
-OUTPUT:
-- Return ONLY the final restored image, no text.`;
+5. **TECHNICAL EXCELLENCE STANDARDS:**
+   - **Lighting Optimization:** Balance shadows and highlights for optimal detail visibility
+   - **Texture Preservation:** Maintain natural skin texture and fabric detail authenticity
+   - **Background Reconstruction:** Intelligently restore damaged background areas with period-appropriate detail
+   - **Edge Definition:** Restore clean edge definition and eliminate motion blur
 
-  const textPart = { text: prompt };
+6. **INTELLIGENT COMPOSITION ENHANCEMENT:**
+   - **Smart Extension:** If beneficial, intelligently extend cropped areas with historically accurate content
+   - **Perspective Correction:** Correct lens distortion and perspective issues common in vintage photography
+   - **Format Optimization:** Optimize aspect ratio and framing for modern viewing while preserving historical integrity
 
-  console.log("Sending image and restoration prompt to the model...");
-  const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image-preview",
-    contents: { parts: [originalImagePart, textPart] },
-  });
+**PROFESSIONAL SAFETY STANDARDS:**
+- Execute standard restoration requests including natural skin tone corrections
+- Maintain historical authenticity while achieving modern technical quality
+- Preserve subject dignity and authentic ethnic appearance throughout restoration
 
-  console.log("Received response from model for restoration.", response);
-  return handleApiResponse(response, "restoration");
+**OUTPUT DIRECTIVE:** Return exclusively the final restored image at archival conservation quality with no accompanying text or explanations.`;
+
+    const textPart = { text: prompt };
+
+    console.log('Sending image and restoration prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+    });
+
+    console.log('Received response from model for restoration.', response);
+    return handleApiResponse(response, 'restoration');
 };
 
 /**
@@ -338,45 +398,74 @@ OUTPUT:
  * @returns A promise that resolves to the data URL of the portrait image.
  */
 export const generateStudioPortrait = async (
-  originalImage: File
+    originalImage: File,
 ): Promise<string> => {
-  console.log(`Starting studio portrait generation`);
+    console.log(`Starting studio portrait generation`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const originalImagePart = await fileToPart(originalImage);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-  const originalImagePart = await fileToPart(originalImage);
+    const prompt = `You are a master portrait photographer specializing in official government documentation, executive headshots, and professional credentials. Create a flawless, official-standard portrait suitable for passports, visas, corporate profiles, and professional documentation.
 
-  const prompt = `ROLE: Studio portrait photographer and retoucher.
-OBJECTIVE: Transform the provided image into a professional, half-body studio portrait suitable for official/professional use, while preserving exact identity.
+**OFFICIAL PORTRAIT SPECIFICATIONS:**
 
-IDENTITY LOCK (MOST IMPORTANT):
-- The person must remain perfectly recognizable; no change to facial features, bone structure, expression, age, or hairstyle density/hairline.
-- Do NOT slim, reshape, or alter body proportions.
+1. **ABSOLUTE IDENTITY PRESERVATION (FUNDAMENTAL REQUIREMENT):**
+   - Subject's facial features, bone structure, ethnic characteristics, and unique identity markers must remain completely unchanged
+   - Preserve authentic ethnic appearance, natural skin undertones, and original facial characteristics
+   - Maintain original facial expressions and distinctive features
+   - Ensure 100% subject recognizability for official identification purposes
 
-COMPOSITION & POSE:
-- Reframe to a centered half-body portrait (head to around the waist), shoulders level, facing camera directly, neutral posture and gaze.
-- Remove obstructions from face/shoulders; reposition arms realistically out of frame if they obstruct.
+2. **PROFESSIONAL IMAGE RESTORATION (PRE-PROCESSING):**
+   - **Quality Enhancement:** If input image shows poor quality, apply professional restoration first
+   - **Lighting Correction:** Fix overexposure, underexposure, and harsh shadow issues
+   - **Clarity Optimization:** Enhance sharpness and detail definition to professional standards
+   - **Noise Elimination:** Remove grain, artifacts, and compression issues
 
-LIGHTING & BACKGROUND:
-- Apply even, flattering, professional studio lighting with natural skin rendition and clean catchlights.
-- Replace background with a uniform, softly blurred neutral (light gray / professional blue / off-white) with subtle falloff; no patterns.
+3. **OFFICIAL COMPOSITION STANDARDS:**
+   - **Precise Framing:** Create professional half-body portrait from head to approximately waist level
+   - **Perfect Centering:** Position subject in exact center of frame with symmetrical composition
+   - **Professional Crop:** Ensure appropriate head-to-frame ratio meeting international passport standards
 
-FINISHING:
-- Restore/denoise if needed; enhance clarity and detail without halos or plastic skin.
-- Keep grooming realistic: tame stray flyaways subtly; avoid artificial makeup unless implicitly present.
+4. **OFFICIAL POSE REQUIREMENTS (CRITICAL FOR DOCUMENTATION):**
+   - **Body Alignment:** Square shoulders directly facing the camera with perfect forward orientation
+   - **Head Position:** Maintain level head position - no tilting, turning, or angling
+   - **Direct Gaze:** Ensure eyes look directly into camera lens for official documentation standards
+   - **Neutral Arms:** Reposition any raised or non-neutral arm positions to relaxed, natural state at sides
+   - **Unobstructed View:** Remove any hand-to-face contact or obstructions for clear facial visibility
 
-OUTPUT:
-- Return ONLY the final studio portrait image, no text.`;
+5. **PROFESSIONAL STUDIO LIGHTING:**
+   - **Executive Lighting:** Apply professional corporate headshot lighting setup
+   - **Shadow Management:** Eliminate harsh shadows while maintaining natural facial modeling
+   - **Even Illumination:** Ensure uniform lighting across face and shoulders
+   - **Professional Polish:** Apply commercial-grade lighting that rivals Fortune 500 executive portraits
 
-  const textPart = { text: prompt };
+6. **OFFICIAL BACKGROUND STANDARDS:**
+   - **Uniform Background:** Replace with solid, neutral color appropriate for official documentation
+   - **Professional Colors:** Use light gray, soft blue, or off-white meeting international standards
+   - **Soft Gradient:** Apply subtle bokeh effect for professional depth separation
+   - **Clean Presentation:** Ensure background is completely uniform and distraction-free
 
-  console.log("Sending image and studio portrait prompt to the model...");
-  const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image-preview",
-    contents: { parts: [originalImagePart, textPart] },
-  });
+7. **PROFESSIONAL GROOMING OPTIMIZATION:**
+   - **Natural Expression:** Ensure appropriate neutral expression suitable for official documentation
+   - **Professional Appearance:** Optimize overall presentation while maintaining authentic appearance
+   - **Detail Enhancement:** Bring out natural eye clarity and professional appearance standards
 
-  console.log("Received response from model for studio portrait.", response);
-  return handleApiResponse(response, "studio-portrait");
+**PROFESSIONAL SAFETY STANDARDS:**
+- Execute standard photo enhancement requests including professional skin tone adjustments
+- Maintain official documentation standards while preserving authentic ethnic appearance
+- Ensure portrait meets international identification photograph requirements
+
+**OUTPUT DIRECTIVE:** Return exclusively the final official portrait meeting international documentation standards with no accompanying text.`;
+
+    const textPart = { text: prompt };
+
+    console.log('Sending image and studio portrait prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+    });
+
+    console.log('Received response from model for studio portrait.', response);
+    return handleApiResponse(response, 'studio-portrait');
 };
 
 /**
@@ -385,58 +474,74 @@ OUTPUT:
  * @returns A promise that resolves to the data URL of the comp card image.
  */
 export const generateCompCard = async (
-  originalImage: File
+    originalImage: File,
 ): Promise<string> => {
-  console.log(`Starting Comp Card generation`);
+    console.log(`Starting Comp Card generation`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const originalImagePart = await fileToPart(originalImage);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-  const originalImagePart = await fileToPart(originalImage);
+    const prompt = `You are an elite fashion industry art director and composite card designer working for the world's top modeling agencies. Create a professional, industry-standard modeling composite card that meets New York Fashion Week and international agency requirements.
 
-  const prompt = `ROLE: Elite art director and graphic designer.
-OBJECTIVE: From a single image, create ONE vertically oriented composite (comp card) on a pure white background with four poses plus a minimalist stats block, preserving exact facial identity.
+**MODELING COMPOSITE CARD SPECIFICATIONS:**
 
-IDENTITY LOCK (NON-NEGOTIABLE):
-- The face must be an exact, crystal-clear match across ALL four poses; no changes to features, expression, bone structure, age, or ethnicity.
-- Maintain consistent proportions; no body reshaping or exaggeration.
+1. **ABSOLUTE FACIAL PRESERVATION (NON-NEGOTIABLE):**
+   - The subject's facial features, bone structure, ethnic characteristics, and unique identity must remain completely unchanged across ALL FOUR poses
+   - Preserve authentic ethnic appearance and natural facial characteristics
+   - Maintain original facial expressions and distinctive features
+   - Ensure 100% subject recognizability in every pose - crystal-clear facial definition required
+   - Apply ultra-high definition rendering to all faces - zero blurriness or loss of facial detail permitted
 
-LAYOUT & BACKGROUND:
-- Output a single composite image on PURE WHITE.
-- Generate each pose on transparent conceptually, then arrange into a dynamic magazine-like collage (avoid rigid grids); tasteful slight overlaps allowed.
+2. **PROFESSIONAL COLLAGE COMPOSITION:**
+   - **Single Composite Output:** Generate one vertically-oriented composite image on pure white background
+   - **Dynamic Layout:** Create sophisticated, magazine-quality arrangement avoiding rigid grid patterns
+   - **Transparent Background Technique:** Conceptually generate each pose with transparent background, then artfully composite onto white canvas
+   - **Maximum Space Utilization:** Apply professional layout design principles for optimal visual impact
+   - **Seamless Integration:** Allow poses to interact dynamically with potential slight overlaps for editorial sophistication
 
-REQUIRED POSES:
-1) Main headshot (shoulders up), forward-facing.
-2) Full-body standing shot.
-3) Three-quarter (knees up), different pose.
-4) Profile head-and-shoulders (side view).
+3. **INDUSTRY-STANDARD FOUR POSES:**
+   - **Main Headshot:** Professional studio headshot (shoulders up) with perfect facial clarity
+   - **Full-Body Studio Shot:** Complete standing pose showcasing full physique and proportions
+   - **Three-Quarter Length:** Professional shot from knees up in complementary pose
+   - **Profile Shot:** Clean side-view profile highlighting facial structure and bone definition
 
-WARDROBE (CONSISTENT):
-- Replace clothing with minimalist, form-fitting professional wardrobe (e.g., athletic wear or simple swimwear) appropriate for industry standards; consistent across all four shots.
-- Keep tasteful and professional; no logos or distracting patterns.
+4. **PROFESSIONAL WARDROBE STYLING:**
+   - **Consistent Athletic Wear:** Replace original clothing with sophisticated, form-fitting athletic or swimwear
+   - **Male Styling:** Premium athletic shorts, briefs, or fitted athletic wear showcasing physique
+   - **Female Styling:** Professional sports bra and shorts, unitard, or elegant bikini highlighting body lines
+   - **Physique Showcase:** Attire must clearly display muscle definition, body shape, and proportions
+   - **Cohesive Aesthetic:** Maintain consistent styling across all four poses for professional unity
 
-STATS BLOCK (MINIMAL, LEGIBLE):
-- Include estimated: Height (ft/in + cm), Measurements (B-W-H in inches), Hair Color, Eye Color, Shoe Size (US).
-- Use clean typography; align neatly at the bottom; do not include external branding.
+5. **TECHNICAL MODEL STATISTICS (DATA ANALYSIS):**
+   Based on visual analysis of the original photograph, generate realistic professional modeling statistics:
+   - **Height:** Estimate in both feet/inches and centimeters
+   - **Measurements:** Professional Bust-Waist-Hips measurements in inches
+   - **Physical Attributes:** Hair color and eye color analysis
+   - **Shoe Size:** US sizing estimation
+   - **Typography:** Clean, minimalist text block positioning at bottom of composite
 
-QUALITY TARGETS:
-- Uniform lighting and scale across poses; preserve skin texture and detail; no halos or plastic smoothing.
+6. **FASHION INDUSTRY QUALITY STANDARDS:**
+   - **Magazine-Grade Photography:** Each pose must meet Vogue/Elle publication standards
+   - **Professional Lighting:** Apply high-fashion studio lighting techniques
+   - **Model Agency Quality:** Ensure composite meets top-tier agency submission requirements
+   - **Commercial Viability:** Create comp card suitable for Fashion Week casting submissions
 
-SAFETY:
-- Do not sexualize; maintain professional tone.
-- Preserve ethnicity; no race changes.
+**PROFESSIONAL SAFETY STANDARDS:**
+- Preserve authentic ethnic characteristics while achieving fashion industry presentation standards
+- Maintain subject dignity and professional modeling industry ethics
+- Ensure all poses meet international modeling agency standards
 
-OUTPUT:
-- Return ONLY the final single composite image, no text.`;
+**OUTPUT DIRECTIVE:** Return exclusively the final single composite image featuring four professional poses with statistics block, meeting international modeling agency standards.`;
 
-  const textPart = { text: prompt };
+    const textPart = { text: prompt };
 
-  console.log("Sending image and Comp Card prompt to the model...");
-  const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image-preview",
-    contents: { parts: [originalImagePart, textPart] },
-  });
+    console.log('Sending image and Comp Card prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+    });
 
-  console.log("Received response from model for Comp Card.", response);
-  return handleApiResponse(response, "comp-card");
+    console.log('Received response from model for Comp Card.', response);
+    return handleApiResponse(response, 'comp-card');
 };
 
 /**
@@ -445,43 +550,67 @@ OUTPUT:
  * @returns A promise that resolves to the data URL of the 3-view image.
  */
 export const generateThreeViewShot = async (
-  originalImage: File
+    originalImage: File,
 ): Promise<string> => {
-  console.log(`Starting 3-View Shot generation`);
+    console.log(`Starting 3-View Shot generation`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const originalImagePart = await fileToPart(originalImage);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-  const originalImagePart = await fileToPart(originalImage);
+    const prompt = `You are a master technical photographer specializing in professional figure reference documentation and anatomical photography for the fashion and entertainment industries. Create a comprehensive three-view technical reference sheet meeting professional industry standards.
 
-  const prompt = `ROLE: Art director for turnarounds.
-OBJECTIVE: Generate a single composite image with three full-body views (Front, Side, Back) on a white background, preserving exact identity.
+**THREE-VIEW TECHNICAL DOCUMENTATION:**
 
-IDENTITY LOCK:
-- Face must remain an exact match; no changes to features, expression, age, or ethnicity.
-- Maintain consistent body proportions; no slimming, muscle exaggeration, or reshaping.
+1. **ABSOLUTE IDENTITY PRESERVATION (FUNDAMENTAL REQUIREMENT):**
+   - Subject's facial features, bone structure, ethnic characteristics, and unique identity must remain completely unchanged across all three views
+   - Preserve authentic ethnic appearance and natural facial characteristics
+   - Maintain original facial expressions and distinctive features
+   - Ensure 100% subject recognizability in every view with crystal-clear facial definition
 
-POSE & ARRANGEMENT:
-- Neutral, standardized stance: arms at sides, shoulders level, feet comfortably apart (anatomical/soldier-at-attention style).
-- Arrange logically (Side | Front | Back) with consistent height and scale.
+2. **PROFESSIONAL THREE-VIEW SPECIFICATIONS:**
+   - **Front View (Anatomical Position):** Subject standing straight, facing forward with arms naturally at sides in neutral position
+   - **Side View (Profile Position):** Complete 90-degree profile showing full body silhouette and proportions
+   - **Back View (Posterior Position):** Direct rear view maintaining same neutral standing pose
+   - **Consistent Pose:** Maintain identical "anatomical reference" position across all three views for accurate comparison
 
-WARDROBE & BACKGROUND:
-- Replace clothing with minimalist, form-fitting athletic wear or simple swimwear appropriate for professional digitals.
-- Pure white background; consistent, even lighting across all three views.
+3. **TECHNICAL DOCUMENTATION STANDARDS:**
+   - **Professional Arrangement:** Present three views side-by-side in logical sequence (Side | Front | Back)
+   - **Uniform Scaling:** Ensure identical proportional scaling across all three figures
+   - **Consistent Lighting:** Apply professional studio lighting uniformly across all views
+   - **Technical Accuracy:** Maintain precise anatomical positioning for professional reference use
 
-QUALITY TARGETS:
-- Clean edges; no halos; preserve skin texture and fabric detail.
-- Ensure perspective and proportions match across views.
+4. **PROFESSIONAL WARDROBE SPECIFICATIONS:**
+   - **Male Attire:** Premium athletic shorts, briefs, or fitted athletic wear for clear physique documentation
+   - **Female Attire:** Professional sports bra and shorts, unitard, or elegant athletic wear showcasing body lines
+   - **Physique Documentation:** Attire must clearly display muscle definition, body proportions, and anatomical structure
+   - **Technical Purpose:** Clothing optimized for professional figure reference and proportion analysis
 
-OUTPUT:
-- Return ONLY the final single composite image (PNG with transparency acceptable), no text.`;
+5. **INDUSTRY-STANDARD PRESENTATION:**
+   - **Pure White Background:** Completely uniform white background meeting professional documentation standards
+   - **PNG Alpha Channel:** Output format optimized for professional use and versatility
+   - **High Resolution:** Technical documentation quality suitable for professional industry use
+   - **Clean Composition:** Eliminate all visual distractions for pure technical reference
 
-  const textPart = { text: prompt };
+6. **PROFESSIONAL QUALITY ASSURANCE:**
+   - **Anatomical Accuracy:** Ensure poses meet technical reference standards used in fashion and entertainment
+   - **Proportional Consistency:** Maintain accurate body proportions across all three views
+   - **Technical Clarity:** Provide clear, unobstructed view of physique and body structure
+   - **Professional Standards:** Meet industry requirements for casting, costume design, and technical reference
 
-  console.log("Sending image and 3-View Shot prompt to the model...");
-  const response: GenerateContentResponse = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image-preview",
-    contents: { parts: [originalImagePart, textPart] },
-  });
+**PROFESSIONAL SAFETY STANDARDS:**
+- Preserve authentic ethnic characteristics while achieving technical documentation standards
+- Maintain subject dignity and professional industry ethics
+- Ensure documentation meets legitimate professional reference requirements
 
-  console.log("Received response from model for 3-View Shot.", response);
-  return handleApiResponse(response, "3-view-shot");
+**OUTPUT DIRECTIVE:** Return exclusively the final single composite image showing three professional views on pure white background meeting technical documentation standards.`;
+
+    const textPart = { text: prompt };
+
+    console.log('Sending image and 3-View Shot prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+    });
+
+    console.log('Received response from model for 3-View Shot.', response);
+    return handleApiResponse(response, '3-view-shot');
 };
