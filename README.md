@@ -51,46 +51,62 @@ This meticulous approach ensures high-quality, consistent, and safe results for 
 
 ## 🚀 Getting Started
 
-This project is designed to be run directly from a static file server.
+Follow these instructions to set up and run the project locally.
 
 ### Prerequisites
 
-- A modern web browser.
-- An API key for the Google Gemini API.
+- [Node.js](https://nodejs.org/) (v18 or later recommended)
+- `npm` (included with Node.js)
+- A Google Gemini API key, available from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-### Running Locally
+### Installation & Configuration
 
-1.  **Clone the repository:**
+1.  **Clone the Repository:**
     ```bash
     git clone https://github.com/your-username/picslot.git
     cd picslot
     ```
 
-2.  **Set up the API Key:**
-    The application is hard-coded to use `process.env.API_KEY`. Since this is a client-side application without a build step, you need to make the key available. For local testing, the simplest way is to replace the placeholder in `services/geminiService.ts`:
-    
-    Find all instances of:
-    ```typescript
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    ```
-    And replace `process.env.API_KEY!` with your actual API key string:
-    ```typescript
-    const ai = new GoogleGenAI({ apiKey: 'YOUR_API_KEY_HERE' });
-    ```
-    **Note:** This is for local development only. Do not commit your API key to version control. For deployment, use your hosting provider's system for managing environment variables.
-
-3.  **Serve the files:**
-    You need a local web server to handle the files correctly. The popular `serve` package is a good choice.
+2.  **Install Dependencies:**
+    This project may require a local web server or other tools. To install the required packages, run:
     ```bash
-    # If you don't have serve installed:
-    npm install -g serve
-    
-    # Run the server from the project's root directory
+    npm install
+    ```
+    *(This assumes a `package.json` file exists with dependencies like `serve`.)*
+
+3.  **Set Up API Key:**
+    The application loads the Gemini API key from environment variables. Create a file named `.env.local` in the project's root directory.
+    ```bash
+    touch .env.local
+    ```
+    Open this file and add your API key:
+    ```
+    GEMINI_API_KEY="YOUR_API_KEY_HERE"
+    ```
+    **Important:** Your development environment must be configured to load `.env.local` and make the `API_KEY` available to the application as `process.env.API_KEY`. Tools like Vite or Create React App handle this automatically.
+
+### Running the Application
+
+**Development Mode:**
+
+To run the application with a development server that supports features like hot-reloading and environment variables, you would typically use a command like:
+```bash
+npm run dev
+```
+*(This requires a `dev` script to be configured in `package.json`, e.g., using Vite).*
+
+**Production Mode / Simple Server:**
+
+For a simple production-like deployment, you can use a static file server.
+
+1.  **Start the server:**
+    If you have `serve` installed (e.g., via `npm install -g serve` or as a project dependency), run:
+    ```bash
     serve
     ```
 
-4.  **Open the app:**
-    Open your browser and navigate to the local address provided by `serve` (e.g., `http://localhost:3000`).
+2.  **Access the App:**
+    Open your browser and navigate to the local URL provided (e.g., `http://localhost:3000`).
 
 ## 📁 File Structure
 
