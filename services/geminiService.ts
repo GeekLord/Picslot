@@ -455,7 +455,7 @@ export const generateCompCard = async (
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are an elite fashion industry art director and composite card designer working for the world's top modeling agencies inspired by Mona Kuhn, Aktonymus, Alfred Stieglitz, Daria Harris and Jan Saudek. Create a professional, industry-standard modeling composite card that meets New York Fashion Week and international agency requirements.
+    const prompt = `You are an elite fashion industry art director and composite card designer working for the world's top modeling agencies. Create a professional, industry-standard modeling composite card that meets New York Fashion Week and international agency requirements.
 
 **MODELING COMPOSITE CARD SPECIFICATIONS:**
 
