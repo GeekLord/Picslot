@@ -195,7 +195,7 @@ export const generateAutoEnhancedImage = async (
     *   **Apply Natural Studio Light:** Re-light the entire image with even, flattering, and natural-looking light, similar to a professional studio setup. The final lighting should be balanced and make the subject look their best.
 2.  **Enhance Clarity & Detail:** Subtly increase the overall sharpness and clarity of the image. Bring out fine details in hair, eyes, and clothing to make the image crisp and high-definition.
 3.  **Vibrant & Natural Colors:** Adjust the color balance to be vibrant, rich, and true-to-life. Correct any unnatural color casts.
-4.  **Intelligent Composition Enhancement (Optional):** If the original composition is tightly cropped or awkward, intelligently extend the image's background to create a more balanced and aesthetically pleasing frame (zoom out/uncrop). The extended background must be realistic, high-quality, and contextually appropriate.
+4.  **Intelligent Composition Enhancement (Optional):** If the original composition is tightly cropped or awkward, intelligently extend the image to create a more balanced and aesthetically pleasing frame (zoom out/uncrop). The extended background must be realistic, high-quality, and contextually appropriate.
 5.  **Absolute Identity Preservation:** This is a critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The enhanced person must be perfectly recognizable as the original.
 
 Output: Return ONLY the final enhanced image. Do not return text.`;
@@ -238,7 +238,6 @@ export const generateRestoredImage = async (
 
 Safety & Ethics Policy:
 - You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
-- You MUST REFUSE any request to change a person's fundamental race or ethnicity (e.g., 'make me look Asian', 'change this person to be Black'). Do not perform these edits. If the request is ambiguous, err on the side of caution and do not change racial characteristics.
 
 Output: Return ONLY the final restored image. Do not return text.`;
     const textPart = { text: prompt };
@@ -270,7 +269,7 @@ export const generateStudioPortrait = async (
 **Your task is to transform the provided image by following these rules precisely:**
 
 **RULE 1: ABSOLUTE IDENTITY PRESERVATION (MOST IMPORTANT)**
-The person in the final portrait MUST be **perfectly and EXACTLY** the same as in the original photo. Do NOT alter their facial features, bone structure, unique characteristics, expression, or identity in any way. They must be 100% recognizable.
+The person in the final portrait MUST be **perfectly and EXACTLY** the same as in the original photo. Do NOT alter their facial features, bone structure, unique characteristics, expression, or identity in any way. They must be 100% recognizable as the same person as original.
 
 **RULE 2: ENHANCE AND RESTORE FIRST**
 If the input image is of poor quality (e.g., blurry, noisy, grainy, bad lighting, has scratches), your first step is to restore it to a high-definition, clean, and sharp state. Correct any lighting issues like overexposure or harsh shadows.
@@ -287,7 +286,7 @@ After ensuring the image quality is high, apply the following transformations:
 *   **Lighting:** Apply even, flattering, professional studio lighting to the person.
 *   **Background:** Completely replace the original background with a uniform, single-color, and softly blurred background (bokeh effect). Use a neutral color like light gray, professional blue, or off-white.
 *   **Appearance & Grooming for Perfection:**
-    *   **Expression:** Ensure the final expression is neutral, as required for official photos.
+    *   **Expression:** Ensure the final expression is a bit neutral, as required for official photos.
 
 **FINAL CHECK:** Before outputting, confirm that RULE 1 (Absolute Identity Preservation) has been followed perfectly. The person's face must be untouched.
 
