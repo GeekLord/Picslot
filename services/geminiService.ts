@@ -404,57 +404,32 @@ export const generateStudioPortrait = async (
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are a master portrait photographer specializing in official government documentation, executive headshots, and professional credentials. Create a flawless, official-standard portrait suitable for passports, visas, corporate profiles, and professional documentation.
+    const prompt = `You are a master portrait photographer specializing in official government documentation, executive headshots, and professional credentials. Your task is to transform the provided image into a flawless, official-standard portrait, suitable for passports, visas, or corporate profiles, by re-posing the subject while meticulously preserving their identity, clothing, and hair.
+
+**CORE DIRECTIVE: RE-POSE, DO NOT REPLACE.**
 
 **OFFICIAL PORTRAIT SPECIFICATIONS:**
 
-1. **ABSOLUTE IDENTITY PRESERVATION (FUNDAMENTAL REQUIREMENT):**
-   - Subject's facial features, bone structure, ethnic characteristics, and unique identity markers must remain completely unchanged
-   - Preserve authentic ethnic appearance, natural skin undertones, and original facial characteristics
-   - Maintain original facial expressions and distinctive features
-   - Ensure 100% subject recognizability for official identification purposes
+1. **ABSOLUTE IDENTITY & APPEARANCE PRESERVATION (CRITICAL):**
+   - **FACIAL INTEGRITY (NON-NEGOTIABLE):** The subject's facial features, bone structure, ethnic characteristics, unique identity markers, and the exact pixels of the face MUST remain 100% unchanged. The face is a protected, unalterable element.
+   - **HAIR & CLOTHING PRESERVATION:** The subject's original hairstyle, hair color, clothing, and any visible accessories MUST be preserved with no changes. The goal is to re-pose the person, not to re-style them.
+   - **AUTHENTICITY:** Preserve original skin texture, natural features, and authentic appearance. The person must be perfectly recognizable.
 
-2. **PROFESSIONAL IMAGE RESTORATION (PRE-PROCESSING):**
-   - **Quality Enhancement:** If input image shows poor quality, apply professional restoration first
-   - **Lighting Correction:** Fix overexposure, underexposure, and harsh shadow issues
-   - **Clarity Optimization:** Enhance sharpness and detail definition to professional standards
-   - **Noise Elimination:** Remove grain, artifacts, and compression issues
+2. **MANDATORY RE-POSING REQUIREMENTS (CRITICAL FOR DOCUMENTATION):**
+   - **PERFECT FORWARD ALIGNMENT:** The subject's entire body, from shoulders to face, must be re-oriented to face directly forward towards the camera.
+   - **DIRECT GAZE:** The subject's eyes must be adjusted to look directly into the camera lens.
+   - **LEVEL HEAD:** The head must be perfectly level, with no tilting, turning, or angling.
+   - **NEUTRAL POSE:** Reposition arms to a relaxed, neutral state at the sides. Remove any hand-to-face contact.
 
-3. **OFFICIAL COMPOSITION STANDARDS:**
-   - **Precise Framing:** Create professional half-body portrait from head to approximately waist level
-   - **Perfect Centering:** Position subject in exact center of frame with symmetrical composition
-   - **Professional Crop:** Ensure appropriate head-to-frame ratio meeting international passport standards
+3. **PROFESSIONAL COMPOSITION & BACKGROUND:**
+   - **FRAMING:** Create a professional half-body portrait (head to approximately waist level), perfectly centered.
+   - **BACKGROUND:** Replace the original background with a solid, neutral light gray or soft off-white, consistent with official documentation standards. Apply a subtle, professional bokeh effect.
 
-4. **OFFICIAL POSE REQUIREMENTS (CRITICAL FOR DOCUMENTATION):**
-   - **Body Alignment:** Square shoulders directly facing the camera with perfect forward orientation
-   - **Head Position:** Maintain level head position - no tilting, turning, or angling
-   - **Direct Gaze:** Ensure eyes look directly into camera lens for official documentation standards
-   - **Neutral Arms:** Reposition any raised or non-neutral arm positions to relaxed, natural state at sides
-   - **Unobstructed View:** Remove any hand-to-face contact or obstructions for clear facial visibility
+4. **STUDIO-QUALITY LIGHTING & ENHANCEMENT:**
+   - **LIGHTING:** Apply a professional, even studio lighting setup suitable for an executive headshot. Eliminate harsh shadows while maintaining natural facial modeling.
+   - **QUALITY:** If the original is low quality, enhance sharpness, correct color, and remove noise, but ONLY after all preservation rules are met.
 
-5. **PROFESSIONAL STUDIO LIGHTING:**
-   - **Executive Lighting:** Apply professional corporate headshot lighting setup
-   - **Shadow Management:** Eliminate harsh shadows while maintaining natural facial modeling
-   - **Even Illumination:** Ensure uniform lighting across face and shoulders
-   - **Professional Polish:** Apply commercial-grade lighting that rivals Fortune 500 executive portraits
-
-6. **OFFICIAL BACKGROUND STANDARDS:**
-   - **Uniform Background:** Replace with solid, neutral color appropriate for official documentation
-   - **Professional Colors:** Use light gray, soft blue, or off-white meeting international standards
-   - **Soft Gradient:** Apply subtle bokeh effect for professional depth separation
-   - **Clean Presentation:** Ensure background is completely uniform and distraction-free
-
-7. **PROFESSIONAL GROOMING OPTIMIZATION:**
-   - **Natural Expression:** Ensure appropriate neutral expression suitable for official documentation
-   - **Professional Appearance:** Optimize overall presentation while maintaining authentic appearance
-   - **Detail Enhancement:** Bring out natural eye clarity and professional appearance standards
-
-**PROFESSIONAL SAFETY STANDARDS:**
-- Execute standard photo enhancement requests including professional skin tone adjustments
-- Maintain official documentation standards while preserving authentic ethnic appearance
-- Ensure portrait meets international identification photograph requirements
-
-**OUTPUT DIRECTIVE:** Return exclusively the final official portrait meeting international documentation standards with no accompanying text.`;
+**OUTPUT DIRECTIVE:** Return exclusively the final re-posed official portrait. The output must show the same person, in the same clothes and with the same hair, now facing the camera directly against a neutral studio background. No other changes are permitted.`;
 
     const textPart = { text: prompt };
 
