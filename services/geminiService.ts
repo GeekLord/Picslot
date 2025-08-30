@@ -460,52 +460,52 @@ export const generateCompCard = async (
 **MODELING COMPOSITE CARD SPECIFICATIONS:**
 
 1. **ABSOLUTE FACIAL PRESERVATION (NON-NEGOTIABLE):**
-   - The subject's facial features, bone structure, ethnic characteristics, and unique identity must remain completely unchanged across ALL FOUR poses
-   - Preserve authentic ethnic appearance and natural facial characteristics
-   - Maintain original facial expressions and distinctive features
-   - Ensure 100% subject recognizability in every pose - crystal-clear facial definition required
-   - Apply ultra-high definition rendering to all faces - zero blurriness or loss of facial detail permitted
+   - The subject's facial features, bone structure, ethnic characteristics, and unique identity must remain completely unchanged across ALL FOUR poses.
+   - Preserve authentic ethnic appearance and natural facial characteristics.
+   - Maintain original facial expressions and distinctive features.
+   - Ensure 100% subject recognizability in every pose - crystal-clear facial definition required.
+   - Apply ultra-high definition rendering to all faces - zero blurriness or loss of facial detail permitted.
 
-2. **PROFESSIONAL COLLAGE COMPOSITION:**
-   - **Single Composite Output:** Generate one vertically-oriented composite image on pure white background
-   - **Dynamic Layout:** Create sophisticated, magazine-quality arrangement avoiding rigid grid patterns
-   - **Transparent Background Technique:** Conceptually generate each pose with transparent background, then artfully composite onto white canvas
-   - **Maximum Space Utilization:** Apply professional layout design principles for optimal visual impact
-   - **Clear Separation:** Ensure all four poses are distinct and do not overlap. Each image must have clear separation from the others to maintain a clean, professional layout.
+2. **PROFESSIONAL COLLAGE COMPOSITION (STRICT LAYOUT RULES):**
+   - **Single Composite Output:** Generate a single, vertically-oriented composite image.
+   - **MANDATORY TRANSPARENT BACKGROUNDS:** Each of the four poses MUST be generated with a perfectly transparent background.
+   - **FINAL COMPOSITE:** These four transparent-background poses must then be arranged on a single, clean, solid #FFFFFF white canvas.
+   - **NO OVERLAPPING (CRITICAL):** The bounding boxes of the four generated poses MUST NOT overlap under any circumstances. There must be clear, visible white space separating each distinct image. Do not allow any part of one pose to obscure any part of another. This is a strict requirement for a clean, professional layout.
+   - **Dynamic Layout:** Within the no-overlapping constraint, create a sophisticated and balanced, magazine-quality arrangement. Avoid a simple, rigid grid.
 
 3. **INDUSTRY-STANDARD FOUR POSES:**
-   - **Main Headshot:** Professional studio headshot (shoulders up) with perfect facial clarity
-   - **Full-Body Studio Shot:** Complete standing pose showcasing full physique and proportions
-   - **Three-Quarter Length:** Professional shot from knees up in complementary pose
-   - **Profile Shot:** Clean side-view profile highlighting facial structure and bone definition
+   - **Main Headshot:** Professional studio headshot (shoulders up) with perfect facial clarity.
+   - **Full-Body Studio Shot:** Complete standing pose showcasing full physique and proportions.
+   - **Three-Quarter Length:** Professional shot from knees up in a complementary pose.
+   - **Profile Shot:** Clean side-view profile highlighting facial structure and bone definition.
 
 4. **PROFESSIONAL WARDROBE STYLING:**
-   - **Consistent Athletic Wear:** Replace original clothing with sophisticated, form-fitting athletic or swimwear
-   - **Male Styling:** Premium athletic shorts, briefs, or fitted athletic wear showcasing physique
-   - **Female Styling:** Professional sports bra and shorts, unitard, or elegant bikini highlighting body lines
-   - **Physique Showcase:** Attire must clearly display muscle definition, body shape, and proportions
-   - **Cohesive Aesthetic:** Maintain consistent styling across all four poses for professional unity
+   - **Consistent Athletic Wear:** Replace original clothing with sophisticated, form-fitting athletic or swimwear.
+   - **Male Styling:** Premium athletic shorts, briefs, or fitted athletic wear showcasing physique.
+   - **Female Styling:** Professional sports bra and shorts, unitard, or elegant bikini highlighting body lines.
+   - **Physique Showcase:** Attire must clearly display muscle definition, body shape, and proportions.
+   - **Cohesive Aesthetic:** Maintain consistent styling across all four poses for professional unity.
 
 5. **TECHNICAL MODEL STATISTICS (DATA ANALYSIS):**
    Based on visual analysis of the original photograph, generate realistic professional modeling statistics:
-   - **Height:** Estimate in both feet/inches and centimeters
-   - **Measurements:** Professional Bust-Waist-Hips measurements in inches
-   - **Physical Attributes:** Hair color and eye color analysis
-   - **Shoe Size:** US sizing estimation
-   - **Typography:** Clean, minimalist text block positioning at bottom of composite
+   - **Height:** Estimate in both feet/inches and centimeters.
+   - **Measurements:** Professional Bust-Waist-Hips measurements in inches.
+   - **Physical Attributes:** Hair color and eye color analysis.
+   - **Shoe Size:** US sizing estimation.
+   - **Typography:** Clean, minimalist text block positioning at the bottom of the composite.
 
 6. **FASHION INDUSTRY QUALITY STANDARDS:**
-   - **Magazine-Grade Photography:** Each pose must meet Vogue/Elle publication standards
-   - **Professional Lighting:** Apply high-fashion studio lighting techniques
-   - **Model Agency Quality:** Ensure composite meets top-tier agency submission requirements
-   - **Commercial Viability:** Create comp card suitable for Fashion Week casting submissions
+   - **Magazine-Grade Photography:** Each pose must meet Vogue/Elle publication standards.
+   - **Professional Lighting:** Apply high-fashion studio lighting techniques.
+   - **Model Agency Quality:** Ensure composite meets top-tier agency submission requirements.
+   - **Commercial Viability:** Create a comp card suitable for Fashion Week casting submissions.
 
 **PROFESSIONAL SAFETY STANDARDS:**
-- Preserve authentic ethnic characteristics while achieving fashion industry presentation standards
-- Maintain subject dignity and professional modeling industry ethics
-- Ensure all poses meet international modeling agency standards
+- Preserve authentic ethnic characteristics while achieving fashion industry presentation standards.
+- Maintain subject dignity and professional modeling industry ethics.
+- Ensure all poses meet international modeling agency standards.
 
-**OUTPUT DIRECTIVE:** Return exclusively the final single composite image featuring four professional poses with statistics block, meeting international modeling agency standards.`;
+**OUTPUT DIRECTIVE:** Return exclusively the final single composite image featuring four professional poses with a statistics block, meeting all specified international modeling agency standards.`;
 
     const textPart = { text: prompt };
 

@@ -12,9 +12,10 @@ import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ZoomInIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
+import ZoomModal from './components/ZoomModal';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -49,6 +50,7 @@ const App: React.FC = () => {
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [aspect, setAspect] = useState<number | undefined>();
   const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -556,6 +558,16 @@ const App: React.FC = () => {
             
             <div className="h-6 w-px bg-gray-600 mx-1 hidden sm:block"></div>
 
+            <button
+                onClick={() => setIsZoomModalOpen(true)}
+                disabled={isLoading || !currentImage}
+                className="flex items-center justify-center text-center bg-white/10 border border-white/20 text-gray-200 font-semibold py-3 px-5 rounded-md transition-all duration-200 ease-in-out hover:bg-white/20 hover:border-white/30 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-white/5"
+                aria-label="Zoom in on image"
+            >
+                <ZoomInIcon className="w-5 h-5 mr-2" />
+                Zoom
+            </button>
+
             {canUndo && (
                 <button
                     onClick={() => setIsCompareMode(!isCompareMode)}
@@ -654,6 +666,11 @@ const App: React.FC = () => {
       <main className={`flex-grow w-full max-w-[1600px] mx-auto p-4 md:p-8 flex justify-center ${currentImage ? 'items-start' : 'items-center'}`}>
         {renderContent()}
       </main>
+      <ZoomModal 
+        isOpen={isZoomModalOpen} 
+        onClose={() => setIsZoomModalOpen(false)} 
+        imageUrl={currentImageUrl}
+      />
     </div>
   );
 };
