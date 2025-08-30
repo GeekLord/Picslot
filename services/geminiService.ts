@@ -277,7 +277,7 @@ If the input image is of poor quality (e.g., blurry, noisy, grainy, bad lighting
 
 **RULE 3: CREATE THE STUDIO PORTRAIT**
 After ensuring the image quality is high, apply the following transformations:
-*   **Composition:** Re-frame the image into a professional **half-body portrait**. The person must be centered, with their head and shoulders clearly visible. This is a strict requirement for a passport-style photo.
+*   **Composition:** Re-frame the image into a professional **half-body portrait**. The person must be centered, with their head and shoulders clearly visible. The photo should be from head to around the waist. This is a strict requirement for a passport-style photo.
 *   **Pose & Gaze:** This is crucial for a professional passport-style portrait.
     *   **Body Posture:** The person's body and shoulders must be squared and facing directly forward towards the camera. Correct any leaning or angled postures.
     *   **Head Position:** The head must be held straight and level, not tilted to the side, up, or down.
