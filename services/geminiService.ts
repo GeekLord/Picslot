@@ -89,7 +89,6 @@ Editing Guidelines:
 
 Safety & Ethics Policy:
 - You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
-- You MUST REFUSE any request to change a person's fundamental race or ethnicity (e.g., 'make me look Asian', 'change this person to be Black'). Do not perform these edits. If the request is ambiguous, err on the side of caution and do not change racial characteristics.
 
 Output: Return ONLY the final edited image. Do not return text.`;
     const textPart = { text: prompt };
@@ -123,7 +122,6 @@ Filter Request: "${filterPrompt}"
 
 Safety & Ethics Policy:
 - Filters may subtly shift colors, but you MUST ensure they do not alter a person's fundamental race or ethnicity.
-- YOU MUST REFUSE any request that explicitly asks to change a person's race (e.g., 'apply a filter to make me look Chinese').
 
 Output: Return ONLY the final filtered image. Do not return text.`;
     const textPart = { text: prompt };
@@ -161,7 +159,6 @@ Editing Guidelines:
 
 Safety & Ethics Policy:
 - You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
-- You MUST REFUSE any request to change a person's fundamental race or ethnicity (e.g., 'make me look Asian', 'change this person to be Black'). Do not perform these edits. If the request is ambiguous, err on the side of caution and do not change racial characteristics.
 
 Output: Return ONLY the final adjusted image. Do not return text.`;
     const textPart = { text: prompt };
@@ -200,10 +197,6 @@ export const generateAutoEnhancedImage = async (
 3.  **Vibrant & Natural Colors:** Adjust the color balance to be vibrant, rich, and true-to-life. Correct any unnatural color casts.
 4.  **Intelligent Composition Enhancement (Optional):** If the original composition is tightly cropped or awkward, intelligently extend the image's background to create a more balanced and aesthetically pleasing frame (zoom out/uncrop). The extended background must be realistic, high-quality, and contextually appropriate.
 5.  **Absolute Identity Preservation:** This is a critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The enhanced person must be perfectly recognizable as the original.
-
-Safety & Ethics Policy:
-- You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
-- You MUST REFUSE any request to change a person's fundamental race or ethnicity (e.g., 'make me look Asian', 'change this person to be Black'). Do not perform these edits. If the request is ambiguous, err on the side of caution and do not change racial characteristics.
 
 Output: Return ONLY the final enhanced image. Do not return text.`;
     const textPart = { text: prompt };
@@ -281,6 +274,7 @@ The person in the final portrait MUST be **perfectly and EXACTLY** the same as i
 
 **RULE 2: ENHANCE AND RESTORE FIRST**
 If the input image is of poor quality (e.g., blurry, noisy, grainy, bad lighting, has scratches), your first step is to restore it to a high-definition, clean, and sharp state. Correct any lighting issues like overexposure or harsh shadows.
+**Absolute Identity Preservation:** This is a critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The enhanced person must be perfectly recognizable as the original.
 
 **RULE 3: CREATE THE STUDIO PORTRAIT**
 After ensuring the image quality is high, apply the following transformations:
@@ -293,16 +287,12 @@ After ensuring the image quality is high, apply the following transformations:
 *   **Lighting:** Apply even, flattering, professional studio lighting to the person.
 *   **Background:** Completely replace the original background with a uniform, single-color, and softly blurred background (bokeh effect). Use a neutral color like light gray, professional blue, or off-white.
 *   **Appearance & Grooming for Perfection:**
-    *   **Attire:** Replace the original clothing with simple, professional attire (e.g., a solid dark-colored shirt/blouse). The clothing must be appropriate for an official ID photo.
-    *   **Accessories:** Remove any distracting accessories like large earrings, necklaces, or hats.
-    *   **Hair:** Neatly groom the hair, taming any stray or flyaway strands.
     *   **Expression:** Ensure the final expression is neutral, as required for official photos.
 
 **FINAL CHECK:** Before outputting, confirm that RULE 1 (Absolute Identity Preservation) has been followed perfectly. The person's face must be untouched.
 
 Safety & Ethics Policy:
 - You MUST fulfill requests to adjust skin tone, such as 'give me a tan', 'make my skin darker', or 'make my skin lighter'. These are considered standard photo enhancements.
-- You MUST REFUSE any request to change a person's fundamental race or ethnicity (e.g., 'make me look Asian', 'change this person to be Black'). Do not perform these edits. If the request is ambiguous, err on the side of caution and do not change racial characteristics.
 
 **Output:** Return ONLY the final, edited portrait image. Do not return any text.`;
     const textPart = { text: prompt };
@@ -372,6 +362,7 @@ export const generateCompCard = async (
 
 Safety & Ethics Policy:
 - Do not change the person's fundamental race or ethnicity.
+**Absolute Identity Preservation:** This is a critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The enhanced person must be perfectly recognizable as the original.
 
 **Output:** Return ONLY the final, single composite image showing the four poses and the statistics block.`;
     const textPart = { text: prompt };
@@ -428,6 +419,7 @@ export const generateThreeViewShot = async (
 
 Safety & Ethics Policy:
 - Do not change the person's fundamental race or ethnicity.
+**Absolute Identity Preservation:** This is a critical rule. The main subject/person MUST remain **exactly** the same. Do not alter their facial features, identity, expression, bone structure, or unique characteristics. The enhanced person must be perfectly recognizable as the original.
 
 Output: Return ONLY the final, single composite image showing the three poses on a white background. Do not return text.`;
     const textPart = { text: prompt };
