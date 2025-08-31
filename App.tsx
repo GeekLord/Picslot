@@ -6,13 +6,13 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
-import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot } from './services/geminiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage } from './services/geminiService';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -155,6 +155,7 @@ const App: React.FC = () => {
   const handleStudioPortrait = createApiHandler(generateStudioPortrait, 'studio-portrait');
   const handleGenerateCompCard = createApiHandler(generateCompCard, 'comp-card');
   const handleGenerateThreeViewShot = createApiHandler(generateThreeViewShot, '3-view-shot');
+  const handleOutpaint = createApiHandler(generateOutpaintedImage, 'outpaint');
 
   const handleApplyCrop = useCallback(() => {
     if (!completedCrop || !imgRef.current) return;
@@ -335,7 +336,7 @@ const App: React.FC = () => {
                 </p>
                 <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
                     <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={editHotspot ? "e.g., 'change shirt color to blue'" : "First click a point on the image"} className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading || !editHotspot}/>
-                    <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed" disabled={isLoading || !prompt.trim() || !editHotspot}>Generate</button>
+                    <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed" disabled={isLoading || !prompt.trim() || !editHotspot}>Generate</button>
                 </form>
             </div>
         </div>
@@ -350,6 +351,7 @@ const App: React.FC = () => {
                 <button onClick={() => handleStudioPortrait()} disabled={isLoading} className={sidebarToolButtonClass}><PortraitIcon className="w-5 h-5 mr-3 text-cyan-400"/>Studio Portrait</button>
                 <button onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass}><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Comp Card</button>
                 <button onClick={() => handleGenerateThreeViewShot()} disabled={isLoading} className={sidebarToolButtonClass}><ThreeViewIcon className="w-5 h-5 mr-3 text-sky-400"/>3-View Shot</button>
+                <button onClick={() => handleOutpaint()} disabled={isLoading} className={sidebarToolButtonClass}><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Full Body</button>
               </div>
             </div>
             

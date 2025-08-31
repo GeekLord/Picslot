@@ -589,3 +589,53 @@ export const generateThreeViewShot = async (
     console.log('Received response from model for 3-View Shot.', response);
     return handleApiResponse(response, '3-view-shot');
 };
+
+/**
+ * Generates an outpainted full-body image from a partial-body image.
+ * @param originalImage The original image file.
+ * @returns A promise that resolves to the data URL of the outpainted image.
+ */
+export const generateOutpaintedImage = async (
+    originalImage: File,
+): Promise<string> => {
+    console.log(`Starting full-body outpainting`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const originalImagePart = await fileToPart(originalImage);
+
+    const prompt = `You are a master digital artist and photo compositor, specializing in photorealistic outpainting and scene extension. Your task is to intelligently extend the canvas of the provided image to reveal the subject's full body, seamlessly continuing the existing scene, clothing, and pose.
+
+**OUTPAINTING DIRECTIVE: FULL BODY REVEAL**
+
+**CORE REQUIREMENTS:**
+
+1.  **ABSOLUTE IDENTITY & APPEARANCE PRESERVATION (CRITICAL):**
+    - **FACIAL & UPPER BODY INTEGRITY (NON-NEGOTIABLE):** The subject's face, hair, clothing, and all visible parts in the original image MUST remain 100% unchanged and pixel-perfect. Do not re-render or alter the existing portion of the image.
+    - **AUTHENTICITY:** Preserve original skin texture, ethnic characteristics, and unique identifying traits. The person must be perfectly recognizable as the same individual.
+
+2.  **SEAMLESS OUTFIT & POSE CONTINUATION:**
+    - **CLOTHING COMPLETION:** Logically and realistically complete the subject's clothing. If they are wearing a t-shirt, extend it downwards. If they are wearing jeans, generate the rest of their pants and shoes, ensuring the style is consistent.
+    - **POSE REALISM:** Continue the subject's pose in a natural and physically plausible way. If they are standing, generate their legs and feet in a stable standing position.
+    - **ANATOMICAL ACCURACY:** Ensure the generated body parts (legs, arms, feet) are anatomically correct and proportional to the visible upper body.
+
+3.  **PHOTOREALISTIC BACKGROUND EXTENSION:**
+    - **SCENE CONTINUATION:** Seamlessly extend the existing background. Maintain consistent lighting, shadows, textures, and perspective. The transition between the original image and the generated area must be undetectable.
+    - **ENVIRONMENTAL LOGIC:** The extended background should be a logical continuation of the original scene.
+
+4.  **TECHNICAL EXECUTION & COMPOSITION:**
+    - **ASPECT RATIO:** Adjust the image's aspect ratio (likely making it taller) to accommodate the full body view. A standard portrait aspect ratio like 2:3 or 3:4 is preferred.
+    - **CENTERING:** Ensure the final full-body subject is well-composed and centered within the new frame.
+    - **QUALITY:** Maintain the highest photographic quality. The final image should look like a single, original, unedited photograph.
+
+**OUTPUT DIRECTIVE:** Return exclusively the final outpainted image showing the full body of the subject. The original portion of the image must be perfectly preserved. No text or explanations.`;
+
+    const textPart = { text: prompt };
+
+    console.log('Sending image and outpainting prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+    });
+
+    console.log('Received response from model for outpainting.', response);
+    return handleApiResponse(response, 'outpaint');
+};
