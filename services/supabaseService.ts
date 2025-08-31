@@ -181,3 +181,35 @@ export const saveProject = async (projectData: Omit<Project, 'id' | 'updated_at'
 
     return data as Project;
 };
+
+/**
+ * Deletes a project and all its associated files from storage.
+ * @param project - The project object to delete.
+ */
+export const deleteProject = async (project: Project): Promise<void> => {
+    // 1. Delete all associated files from storage.
+    // The `history` array contains all file paths for this project.
+    const filePaths = project.history;
+    if (filePaths && filePaths.length > 0) {
+        const { error: storageError } = await supabase.storage
+            .from(STORAGE_BUCKET_NAME)
+            .remove(filePaths);
+        
+        if (storageError) {
+            console.error('Error deleting project files from storage:', storageError);
+            // We'll still try to delete the DB record, but we throw an error at the end.
+            throw new Error(`Failed to delete project files: ${storageError.message}`);
+        }
+    }
+
+    // 2. Delete the project record from the database.
+    const { error: dbError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', project.id);
+
+    if (dbError) {
+        console.error('Error deleting project from database:', dbError);
+        throw new Error(`Failed to delete project record: ${dbError.message}`);
+    }
+};

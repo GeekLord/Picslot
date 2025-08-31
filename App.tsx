@@ -269,6 +269,20 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleDeleteProject = useCallback(async (project: Project) => {
+    setIsLoading(true);
+    try {
+      await supabaseService.deleteProject(project);
+      // Remove the project from the local state for an immediate UI update
+      setProjects(prevProjects => prevProjects.filter(p => p.id !== project.id));
+    } catch (e: any) {
+      setError(`Failed to delete project: ${e.message}`);
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
 
   // === AI & Editing Handlers ===
 
@@ -416,7 +430,12 @@ const App: React.FC = () => {
             <main className="flex-grow w-full max-w-7xl mx-auto p-4 md:p-8 flex justify-center items-center">
                 {!projectsLoaded ? <Spinner /> : (
                     view === 'dashboard' ? 
-                    <ProjectsDashboard projects={projects} onSelectProject={handleLoadProject} onStartNewProject={() => setView('upload')} /> : 
+                    <ProjectsDashboard 
+                      projects={projects} 
+                      onSelectProject={handleLoadProject} 
+                      onDeleteProject={handleDeleteProject}
+                      onStartNewProject={() => setView('upload')} 
+                    /> : 
                     <StartScreen onFileSelect={handleFileSelect} />
                 )}
             </main>

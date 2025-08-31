@@ -7,7 +7,7 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 ## ✨ Key Features
 
 - **Precise Retouching**: Click any point on an image to make localized edits. Change colors, remove objects, or add elements with pinpoint accuracy simply by describing what you want.
-- **Cloud-Based Projects**: Securely save your projects to your account and access them from anywhere. Your entire edit history is preserved.
+- **Cloud-Based Projects**: Securely save your projects to your account and access them from anywhere. Your entire edit history is preserved, and you can easily load, update, or delete projects from your personal dashboard.
 - **Creative Filters**: Instantly transform your photos with a range of artistic filters like Synthwave, Anime, and Lomo, or create a unique look with a custom text prompt.
 - **Professional Adjustments**: Apply global enhancements like blurring the background for a portrait effect, adding studio lighting, or adjusting the color temperature for a warmer feel.
 - **Non-Destructive Workflow**:
@@ -19,8 +19,10 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 Picslot leverages advanced generative AI for complex tasks that traditionally require expert skills:
 
 - **Auto Enhance**: A single click improves your image's lighting, color balance, sharpness, and overall clarity.
+- **Remove Background**: Instantly removes the background from your photo, leaving a clean, transparent cutout.
 - **Restore Image**: Magically repair old, blurry, or damaged photos, removing scratches and restoring faded colors.
 - **Studio Portrait**: Convert any casual photo into a professional, forward-facing headshot with a neutral studio background, while preserving the subject's identity.
+- **Full Body Outpainting**: Expands a cropped photo to a full-body shot with a plausible, AI-generated background that matches the original context.
 - **Comp Card Generator**: Automatically create a professional, multi-pose modeling composite card, complete with estimated stats, styled in form-fitting athletic wear.
 - **3-View Shot Generator**: Produce a technical three-view (front, side, back) full-body reference shot, ideal for character design or fashion.
 
@@ -63,7 +65,12 @@ Follow these instructions to set up and run the project locally.
     -   In your new project, navigate to **Project Settings** (the gear icon) > **API**.
     -   Find your **Project URL** and your **`anon` public key**. You will need these for the next step.
 
-3.  **Set Up Database Table:**
+3.  **Enable Auth Providers:**
+    -   Navigate to **Authentication** > **Providers**.
+    -   Enable the **Email** provider (it's usually on by default, but confirm "Confirm email" is enabled).
+    -   Enable the **Google** provider. You will need to provide a Client ID and Secret, which you can get from the [Google Cloud Console](https://console.cloud.google.com/). Follow the Supabase documentation for the exact steps.
+
+4.  **Set Up Database Table:**
     -   Go to the **SQL Editor** in the Supabase dashboard.
     -   Click **+ New query**.
     -   Paste and run the following SQL to create the `projects` table:
@@ -88,11 +95,12 @@ Follow these instructions to set up and run the project locally.
         WITH CHECK (auth.uid() = user_id);
         ```
 
-4.  **Set Up Storage:**
+5.  **Set Up Storage:**
     -   Go to the **Storage** section in the Supabase dashboard.
-    -   Create a new bucket named `project-images`.
+    -   Create a new bucket named `project-images`. **This name must be exact.**
+    -   Make the bucket **private**.
     -   Go to the policies for the `project-images` bucket and create a new policy with the following rules to allow users to manage their own files:
-        -   **Policy Name**: `User-specific access`
+        -   **Policy Name**: `User can manage their own project images`
         -   **Allowed operations**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`
         -   **Target roles**: `authenticated`
         -   **USING expression**: `bucket_id = 'project-images' AND auth.uid()::text = (storage.foldername(name))[1]`
@@ -107,11 +115,11 @@ Follow these instructions to set up and run the project locally.
     ```
 
 2.  **Set Up API Keys:**
-    The application loads API keys from environment variables. You must create a mechanism to serve these to the frontend. For simple local development without a build tool, you can add them to a script tag in `index.html`.
+    The application loads API keys from environment variables. For simple local development without a build tool, you can add them to a script tag in `index.html`.
     
     **Important:** In a real production environment, you would use a build tool like Vite or Next.js to manage environment variables securely. Do not commit your API keys to version control.
 
-    Open `index.html` and add this script tag inside the `<head>` section, **before** the main script import:
+    Open `index.html` and find the `window.process` script object. Replace the placeholder values with your actual keys from Google AI Studio and Supabase.
     ```html
     <script>
       window.process = {
@@ -124,7 +132,6 @@ Follow these instructions to set up and run the project locally.
       };
     </script>
     ```
-    Replace the placeholder values with your actual keys from Google AI Studio and Supabase.
 
 3.  **Run the Application:**
     Since this project uses modern browser features and no build step, you can run it with any simple local web server. If you have Node.js installed, you can use `serve`:
@@ -160,4 +167,4 @@ Follow these instructions to set up and run the project locally.
 
 ## 📄 License
 
-This project is licensed under the Apache 2.0 License. See the `LICENSE` file for details.
+This project is licensed under the Apache 2.0 License.

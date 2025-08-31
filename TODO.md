@@ -6,12 +6,12 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
 
 ## ✅ Phase 1: Foundation for "Pro"
 
-**Objective:** Build the core infrastructure required for a professional, account-based system using industry-standard cloud services. This is the top priority.
+**Objective:** Build the core infrastructure required for a professional, account-based system using industry-standard cloud services. This phase is complete.
 
 -   [x] **Implement Production-Grade User Authentication**
     -   [x] **Replace Local Storage Auth:** Removed insecure `localStorage`-based authentication logic.
     -   [x] **Integrate Cloud Auth Provider:** Implemented a secure authentication solution using **Supabase Auth**.
-    -   [x] **Implement Secure Flows:** Created robust and secure registration and login flows.
+    -   [x] **Implement Secure Flows:** Created robust and secure registration, email confirmation, and login flows.
     -   [x] **Support Multiple Auth Methods:** Added support for email/password and **Google social login**.
     -   [x] **Gate Application:** Ensured the main application is accessible only to authenticated users.
     -   [x] **Implement Logout:** Added secure logout functionality that properly terminates the user's session.
@@ -22,17 +22,23 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
     -   [x] **Design Database Schema:** Created a database schema in Supabase's PostgreSQL to store project metadata.
     -   [x] **Implement Project Management:**
         -   [x] Users can save their complete editing sessions to their cloud account.
-        -   [x] "My Projects" dashboard to view, load, and manage all saved work from the cloud.
+        -   [x] "My Projects" dashboard to view, load, update, and delete all saved work from the cloud.
 
--   [x] **Add High-Demand AI Features**
-    -   [x] **Generative Edit:** Users can select an area and fill or replace it with AI-generated content based on a prompt.
-    -   [x] **Background Removal & Replacement:** Implemented a one-click tool to remove the background, making it transparent.
-    -   [ ] *Idea:* Allow replacing the background with an AI-generated scene.
+-   [x] **Implement Full Suite of AI Features**
+    -   [x] **Precise Retouching (Generative Edit):** Users can select an area and fill or replace it with AI-generated content based on a prompt.
+    -   [x] **Background Removal:** Implemented a one-click tool to remove the background, making it transparent.
+    -   [x] **Auto Enhance:** One-click tool to improve lighting, color, and sharpness.
+    -   [x] **Image Restoration:** One-click tool to repair old or damaged photos.
+    -   [x] **Studio Portrait Generation:** One-click tool to create a professional headshot.
+    -   [x] **Comp Card Generation:** One-click tool to create a model's composite card.
+    -   [x] **3-View Shot Generation:** One-click tool to create a character turnaround sheet.
+    -   [x] **Full Body Outpainting:** One-click tool to expand a cropped image to a full-body view.
 
 ### **Setup & Integration Checklist (for Supabase)**
 -   [x] Create a new project on [Supabase](https://supabase.com/).
 -   [x] In the project settings, find the **Project URL** and **`anon` public key**.
 -   [x] Set up environment variables for the application (`index.html` script tag).
+-   [x] Enable Auth Providers (Email, Google) in the Supabase dashboard.
 -   [x] Use the Supabase SQL editor to create a `projects` table for storing project metadata.
 -   [x] Enable and configure Supabase Storage, creating a bucket (`project-images`) with appropriate security policies.
 -   [x] Install the required client library: `@supabase/supabase-js`.
