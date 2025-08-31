@@ -99,23 +99,15 @@ const App: React.FC = () => {
 
   // === Effects ===
 
-  // Check for logged-in user and listen for auth state changes
+  // Use onAuthStateChange as the single source of truth for the user's session.
   useEffect(() => {
     setAuthChecked(false);
   
-    // First, check for an existing session. This will be null if not logged in.
-    // After an OAuth redirect, Supabase puts the session in the URL hash,
-    // and getSession() can retrieve it.
-    supabaseService.supabase.auth.getSession().then(({ data: { session } }) => {
+    // onAuthStateChange fires an event immediately with the initial session state,
+    // and then listens for any subsequent changes.
+    const { data: { subscription } } = supabaseService.supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setAuthChecked(true);
-    });
-  
-    // Then, set up a listener for any future auth events.
-    const { data: { subscription } } = supabaseService.supabase.auth.onAuthStateChange((_event, session) => {
-      // This will fire when the user signs in, signs out, or the token is refreshed.
-      setUser(session?.user ?? null);
-      setAuthChecked(true); // Keep this to handle the case where getSession is slow
     });
   
     // Clean up the subscription when the component unmounts.
@@ -188,11 +180,6 @@ const App: React.FC = () => {
 
   // === Event Handlers ===
   
-  const handleLoginSuccess = (loggedInUser: User) => {
-    setUser(loggedInUser);
-    setView('dashboard');
-  };
-
   const handleImageUpload = useCallback((file: File) => {
     setError(null);
     setHistory([file]);
@@ -257,7 +244,8 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-        const imageUrls = project.history.map(path => supabaseService.getPublicUrl(path));
+        const signedUrlPromises = project.history.map(path => supabaseService.createSignedUrl(path));
+        const imageUrls = await Promise.all(signedUrlPromises);
         const newHistoryFiles = await Promise.all(
             imageUrls.map((url, index) => blobToFile(url, `history-${project.id}-${index}.png`))
         );
@@ -418,7 +406,7 @@ const App: React.FC = () => {
   }
 
   if (!user) {
-    return <AuthScreen onLoginSuccess={handleLoginSuccess} />;
+    return <AuthScreen />;
   }
     
   if (!currentImageUrl) {

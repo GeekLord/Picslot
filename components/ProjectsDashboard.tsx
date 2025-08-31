@@ -6,7 +6,7 @@
 import React from 'react';
 import type { Project } from '../App';
 import { PlusIcon } from './icons';
-import { getPublicUrl } from '../services/supabaseService';
+import ProjectCard from './ProjectCard';
 
 interface ProjectsDashboardProps {
   projects: Project[];
@@ -44,20 +44,11 @@ const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({ projects, onSelec
 
         {/* Project Cards */}
         {sortedProjects.map(project => (
-          <div key={project.id} onClick={() => onSelectProject(project)} className={cardClass}>
-            <img 
-              src={getPublicUrl(project.thumbnail)} 
-              alt={project.name} 
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-            <div className="absolute bottom-0 left-0 p-3 w-full">
-              <h3 className="font-bold text-white truncate">{project.name}</h3>
-              <p className="text-xs text-gray-400">
-                {new Date(project.updated_at).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
+          <ProjectCard 
+            key={project.id}
+            project={project}
+            onSelectProject={onSelectProject}
+          />
         ))}
       </div>
       

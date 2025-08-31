@@ -67,63 +67,51 @@ export const onAuthStateChange = (callback) => {
 };
 
 // ==================================
-//        Project Storage (AWS S3)
+//        Project Storage (Supabase)
 // ==================================
 
-const S3_BUCKET_NAME = 'picslot-project-images';
-const S3_BUCKET_REGION = 'us-east-1';
+const STORAGE_BUCKET_NAME = 'project-images';
 
 /**
- * Uploads a file to AWS S3 by first obtaining a pre-signed URL from a Supabase Edge Function.
- * @param userId - The ID of the user.
- * @param projectId - The ID of the project.
+ * Uploads a file to Supabase Storage.
+ * @param userId - The ID of the user, used for creating a folder path.
+ * @param projectId - The ID of the project, used for creating a subfolder.
  * @param file - The file to upload.
- * @returns The S3 key of the uploaded file.
+ * @returns The path of the uploaded file in the bucket.
  */
 export const uploadProjectFile = async (userId: string, projectId: string, file: File): Promise<string> => {
     const fileExt = file.name.split('.').pop() || 'png';
-    const key = `${userId}/${projectId}/${Date.now()}.${fileExt}`;
+    const path = `${userId}/${projectId}/${Date.now()}.${fileExt}`;
+    
+    const { error } = await supabase.storage
+        .from(STORAGE_BUCKET_NAME)
+        .upload(path, file);
 
-    // 1. Get pre-signed URL from Supabase Edge Function
-    const { data: presignedData, error: presignedError } = await supabase.functions.invoke('get-s3-presigned-url', {
-        body: { key, contentType: file.type },
-    });
-    
-    if (presignedError) {
-        console.error('Error getting pre-signed URL:', presignedError);
-        throw new Error(`Could not get an upload link: ${presignedError.message}`);
+    if (error) {
+        console.error('Error uploading file to Supabase Storage:', error);
+        throw new Error(`Failed to upload file: ${error.message}`);
     }
-    
-    const { presignedUrl } = presignedData;
-    if (!presignedUrl) {
-        throw new Error('Pre-signed URL was not returned from the function.');
-    }
-    
-    // 2. Upload the file to S3 using the pre-signed URL
-    const uploadResponse = await fetch(presignedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
-    });
-    
-    if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        console.error('S3 Upload Error:', errorText);
-        throw new Error(`Failed to upload file to S3: ${uploadResponse.statusText}`);
-    }
-    
-    // 3. Return the S3 key
-    return key;
+
+    return path;
 };
 
 /**
- * Gets the public URL for a file in AWS S3.
- * @param path - The S3 key of the file.
- * @returns The public S3 URL string.
+ * Creates a temporary, signed URL to access a private file.
+ * The URL is valid for a short period (e.g., 60 seconds).
+ * @param path - The path of the file in the bucket.
+ * @returns A promise that resolves to the signed URL string.
  */
-export const getPublicUrl = (path: string): string => {
-    // Construct the public S3 URL
-    return `https://${S3_BUCKET_NAME}.s3.${S3_BUCKET_REGION}.amazonaws.com/${path}`;
+export const createSignedUrl = async (path: string): Promise<string> => {
+    const { data, error } = await supabase.storage
+        .from(STORAGE_BUCKET_NAME)
+        .createSignedUrl(path, 60); // URL is valid for 60 seconds
+
+    if (error) {
+        console.error(`Error creating signed URL for path: ${path}`, error);
+        throw new Error(`Could not get signed URL: ${error.message}`);
+    }
+    
+    return data.signedUrl;
 };
 
 

@@ -9,16 +9,17 @@ import Spinner from './Spinner';
 import { signIn, signUp, signInWithGoogle } from '../services/supabaseService';
 
 interface AuthScreenProps {
-  onLoginSuccess: (user: any) => void;
+  // No props needed as auth state is now handled globally in App.tsx
 }
 
-const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
+const AuthScreen: React.FC<AuthScreenProps> = () => {
   const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
@@ -33,10 +34,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     try {
         const { data, error: signUpError } = await signUp(email, password);
         if (signUpError) throw signUpError;
+        // On successful sign-up, Supabase sends a confirmation email.
+        // We need to show the user a message to check their inbox.
         if (data.user) {
-            onLoginSuccess(data.user);
-        } else {
-            setError("Registration successful, but failed to log in automatically. Please try logging in.");
+            setNeedsConfirmation(true);
         }
     } catch (err: any) {
         setError(err.message || "Failed to register. Please try again.");
@@ -50,11 +51,17 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     setError(null);
     setIsLoading(true);
     try {
-        const { data, error: signInError } = await signIn(email, password);
-        if (signInError) throw signInError;
-        if (data.user) {
-            onLoginSuccess(data.user);
-        }
+        const { error: signInError } = await signIn(email, password);
+        if (signInError) {
+             // Check for specific Supabase error for unconfirmed email
+            if (signInError.message.toLowerCase().includes('email not confirmed')) {
+                setNeedsConfirmation(true); // Show the confirmation prompt again for better UX
+            } else {
+                throw signInError;
+            }
+        } 
+        // On success, the onAuthStateChange listener in App.tsx handles navigation.
+        // No need to call a success callback here.
     } catch (err: any) {
         setError(err.message || "Invalid email or password.");
     } finally {
@@ -70,6 +77,32 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     }
     // On success, the onAuthStateChange listener in App.tsx will handle the redirect.
   };
+
+  if (needsConfirmation) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md mx-auto text-center">
+          <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in">
+            <h2 className="text-2xl font-bold text-white mb-2">Check your inbox</h2>
+            <p className="text-gray-400 mb-6">
+              We've sent a confirmation link to <span className="font-semibold text-blue-400">{email}</span>. Please click the link to activate your account.
+            </p>
+            <button
+              onClick={() => {
+                setNeedsConfirmation(false);
+                setIsLoginView(true);
+                setEmail('');
+                setPassword('');
+              }}
+              className="font-semibold text-blue-400 hover:text-blue-300"
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const formTitle = isLoginView ? 'Welcome Back' : 'Create an Account';
   const formSubtitle = isLoginView ? 'Sign in to continue to Picslot' : 'Get started with your AI photo editor';

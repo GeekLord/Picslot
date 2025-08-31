@@ -2,17 +2,39 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+import { GoogleGenAI, GenerateContentResponse, Modality } from '@google/genai';
 
-import { supabase } from './supabaseService';
+const apiKey = process.env.API_KEY;
+if (!apiKey || apiKey.includes("YOUR_GEMINI_API_KEY")) {
+    throw new Error("Gemini API key is missing or is a placeholder. Please update it in index.html according to the README.md setup guide.");
+}
+
+const ai = new GoogleGenAI({ apiKey });
+const model = 'gemini-2.5-flash-image-preview';
+
+/**
+ * Converts a File object to a base64 encoded string.
+ * @param file The file to convert.
+ * @returns A promise that resolves to the base64 string.
+ */
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
+};
 
 /**
  * Resizes an image if it exceeds a maximum size and returns its data URL.
- * This is crucial for keeping the payload to the edge function below the 1MB limit.
+ * Intelligently switches between JPEG for compression and PNG for transparency.
  * @param file The image file to process.
+ * @param outputFormat The desired output format ('image/jpeg' or 'image/png').
  * @param maxSize The maximum width or height of the image.
  * @returns A promise that resolves to the data URL of the (potentially resized) image.
  */
-const getImageDataUrl = (file: File, maxSize: number = 1024): Promise<string> => {
+const getImageDataUrl = (file: File, outputFormat: 'image/jpeg' | 'image/png' = 'image/jpeg', maxSize: number = 1024): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -25,17 +47,16 @@ const getImageDataUrl = (file: File, maxSize: number = 1024): Promise<string> =>
                 const { width, height } = img;
 
                 if (width <= maxSize && height <= maxSize) {
-                    // Image is small enough, return original data URL
-                    resolve(dataUrl);
-                    return;
+                    // If the image is already in the right format and small enough, return it.
+                    if (file.type === outputFormat) {
+                       resolve(dataUrl);
+                       return;
+                    }
                 }
-
-                // Image needs resizing
+                
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    return reject(new Error('Could not get canvas context'));
-                }
+                if (!ctx) return reject(new Error('Could not get canvas context'));
 
                 let newWidth = width;
                 let newHeight = height;
@@ -56,8 +77,8 @@ const getImageDataUrl = (file: File, maxSize: number = 1024): Promise<string> =>
                 canvas.height = newHeight;
                 ctx.drawImage(img, 0, 0, newWidth, newHeight);
                 
-                // Using PNG to support transparency, which is important for 'remove-background'
-                resolve(canvas.toDataURL('image/png'));
+                // Use JPEG with quality for better compression unless PNG is required
+                resolve(canvas.toDataURL(outputFormat, 0.9));
             };
             img.onerror = reject;
             img.src = dataUrl;
@@ -67,159 +88,164 @@ const getImageDataUrl = (file: File, maxSize: number = 1024): Promise<string> =>
     });
 };
 
-
-// Generic handler to call the Supabase Edge Function for image generation
-const callImageGenerationApi = async (
-    action: string,
+/**
+ * A generic handler to call the Gemini API for various image generation tasks.
+ * @param originalImage The original image file.
+ * @param prompt The text prompt for the AI model.
+ * @param outputFormat The required output format. PNG for transparency, otherwise JPEG.
+ * @returns A promise that resolves to the data URL of the generated image.
+ */
+const callGenerativeApi = async (
     originalImage: File,
-    prompt?: string,
-    hotspot?: { x: number, y: number }
+    prompt: string,
+    outputFormat: 'image/png' | 'image/jpeg' = 'image/jpeg'
 ): Promise<string> => {
-    console.log(`Starting generative action: ${action}`);
+    // Resize and convert the image to a data URL for the API payload.
+    const optimizedDataUrl = await getImageDataUrl(originalImage, outputFormat);
+    const base64Data = optimizedDataUrl.split(',')[1];
+    const mimeType = optimizedDataUrl.substring(optimizedDataUrl.indexOf(':') + 1, optimizedDataUrl.indexOf(';'));
 
-    // The user must be authenticated to proceed.
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        throw new Error('You must be logged in to use AI features.');
-    }
-
-    // Resize image if necessary and get its data URL to keep the payload size manageable.
-    const dataUrl = await getImageDataUrl(originalImage);
-
-    // Construct the payload for the edge function.
-    const payload = {
-        action,
-        dataUrl,
-        prompt,
-        hotspot,
-    };
-
-    // Invoke the Supabase Edge Function
-    const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: payload
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model,
+        contents: {
+            parts: [{
+                inlineData: {
+                    data: base64Data,
+                    mimeType,
+                },
+            }, {
+                text: prompt,
+            }, ],
+        },
+        config: {
+            responseModalities: [Modality.IMAGE, Modality.TEXT],
+        },
     });
 
-    if (error) {
-        console.error(`Error invoking generate-image function for action "${action}":`, error);
-        if (error.message.includes('Failed to fetch')) {
-             throw new Error(`Network error: Could not connect to the AI service. Please check your internet connection.`);
-        }
-        throw new Error(error.message || `Failed to ${action}. An unknown function error occurred.`);
+    const imagePart = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+    if (imagePart && imagePart.inlineData) {
+        const newMimeType = imagePart.inlineData.mimeType;
+        return `data:${newMimeType};base64,${imagePart.inlineData.data}`;
     }
 
-    if (data?.error) {
-        console.error(`Error from generate-image function for action "${action}":`, data.error);
-        throw new Error(data.error);
-    }
-    
-    if (!data?.dataUrl) {
-         console.error('Invalid response from generate-image function, no dataUrl returned.', data);
-         throw new Error('The AI model did not return an image. Please try again.');
+    // Check for text part which might contain an error or explanation
+    const textPart = response.candidates?.[0]?.content?.parts?.find(part => part.text);
+    if (textPart && textPart.text) {
+        throw new Error(`The AI model returned text instead of an image: "${textPart.text}"`);
     }
 
-    return data.dataUrl;
+    throw new Error('The AI model did not return an image. Please try again.');
 };
 
-/**
- * Generates an edited image by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @param userPrompt The text prompt describing the desired edit.
- * @param hotspot The {x, y} coordinates on the image to focus the edit.
- * @returns A promise that resolves to the data URL of the edited image.
- */
-export const generateEditedImage = async (
+// --- API Functions ---
+
+export const generateEditedImage = (
     originalImage: File,
     userPrompt: string,
     hotspot: { x: number, y: number }
 ): Promise<string> => {
-    return callImageGenerationApi('edit', originalImage, userPrompt, hotspot);
+    const prompt = `
+        As an expert photo editor, perform the following edit: "${userPrompt}".
+        The user has indicated a specific point of interest at coordinates (x: ${hotspot.x}, y: ${hotspot.y}) on the original image.
+        Focus the edit on this area, ensuring the result is photorealistic and seamlessly integrated.
+        Preserve the original image's style, lighting, and resolution. Do not change the subject's identity or overall composition unless specifically instructed.
+    `;
+    return callGenerativeApi(originalImage, prompt);
 };
 
-/**
- * Generates an image with a filter by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @param filterPrompt The text prompt describing the desired filter.
- * @returns A promise that resolves to the data URL of the filtered image.
- */
-export const generateFilteredImage = async (
+export const generateFilteredImage = (
     originalImage: File,
-    filterPrompt: string,
+    filterPrompt: string
 ): Promise<string> => {
-    return callImageGenerationApi('filter', originalImage, filterPrompt);
+    const prompt = `
+        Apply a creative filter to this image based on the following description: "${filterPrompt}".
+        The filter should be applied globally, affecting the entire image.
+        Maintain the core subject matter and composition. The result should be artistic and high-quality.
+    `;
+    return callGenerativeApi(originalImage, prompt);
 };
 
-/**
- * Generates an image with a global adjustment by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @param adjustmentPrompt The text prompt describing the desired adjustment.
- * @returns A promise that resolves to the data URL of the adjusted image.
- */
-export const generateAdjustedImage = async (
+
+export const generateAdjustedImage = (
     originalImage: File,
-    adjustmentPrompt: string,
+    adjustmentPrompt: string
 ): Promise<string> => {
-    return callImageGenerationApi('adjustment', originalImage, adjustmentPrompt);
+    const prompt = `
+        Perform a professional photo adjustment on this entire image. The goal is to: "${adjustmentPrompt}".
+        This is a technical adjustment, not a content change. Maintain the subject's identity and composition.
+        The result should look like it was done by a professional photographer.
+    `;
+    return callGenerativeApi(originalImage, prompt);
 };
 
-/**
- * Generates an auto-enhanced image by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @returns A promise that resolves to the data URL of the enhanced image.
- */
 export const generateAutoEnhancedImage = (originalImage: File): Promise<string> => {
-    return callImageGenerationApi('auto-enhance', originalImage);
+    const prompt = `
+        Act as a professional photo editor. Perform an "auto-enhance" or "magic edit" on this image.
+        Subtly improve lighting, color balance, contrast, and sharpness to make the photo look its best.
+        Do not crop, change content, or alter the subject's identity. The enhancement should be natural and not overly stylized.
+    `;
+    return callGenerativeApi(originalImage, prompt);
 };
 
-/**
- * Restores an old or damaged image by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @returns A promise that resolves to the data URL of the restored image.
- */
 export const generateRestoredImage = (originalImage: File): Promise<string> => {
-    return callImageGenerationApi('restore', originalImage);
+    const prompt = `
+        Act as a master photo restoration expert. Restore this image.
+        Remove any scratches, dust, blurriness, and color fading. Sharpen details and clarify the subjects.
+        It is critical to preserve the original subjects' identities and the historical context of the photo. Do not add or invent details that are not present. The goal is restoration, not recreation.
+    `;
+    return callGenerativeApi(originalImage, prompt);
 };
 
-/**
- * Generates an image with the background removed by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @returns A promise that resolves to the data URL of the image with a transparent background.
- */
 export const generateRemovedBackgroundImage = (originalImage: File): Promise<string> => {
-    return callImageGenerationApi('remove-background', originalImage);
+    const prompt = `
+      Precisely segment the main foreground subject from the background.
+      Remove the background completely, making it transparent.
+      Ensure the edges of the subject are clean and sharp. Do not leave any background remnants.
+      Output a PNG file with a transparent background.
+    `;
+    // Background removal requires transparency, so we must use PNG.
+    return callGenerativeApi(originalImage, prompt, 'image/png');
 };
 
-/**
- * Generates a studio-quality portrait by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @returns A promise that resolves to the data URL of the portrait image.
- */
 export const generateStudioPortrait = (originalImage: File): Promise<string> => {
-    return callImageGenerationApi('studio-portrait', originalImage);
+    const prompt = `
+        Transform this image into a professional, forward-facing studio headshot.
+        The subject should be looking directly at the camera.
+        The background must be a clean, neutral, professional studio backdrop (e.g., light gray, off-white).
+        Lighting should be flattering and professional.
+        It is absolutely critical to preserve the subject's identity and facial features exactly as they are in the original photo. Do not alter their appearance.
+    `;
+    return callGenerativeApi(originalImage, prompt);
 };
 
-/**
- * Generates a modeling comp card by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @returns A promise that resolves to the data URL of the comp card image.
- */
 export const generateCompCard = (originalImage: File): Promise<string> => {
-    return callImageGenerationApi('comp-card', originalImage);
+    const prompt = `
+        Act as a professional agent for a model. Generate a professional modeling composite card (comp card) using the provided image of the person as the main photo.
+        The comp card should feature multiple poses of the same person, styled in simple, form-fitting athletic wear (like a tank top and leggings).
+        Include a full-body shot, a headshot, and a three-quarter shot.
+        Also, include a section with the model's estimated stats: Height, Weight, Bust, Waist, Hips, and Shoe Size.
+        The layout should be clean, modern, and professional. Preserve the model's identity in all generated poses.
+    `;
+    return callGenerativeApi(originalImage, prompt);
 };
 
-/**
- * Generates a 3-view full body shot by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @returns A promise that resolves to the data URL of the 3-view image.
- */
+
 export const generateThreeViewShot = (originalImage: File): Promise<string> => {
-    return callImageGenerationApi('3-view-shot', originalImage);
+    const prompt = `
+        Generate a technical, full-body, three-view reference shot (also known as a character sheet or turnaround) of the person in the image.
+        The output must show the person from the front, side, and back, standing in a neutral A-pose.
+        The person should be wearing simple, form-fitting clothing (like a grey t-shirt and shorts) to clearly show their physique.
+        The background must be a plain, neutral color.
+        It is crucial to maintain the person's identity, proportions, and features across all three views.
+    `;
+    return callGenerativeApi(originalImage, prompt);
 };
 
-/**
- * Generates an outpainted full-body image by proxying the request through a serverless function.
- * @param originalImage The original image file.
- * @returns A promise that resolves to the data URL of the outpainted image.
- */
 export const generateOutpaintedImage = (originalImage: File): Promise<string> => {
-    return callImageGenerationApi('outpaint', originalImage);
+    const prompt = `
+        This image is a crop of a person. Your task is to "outpaint" or "un-crop" it to reveal the person's full body and a plausible, complete background.
+        The generated parts of the person and the background must seamlessly match the style, lighting, and context of the original image.
+        Preserve the person's identity and the original part of the image perfectly.
+    `;
+    return callGenerativeApi(originalImage, prompt);
 };

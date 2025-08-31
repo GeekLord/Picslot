@@ -8,10 +8,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       // This object is used to mock Node.js environment variables for browser-based development.
-      // IMPORTANT: The keys below were exposed publicly. For your security, you MUST go to your
-      // Supabase dashboard, revoke them, and replace them with the new keys.
+      // IMPORTANT: In a real production app, these keys should be handled by a secure build process
+      // and not be directly exposed in the client-side code like this.
       window.process = {
         env: {
+          // You MUST replace this with your actual Google Gemini API Key.
+          API_KEY: "YOUR_GEMINI_API_KEY_HERE",
           SUPABASE_URL: "https://jqqgqiomyvgbptazlezj.supabase.co",
           SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxcWdxaW9teXZnYnB0YXpsZXpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2Mjg5ODgsImV4cCI6MjA3MjIwNDk4OH0.sHtQX15ezzaI6Yz-22WHrQw4j4nVNvN5NvRyQfQFK9A"
         }
