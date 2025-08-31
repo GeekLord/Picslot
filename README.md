@@ -7,13 +7,12 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 ## ✨ Key Features
 
 - **Precise Retouching**: Click any point on an image to make localized edits. Change colors, remove objects, or add elements with pinpoint accuracy simply by describing what you want.
+- **Cloud-Based Projects**: Securely save your projects to your account and access them from anywhere. Your entire edit history is preserved.
 - **Creative Filters**: Instantly transform your photos with a range of artistic filters like Synthwave, Anime, and Lomo, or create a unique look with a custom text prompt.
 - **Professional Adjustments**: Apply global enhancements like blurring the background for a portrait effect, adding studio lighting, or adjusting the color temperature for a warmer feel.
-- **Standard Editing Tools**: Includes a robust cropping tool with freeform and fixed aspect ratios (1:1, 16:9).
 - **Non-Destructive Workflow**:
   - **Undo/Redo**: Full history tracking allows you to step backward and forward through your edits.
   - **Compare Mode**: A dynamic slider lets you instantly compare your current edit with the original image.
-  - **Reset**: Revert all changes and start fresh with a single click.
 
 ### 🤖 One-Click AI Superpowers
 
@@ -28,6 +27,7 @@ Picslot leverages advanced generative AI for complex tasks that traditionally re
 ## 🛠️ Technology Stack
 
 - **Frontend**: React, TypeScript, Tailwind CSS
+- **Backend-as-a-Service**: Supabase (Authentication, PostgreSQL Database, Storage)
 - **AI Engine**: Google Gemini API (`gemini-2.5-flash-image-preview` model)
 - **Core Libraries**:
   - `react-image-crop` for the interactive cropping UI.
@@ -35,19 +35,14 @@ Picslot leverages advanced generative AI for complex tasks that traditionally re
 
 ## ⚙️ How It Works
 
-Picslot's magic lies in its sophisticated prompt engineering. When a user performs an action, the application doesn't just send the image and a simple prompt to the AI. Instead, it constructs a detailed, role-based prompt for the Gemini model.
+Picslot's magic lies in its sophisticated prompt engineering and robust cloud architecture.
 
-1.  **User Action**: The user uploads an image and selects a tool (e.g., "Restore Image").
-2.  **Image Processing**: The frontend converts the uploaded image file into a Base64-encoded string.
-3.  **Prompt Engineering**: A highly specific prompt is generated. For example, the "Restore Image" prompt instructs the AI to act as a "world-class master conservator and digital restoration artist." It includes strict rules about:
-    - **Identity Preservation**: A non-negotiable clause to ensure the subject's facial features, ethnicity, and unique characteristics remain unchanged.
-    - **Technical Execution**: Detailed steps on how to remove scratches, correct colors, enhance resolution, and preserve texture.
-    - **Output Format**: A directive to return only the final image data.
+1.  **Authentication**: Users sign up and log in securely via Supabase Auth. Sessions are managed with industry-standard practices.
+2.  **User Action**: The user uploads an image and selects a tool (e.g., "Restore Image").
+3.  **Prompt Engineering**: A highly specific prompt is generated, instructing the Gemini model to act as a professional (e.g., "a world-class master conservator") and follow strict rules about identity preservation and technical execution.
 4.  **API Request**: The image data and the engineered prompt are sent to the Gemini API.
-5.  **Response Handling**: The application receives the AI-generated image, checks for any safety blocks or errors, and displays the result to the user.
-6.  **History Management**: The new image is added to the history stack, allowing for undo/redo functionality.
-
-This meticulous approach ensures high-quality, consistent, and safe results for complex editing tasks.
+5.  **Response Handling**: The application receives the AI-generated image and displays it.
+6.  **Cloud Sync**: When a user saves a project, each image in the history stack is uploaded to Supabase Storage. The project metadata, including the storage paths to the images, is saved to a PostgreSQL database. This ensures data is persistent, secure, and accessible across sessions.
 
 ## 🚀 Getting Started
 
@@ -55,11 +50,55 @@ Follow these instructions to set up and run the project locally.
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or later recommended)
-- `npm` (included with Node.js)
+- A [Supabase](https://supabase.com/) account (free tier is sufficient).
 - A Google Gemini API key, available from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-### Installation & Configuration
+### Supabase Configuration
+
+1.  **Create a Supabase Project:**
+    -   Go to your [Supabase Dashboard](https://app.supabase.com/) and create a new project.
+    -   Save your database password securely.
+
+2.  **Get API Credentials:**
+    -   In your new project, navigate to **Project Settings** (the gear icon) > **API**.
+    -   Find your **Project URL** and your **`anon` public key**. You will need these for the next step.
+
+3.  **Set Up Database Table:**
+    -   Go to the **SQL Editor** in the Supabase dashboard.
+    -   Click **+ New query**.
+    -   Paste and run the following SQL to create the `projects` table:
+        ```sql
+        CREATE TABLE public.projects (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+            name TEXT NOT NULL,
+            history JSONB NOT NULL,
+            history_index INTEGER NOT NULL,
+            thumbnail TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+
+        CREATE POLICY "Users can manage their own projects"
+        ON public.projects
+        FOR ALL
+        USING (auth.uid() = user_id)
+        WITH CHECK (auth.uid() = user_id);
+        ```
+
+4.  **Set Up Storage:**
+    -   Go to the **Storage** section in the Supabase dashboard.
+    -   Create a new bucket named `project-images`.
+    -   Go to the policies for the `project-images` bucket and create a new policy with the following rules to allow users to manage their own files:
+        -   **Policy Name**: `User-specific access`
+        -   **Allowed operations**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`
+        -   **Target roles**: `authenticated`
+        -   **USING expression**: `bucket_id = 'project-images' AND auth.uid()::text = (storage.foldername(name))[1]`
+        -   **WITH CHECK expression**: `bucket_id = 'project-images' AND auth.uid()::text = (storage.foldername(name))[1]`
+
+### Local Application Setup
 
 1.  **Clone the Repository:**
     ```bash
@@ -67,64 +106,55 @@ Follow these instructions to set up and run the project locally.
     cd picslot
     ```
 
-2.  **Install Dependencies:**
-    This project may require a local web server or other tools. To install the required packages, run:
+2.  **Set Up API Keys:**
+    The application loads API keys from environment variables. You must create a mechanism to serve these to the frontend. For simple local development without a build tool, you can add them to a script tag in `index.html`.
+    
+    **Important:** In a real production environment, you would use a build tool like Vite or Next.js to manage environment variables securely. Do not commit your API keys to version control.
+
+    Open `index.html` and add this script tag inside the `<head>` section, **before** the main script import:
+    ```html
+    <script>
+      window.process = {
+        env: {
+          // IMPORTANT: Replace with your actual keys
+          API_KEY: "YOUR_GEMINI_API_KEY_HERE",
+          SUPABASE_URL: "YOUR_SUPABASE_PROJECT_URL_HERE",
+          SUPABASE_ANON_KEY: "YOUR_SUPABASE_ANON_KEY_HERE"
+        }
+      };
+    </script>
+    ```
+    Replace the placeholder values with your actual keys from Google AI Studio and Supabase.
+
+3.  **Run the Application:**
+    Since this project uses modern browser features and no build step, you can run it with any simple local web server. If you have Node.js installed, you can use `serve`:
+    
+    First, install `serve`:
     ```bash
-    npm install
+    npm install -g serve
     ```
-    *(This assumes a `package.json` file exists with dependencies like `serve`.)*
-
-3.  **Set Up API Key:**
-    The application loads the Gemini API key from environment variables. Create a file named `.env.local` in the project's root directory.
-    ```bash
-    touch .env.local
-    ```
-    Open this file and add your API key:
-    ```
-    GEMINI_API_KEY="YOUR_API_KEY_HERE"
-    ```
-    **Important:** Your development environment must be configured to load `.env.local` and make the `API_KEY` available to the application as `process.env.API_KEY`. Tools like Vite or Create React App handle this automatically.
-
-### Running the Application
-
-**Development Mode:**
-
-To run the application with a development server that supports features like hot-reloading and environment variables, you would typically use a command like:
-```bash
-npm run dev
-```
-*(This requires a `dev` script to be configured in `package.json`, e.g., using Vite).*
-
-**Production Mode / Simple Server:**
-
-For a simple production-like deployment, you can use a static file server.
-
-1.  **Start the server:**
-    If you have `serve` installed (e.g., via `npm install -g serve` or as a project dependency), run:
+    Then, run it from the project's root directory:
     ```bash
     serve
     ```
 
-2.  **Access the App:**
-    Open your browser and navigate to the local URL provided (e.g., `http://localhost:3000`).
+4.  **Access the App:**
+    Open your browser and navigate to the local URL provided by the server (e.g., `http://localhost:3000`). You should see the login screen.
 
 ## 📁 File Structure
 
 ```
 .
-├── index.html          # Main HTML entry point with importmap setup
+├── index.html          # Main HTML entry point with importmap and env setup
 ├── index.tsx           # Main React application entry point
 ├── App.tsx             # Root component containing the main application logic and UI
 ├── services/
-│   └── geminiService.ts# All functions for interacting with the Gemini API
+│   ├── geminiService.ts# Functions for interacting with the Gemini API
+│   └── supabaseService.ts# Functions for Supabase (Auth, DB, Storage)
 ├── components/
-│   ├── AdjustmentPanel.tsx # UI for global image adjustments
-│   ├── CompareSlider.tsx   # UI for before/after image comparison
-│   ├── CropPanel.tsx       # UI for cropping options
-│   ├── FilterPanel.tsx     # UI for creative filters
-│   ├── Header.tsx          # Application header
-│   ├── StartScreen.tsx     # Initial screen for image upload
-│   ├── ...and other UI components
+│   ├── AuthScreen.tsx      # Login/Registration UI
+│   ├── ProjectsDashboard.tsx # UI to display user's cloud projects
+│   └── ...and other UI components
 └── README.md           # This file
 ```
 

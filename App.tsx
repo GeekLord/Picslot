@@ -6,16 +6,22 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
-import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage } from './services/geminiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage } from './services/geminiService';
+import * as supabaseService from './services/supabaseService';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, LogoutIcon, SaveIcon, RemoveBgIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
+import AuthScreen from './components/AuthScreen';
+import ProjectsDashboard from './components/ProjectsDashboard';
+import SaveProjectModal from './components/SaveProjectModal';
+import type { User } from '@supabase/supabase-js';
+
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -34,9 +40,35 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
     return new File([u8arr], filename, {type:mime});
 }
 
+// Helper to convert a fetched Blob to a File object
+const blobToFile = async (url: string, filename: string): Promise<File> => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new File([blob], filename, { type: blob.type });
+};
+
+
 type Tool = 'adjust' | 'filters' | 'crop';
+type View = 'dashboard' | 'upload';
+
+export interface Project {
+  id: string;
+  name: string;
+  updated_at: string;
+  history: string[]; // Array of paths in Supabase Storage
+  history_index: number;
+  thumbnail: string; // Path in Supabase Storage
+}
 
 const App: React.FC = () => {
+  // Auth & Project State
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+
+  // Editor State
   const [history, setHistory] = useState<File[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [prompt, setPrompt] = useState<string>('');
@@ -44,13 +76,19 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [editHotspot, setEditHotspot] = useState<{ x: number, y: number } | null>(null);
   const [displayHotspot, setDisplayHotspot] = useState<{ x: number, y: number } | null>(null);
-  const [activeTool, setActiveTool] = useState<Tool | null>(null);
   
+  // UI State
+  const [activeTool, setActiveTool] = useState<Tool | null>(null);
+  const [view, setView] = useState<View>('dashboard');
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
+  const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
+
+  // Crop State
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [aspect, setAspect] = useState<number | undefined>();
-  const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
-  const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
+
   const imgRef = useRef<HTMLImageElement>(null);
 
   const currentImage = history[historyIndex] ?? null;
@@ -59,12 +97,61 @@ const App: React.FC = () => {
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
 
+  // === Effects ===
+
+  // Check for logged-in user and listen for auth state changes
+  useEffect(() => {
+    setAuthChecked(false);
+  
+    // First, check for an existing session. This will be null if not logged in.
+    // After an OAuth redirect, Supabase puts the session in the URL hash,
+    // and getSession() can retrieve it.
+    supabaseService.supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthChecked(true);
+    });
+  
+    // Then, set up a listener for any future auth events.
+    const { data: { subscription } } = supabaseService.supabase.auth.onAuthStateChange((_event, session) => {
+      // This will fire when the user signs in, signs out, or the token is refreshed.
+      setUser(session?.user ?? null);
+      setAuthChecked(true); // Keep this to handle the case where getSession is slow
+    });
+  
+    // Clean up the subscription when the component unmounts.
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+
+  // Load user's projects when they log in
+  useEffect(() => {
+    if (user) {
+        setProjectsLoaded(false);
+        supabaseService.getProjects(user.id)
+            .then(setProjects)
+            .catch(e => {
+                console.error("Failed to load projects:", e);
+                setError("Could not load your saved projects.");
+                setProjects([]);
+            })
+            .finally(() => setProjectsLoaded(true));
+    } else {
+        // Clear projects when user logs out
+        setProjects([]);
+        setProjectsLoaded(false);
+    }
+  }, [user]);
+
+  // Clean up compare mode when tool changes
   useEffect(() => {
     if (activeTool !== 'crop' && isCompareMode) {
       setIsCompareMode(false);
     }
   }, [activeTool]);
 
+  // Create Object URLs for images in history for performance
   useEffect(() => {
     if (currentImage) {
       const url = URL.createObjectURL(currentImage);
@@ -85,6 +172,7 @@ const App: React.FC = () => {
     }
   }, [originalImage]);
 
+  // === History Management ===
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
@@ -98,23 +186,108 @@ const App: React.FC = () => {
     setCompletedCrop(undefined);
   }, [history, historyIndex]);
 
+  // === Event Handlers ===
+  
+  const handleLoginSuccess = (loggedInUser: User) => {
+    setUser(loggedInUser);
+    setView('dashboard');
+  };
+
   const handleImageUpload = useCallback((file: File) => {
     setError(null);
     setHistory([file]);
     setHistoryIndex(0);
+    setActiveProjectId(null); // It's a new, unsaved project
     setEditHotspot(null);
     setDisplayHotspot(null);
     setActiveTool(null);
     setCrop(undefined);
     setCompletedCrop(undefined);
   }, []);
+  
+  // === Project Management ===
+
+  const handleSaveProject = async (projectName: string) => {
+    if (!currentImage || !user) return;
+    setIsLoading(true);
+
+    try {
+        const tempProjectId = activeProjectId || `temp_${Date.now()}`;
+        
+        // Upload all images in history to cloud storage
+        const historyPaths = await Promise.all(
+            history.map(file => supabaseService.uploadProjectFile(user.id, tempProjectId, file))
+        );
+        
+        const thumbnailPath = historyPaths[historyIndex];
+
+        const projectData = {
+            id: activeProjectId,
+            user_id: user.id,
+            name: projectName,
+            history: historyPaths,
+            history_index: historyIndex,
+            thumbnail: thumbnailPath,
+        };
+
+        const savedProject = await supabaseService.saveProject(projectData);
+        
+        // Update local state with the saved project
+        setProjects(prevProjects => {
+            const existingIndex = prevProjects.findIndex(p => p.id === savedProject.id);
+            if (existingIndex > -1) {
+                const newProjects = [...prevProjects];
+                newProjects[existingIndex] = savedProject;
+                return newProjects;
+            }
+            return [...prevProjects, savedProject];
+        });
+        setActiveProjectId(savedProject.id);
+
+    } catch (e: any) {
+        setError(`Failed to save project: ${e.message}`);
+        console.error(e);
+    } finally {
+        setIsSaveModalOpen(false);
+        setIsLoading(false);
+    }
+  };
+
+  const handleLoadProject = useCallback(async (project: Project) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+        const imageUrls = project.history.map(path => supabaseService.getPublicUrl(path));
+        const newHistoryFiles = await Promise.all(
+            imageUrls.map((url, index) => blobToFile(url, `history-${project.id}-${index}.png`))
+        );
+
+        setHistory(newHistoryFiles);
+        setHistoryIndex(project.history_index);
+        setActiveProjectId(project.id);
+
+        // Reset editor state
+        setCrop(undefined);
+        setCompletedCrop(undefined);
+        setActiveTool(null);
+        setEditHotspot(null);
+        setDisplayHotspot(null);
+        setPrompt('');
+    } catch (e) {
+        setError("Failed to load project files from the cloud.");
+        console.error(e);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+
+  // === AI & Editing Handlers ===
 
   const handleGenerate = useCallback(async () => {
     if (!currentImage || !prompt.trim() || !editHotspot) return;
-
     setIsLoading(true);
     setError(null);
-    
     try {
         const editedImageUrl = await generateEditedImage(currentImage, prompt, editHotspot);
         const newImageFile = dataURLtoFile(editedImageUrl, `edited-${Date.now()}.png`);
@@ -130,10 +303,7 @@ const App: React.FC = () => {
   }, [currentImage, prompt, editHotspot, addImageToHistory]);
   
   const createApiHandler = (apiFn: (file: File, prompt?: string) => Promise<string>, actionName: string) => async (promptOrFile?: string | File) => {
-      if (!currentImage) {
-        setError(`No image loaded to apply ${actionName}.`);
-        return;
-      }
+      if (!currentImage) return;
       setIsLoading(true);
       setError(null);
       try {
@@ -152,6 +322,7 @@ const App: React.FC = () => {
   const handleApplyAdjustment = createApiHandler(generateAdjustedImage, 'adjustment');
   const handleAutoEnhance = createApiHandler(generateAutoEnhancedImage, 'auto-enhance');
   const handleRestoreImage = createApiHandler(generateRestoredImage, 'restore');
+  const handleRemoveBackground = createApiHandler(generateRemovedBackgroundImage, 'remove-background');
   const handleStudioPortrait = createApiHandler(generateStudioPortrait, 'studio-portrait');
   const handleGenerateCompCard = createApiHandler(generateCompCard, 'comp-card');
   const handleGenerateThreeViewShot = createApiHandler(generateThreeViewShot, '3-view-shot');
@@ -159,54 +330,31 @@ const App: React.FC = () => {
 
   const handleApplyCrop = useCallback(() => {
     if (!completedCrop || !imgRef.current) return;
-
     const image = imgRef.current;
     const canvas = document.createElement('canvas');
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
-    
     canvas.width = completedCrop.width;
     canvas.height = completedCrop.height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    const pixelRatio = window.devicePixelRatio || 1;
-    canvas.width = completedCrop.width * pixelRatio;
-    canvas.height = completedCrop.height * pixelRatio;
-    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    ctx.imageSmoothingQuality = 'high';
-
-    ctx.drawImage(
-      image,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0, 0,
-      completedCrop.width, completedCrop.height,
-    );
-    
+    ctx.drawImage(image, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, completedCrop.width, completedCrop.height);
     const croppedImageUrl = canvas.toDataURL('image/png');
     const newImageFile = dataURLtoFile(croppedImageUrl, `cropped-${Date.now()}.png`);
     addImageToHistory(newImageFile);
     setActiveTool(null);
   }, [completedCrop, addImageToHistory]);
 
-  const handleUndo = useCallback(() => {
-    if (canUndo) setHistoryIndex(historyIndex - 1);
-  }, [canUndo, historyIndex]);
-  
-  const handleRedo = useCallback(() => {
-    if (canRedo) setHistoryIndex(historyIndex + 1);
-  }, [canRedo, historyIndex]);
-
-  const handleReset = useCallback(() => {
-    if (history.length > 0) setHistoryIndex(0);
-  }, [history]);
+  // === Top Bar Action Handlers ===
+  const handleUndo = useCallback(() => canUndo && setHistoryIndex(historyIndex - 1), [canUndo, historyIndex]);
+  const handleRedo = useCallback(() => canRedo && setHistoryIndex(historyIndex + 1), [canRedo, historyIndex]);
+  const handleReset = useCallback(() => history.length > 0 && setHistoryIndex(0), [history]);
 
   const handleUploadNew = useCallback(() => {
       setHistory([]);
       setHistoryIndex(-1);
+      setActiveProjectId(null);
+      setView('dashboard');
   }, []);
 
   const handleDownload = useCallback(() => {
@@ -220,40 +368,57 @@ const App: React.FC = () => {
   }, [currentImage]);
   
   const handleFileSelect = (files: FileList | null) => {
-    if (files && files[0]) handleImageUpload(files[0]);
+    if (files && files[0]) {
+        handleImageUpload(files[0]);
+        // No longer set view here, as it's controlled by currentImage existence
+    }
   };
 
   const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
     if (activeTool !== null) return;
-    
     const img = e.currentTarget;
     const rect = img.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
     setDisplayHotspot({ x: offsetX, y: offsetY });
-
-    const { naturalWidth, naturalHeight, clientWidth, clientHeight } = img;
-    const originalX = Math.round(offsetX * (naturalWidth / clientWidth));
-    const originalY = Math.round(offsetY * (naturalHeight / clientHeight));
-
+    const originalX = Math.round(offsetX * (img.naturalWidth / img.clientWidth));
+    const originalY = Math.round(offsetY * (img.naturalHeight / img.clientHeight));
     setEditHotspot({ x: originalX, y: originalY });
   };
+  
+  const handleLogout = useCallback(async () => {
+    await supabaseService.signOut();
+    // The onAuthStateChange listener will handle setting user to null
+    setHistory([]);
+    setHistoryIndex(-1);
+    setActiveProjectId(null);
+  }, []);
+
+
+  // === RENDER LOGIC ===
 
   if (error) {
      return (
-         <div className="min-h-screen w-full flex items-center justify-center p-4">
+        <div className="min-h-screen w-full flex items-center justify-center p-4">
             <div className="text-center animate-fade-in bg-red-500/10 border border-red-500/20 p-8 rounded-lg max-w-2xl mx-auto flex flex-col items-center gap-4">
-              <h2 className="text-2xl font-bold text-red-300">An Error Occurred</h2>
-              <p className="text-md text-red-400">{error}</p>
-              <button
-                  onClick={() => setError(null)}
-                  className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg text-md transition-colors"
-                >
-                  Try Again
-              </button>
+                <h2 className="text-2xl font-bold text-red-300">An Error Occurred</h2>
+                <p className="text-md text-red-400">{error}</p>
+                <button onClick={() => setError(null)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg text-md transition-colors">Try Again</button>
             </div>
-         </div>
+        </div>
       );
+  }
+  
+  if (!authChecked) {
+    return (
+        <div className="min-h-screen w-full flex items-center justify-center">
+            <Spinner />
+        </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen onLoginSuccess={handleLoginSuccess} />;
   }
     
   if (!currentImageUrl) {
@@ -261,25 +426,23 @@ const App: React.FC = () => {
         <div className="min-h-screen text-gray-100 flex flex-col">
             <Header />
             <main className="flex-grow w-full max-w-7xl mx-auto p-4 md:p-8 flex justify-center items-center">
-                <StartScreen onFileSelect={handleFileSelect} />
+                {!projectsLoaded ? <Spinner /> : (
+                    view === 'dashboard' ? 
+                    <ProjectsDashboard projects={projects} onSelectProject={handleLoadProject} onStartNewProject={() => setView('upload')} /> : 
+                    <StartScreen onFileSelect={handleFileSelect} />
+                )}
             </main>
         </div>
     );
   }
 
-  const mainToolButtonClass = (tool: Tool) => `flex flex-col items-center justify-center gap-2 w-full font-semibold py-3 px-2 rounded-lg transition-all duration-200 text-sm ${
-    activeTool === tool
-    ? 'bg-blue-600 text-white shadow-lg' 
-    : 'bg-gray-700/50 text-gray-300 hover:text-white hover:bg-gray-700'
-  }`;
-
+  const mainToolButtonClass = (tool: Tool) => `flex flex-col items-center justify-center gap-2 w-full font-semibold py-3 px-2 rounded-lg transition-all duration-200 text-sm ${activeTool === tool ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:text-white hover:bg-gray-700'}`;
   const sidebarToolButtonClass = `flex items-center justify-start text-left bg-gray-700/50 border border-transparent text-gray-200 font-semibold py-3 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-700 hover:border-gray-600 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-700/50`;
   
   return (
     <div className="min-h-screen text-gray-100 flex flex-col">
       <Header />
       
-      {/* Top Action Bar */}
       <div className="w-full bg-gray-900/70 backdrop-blur-sm border-b border-gray-700/80 p-2 flex items-center justify-between gap-2 sticky top-[65px] z-40">
         <div className="flex items-center gap-2">
             <button onClick={handleUndo} disabled={!canUndo || isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><UndoIcon className="w-5 h-5"/>Undo</button>
@@ -287,13 +450,14 @@ const App: React.FC = () => {
             <button onClick={handleReset} disabled={!canUndo || isLoading} className="bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Reset</button>
         </div>
         <div className="flex items-center gap-2">
-            <button onClick={handleUploadNew} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><UploadIconSVG className="w-5 h-5"/>Upload New</button>
+            <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><SaveIcon className="w-5 h-5"/>Save</button>
+            <button onClick={handleUploadNew} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><UploadIconSVG className="w-5 h-5"/>Projects</button>
             <button onClick={handleDownload} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors shadow-md shadow-blue-500/20"><DownloadIcon className="w-5 h-5"/>Download</button>
+            <button onClick={handleLogout} title="Logout" className="p-2 bg-gray-800/80 hover:bg-red-500/20 text-gray-200 hover:text-red-400 rounded-md transition-colors"><LogoutIcon className="w-5 h-5"/></button>
         </div>
       </div>
 
       <main className="flex-grow w-full max-w-[1800px] mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
-        {/* === Left Panel: Image & Retouch === */}
         <div className="flex-grow flex flex-col gap-4 items-center md:w-[65%] lg:w-[70%]">
             <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20 group">
                 {isLoading && (
@@ -302,7 +466,6 @@ const App: React.FC = () => {
                         <p className="text-gray-300">AI is working its magic...</p>
                     </div>
                 )}
-                
                 {activeTool === 'crop' ? (
                   <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)} aspect={aspect} className="max-h-[70vh]">
                     <img ref={imgRef} src={currentImageUrl} alt="Crop this image" className="w-full h-auto object-contain max-h-[70vh] rounded-xl"/>
@@ -312,7 +475,6 @@ const App: React.FC = () => {
                 ) : (
                     <img ref={imgRef} src={currentImageUrl} alt="Current" onClick={handleImageClick} className={`w-full h-auto object-contain max-h-[70vh] rounded-xl ${activeTool === null ? 'cursor-crosshair' : ''}`} />
                 )}
-
                 {displayHotspot && !isLoading && activeTool === null && !isCompareMode && (
                     <div className="absolute rounded-full w-6 h-6 bg-blue-500/50 border-2 border-white pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10" style={{ left: `${displayHotspot.x}px`, top: `${displayHotspot.y}px` }}>
                         <div className="absolute inset-0 rounded-full w-6 h-6 animate-ping bg-blue-400"></div>
@@ -324,16 +486,8 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* Retouch UI (only visible when no other tool is active) */}
             <div className={`w-full flex flex-col items-center gap-4 transition-opacity duration-300 ${(activeTool !== null || isCompareMode) ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                <p className="text-md text-gray-400">
-                  {isCompareMode 
-                    ? 'Exit Compare mode to enable retouching.' 
-                    : editHotspot 
-                      ? 'Describe your edit below.' 
-                      : 'Click an area on the image for a precise retouch.'
-                  }
-                </p>
+                <p className="text-md text-gray-400">{isCompareMode ? 'Exit Compare mode to enable retouching.' : editHotspot ? 'Describe your edit below.' : 'Click an area on the image for a precise retouch.'}</p>
                 <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
                     <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={editHotspot ? "e.g., 'change shirt color to blue'" : "First click a point on the image"} className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading || !editHotspot}/>
                     <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed" disabled={isLoading || !prompt.trim() || !editHotspot}>Generate</button>
@@ -341,12 +495,12 @@ const App: React.FC = () => {
             </div>
         </div>
         
-        {/* === Right Panel: Sidebar === */}
         <aside className="w-full md:w-[35%] lg:w-[30%] bg-gray-800/80 border border-gray-700/80 rounded-xl p-4 flex flex-col gap-4 self-start sticky top-[128px] max-h-[calc(100vh-140px)] overflow-y-auto">
             <div>
               <h3 className="text-lg font-semibold text-gray-200 mb-3 border-b border-gray-700 pb-2">Creative Tools</h3>
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => handleAutoEnhance()} disabled={isLoading} className={sidebarToolButtonClass}><MagicWandIcon className="w-5 h-5 mr-3 text-purple-400"/>Auto Enhance</button>
+                <button onClick={() => handleRemoveBackground()} disabled={isLoading} className={sidebarToolButtonClass}><RemoveBgIcon className="w-5 h-5 mr-3 text-pink-400"/>Remove BG</button>
                 <button onClick={() => handleRestoreImage()} disabled={isLoading} className={sidebarToolButtonClass}><RestoreIcon className="w-5 h-5 mr-3 text-amber-400"/>Restore</button>
                 <button onClick={() => handleStudioPortrait()} disabled={isLoading} className={sidebarToolButtonClass}><PortraitIcon className="w-5 h-5 mr-3 text-cyan-400"/>Studio Portrait</button>
                 <button onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass}><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Comp Card</button>
@@ -372,6 +526,12 @@ const App: React.FC = () => {
       </main>
       
       <ZoomModal isOpen={isZoomModalOpen} onClose={() => setIsZoomModalOpen(false)} imageUrl={currentImageUrl} />
+      <SaveProjectModal 
+        isOpen={isSaveModalOpen} 
+        onSave={handleSaveProject}
+        onClose={() => setIsSaveModalOpen(false)}
+        initialName={projects.find(p => p.id === activeProjectId)?.name || ''}
+      />
     </div>
   );
 };
