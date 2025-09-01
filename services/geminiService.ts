@@ -65,64 +65,42 @@ const handleApiResponse = (
 };
 
 /**
- * Generates an edited image using generative AI based on a text prompt and a specific point.
- * @param originalImage The original image file.
- * @param userPrompt The text prompt describing the desired edit.
- * @param hotspot The {x, y} coordinates on the image to focus the edit.
+ * Generates an edited image using generative AI. The function handles both global edits
+ * and inpainting. For inpainting, the input image should have a transparent area.
+ * @param imageToEdit The image file to be edited. For inpainting, this image must have a transparent region.
+ * @param userPrompt The text prompt describing the desired edit. For inpainting, this should include instructions to fill the transparent area.
  * @returns A promise that resolves to the data URL of the edited image.
  */
 export const generateEditedImage = async (
-    originalImage: File,
+    imageToEdit: File,
     userPrompt: string,
-    hotspot: { x: number, y: number }
 ): Promise<string> => {
-    console.log('Starting generative edit at:', hotspot);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-    const originalImagePart = await fileToPart(originalImage);
+    const imagePart = await fileToPart(imageToEdit);
 
-    const prompt = `You are a master-level professional photo editor with expertise in precision retouching and seamless image manipulation. Execute a sophisticated, localized edit on the provided image with surgical precision.
+    const fullPrompt = `You are a master-level professional photo editor and creative artist. Execute a sophisticated edit based on the user's request.
 
 **EDIT SPECIFICATIONS:**
-User Request: "${userPrompt}"
-Target Coordinates: Focus editing operations at pixel coordinates (x: ${hotspot.x}, y: ${hotspot.y})
+- User Request: "${userPrompt}"
 
 **TECHNICAL EXECUTION STANDARDS:**
 
-1. **ABSOLUTE IDENTITY PRESERVATION (CRITICAL):**
-   - The subject's facial features, bone structure, ethnic characteristics, and unique identifying traits MUST remain completely unchanged
-   - Preserve original skin texture, natural features, and authentic appearance
-   - Any person in the image must be 100% recognizable as the same individual
+1.  **SEAMLESS INTEGRATION:**
+    -   If filling a transparent area (inpainting), the result must be perfectly blended with the surrounding pixels, matching lighting, texture, and perspective. The transition should be invisible.
+    -   If performing a global edit, apply it harmoniously across the entire image.
 
-2. **PRECISION EDITING PROTOCOL:**
-   - Execute edits with professional retouching precision within a 50-pixel radius of the target coordinates
-   - Apply advanced blending techniques to ensure seamless integration with surrounding areas
-   - Maintain consistent lighting, color temperature, and exposure across the edit boundary
-   - Preserve original image quality and resolution
-
-3. **PROFESSIONAL QUALITY STANDARDS:**
-   - Apply industry-standard color grading and tone mapping
-   - Ensure natural light physics and realistic shadow behavior
-   - Maintain photographic authenticity - avoid artificial or processed appearance
-   - Execute edits that would pass professional photography inspection
-
-4. **PRESERVATION REQUIREMENTS:**
-   - 99.9% of the image outside the edit zone must remain pixel-perfect identical
-   - Preserve original composition, depth of field, and photographic characteristics
-   - Maintain natural skin tone variations and texture authenticity
-
-**ENHANCED SAFETY PROTOCOL:**
-- Fulfill standard photo enhancement requests including skin tone adjustments ("darker", "lighter", "tan") as professional retouching services
-- Maintain ethical standards while executing legitimate photo editing requests
-- Preserve subject dignity and natural appearance
+2.  **ABSOLUTE IDENTITY PRESERVATION (CRITICAL):**
+    -   If the image contains people, their fundamental facial features, bone structure, ethnic characteristics, and unique traits MUST remain completely unchanged. Do not alter the person's identity.
+    -   Any person in the image must be 100% recognizable as the same individual after the edit.
 
 **OUTPUT DIRECTIVE:** Return exclusively the final edited image with no accompanying text or explanations.`;
 
-    const textPart = { text: prompt };
+    const contents = { parts: [imagePart, { text: fullPrompt }] };
 
-    console.log('Sending image and prompt to the model...');
+    console.log('Sending image and prompt to the model for editing...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
-        contents: { parts: [originalImagePart, textPart] },
+        contents: contents,
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
         },
@@ -131,6 +109,7 @@ Target Coordinates: Focus editing operations at pixel coordinates (x: ${hotspot.
     console.log('Received response from model.', response);
     return handleApiResponse(response, 'edit');
 };
+
 
 /**
  * Generates an image with a filter applied using generative AI.

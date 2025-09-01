@@ -13,7 +13,7 @@ import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, LogoutIcon, SaveIcon, RemoveBgIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, LogoutIcon, SaveIcon, RemoveBgIcon, BrushIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -21,6 +21,8 @@ import AuthScreen from './components/AuthScreen';
 import ProjectsDashboard from './components/ProjectsDashboard';
 import SaveProjectModal from './components/SaveProjectModal';
 import type { User } from '@supabase/supabase-js';
+import BrushCanvas from './components/BrushCanvas';
+import BrushControls from './components/BrushControls';
 
 
 // Helper to convert a data URL string to a File object
@@ -74,8 +76,6 @@ const App: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [editHotspot, setEditHotspot] = useState<{ x: number, y: number } | null>(null);
-  const [displayHotspot, setDisplayHotspot] = useState<{ x: number, y: number } | null>(null);
   
   // UI State
   const [activeTool, setActiveTool] = useState<Tool | null>(null);
@@ -84,13 +84,21 @@ const App: React.FC = () => {
   const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
 
+  // Brush / Mask State
+  const [isBrushMode, setIsBrushMode] = useState<boolean>(false);
+  const [maskDataUrl, setMaskDataUrl] = useState<string | null>(null);
+  const [brushSize, setBrushSize] = useState<number>(40);
+  const [isErasing, setIsErasing] = useState<boolean>(false);
+  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
+  const brushCanvasRef = useRef<{ clear: () => void }>(null);
+
   // Crop State
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [aspect, setAspect] = useState<number | undefined>();
 
   const imgRef = useRef<HTMLImageElement>(null);
-
+  
   const currentImage = history[historyIndex] ?? null;
   const originalImage = history[0] ?? null;
 
@@ -136,10 +144,18 @@ const App: React.FC = () => {
 
   // Clean up compare mode when tool changes
   useEffect(() => {
-    if (activeTool !== 'crop' && isCompareMode) {
+    if (activeTool !== null || isBrushMode) {
       setIsCompareMode(false);
     }
+  }, [activeTool, isBrushMode]);
+
+  // Deactivate brush mode if another tool is selected
+  useEffect(() => {
+    if (activeTool !== null) {
+      setIsBrushMode(false);
+    }
   }, [activeTool]);
+  
 
   // Create Object URLs for images in history for performance
   useEffect(() => {
@@ -172,8 +188,12 @@ const App: React.FC = () => {
     newHistory.push(newImageFile);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
+    // Clear transient state
     setCrop(undefined);
     setCompletedCrop(undefined);
+    brushCanvasRef.current?.clear();
+    setMaskDataUrl(null);
+    setIsBrushMode(false);
   }, [history, historyIndex]);
 
   // === Event Handlers ===
@@ -183,9 +203,9 @@ const App: React.FC = () => {
     setHistory([file]);
     setHistoryIndex(0);
     setActiveProjectId(null); // It's a new, unsaved project
-    setEditHotspot(null);
-    setDisplayHotspot(null);
     setActiveTool(null);
+    setIsBrushMode(false);
+    setMaskDataUrl(null);
     setCrop(undefined);
     setCompletedCrop(undefined);
   }, []);
@@ -256,8 +276,8 @@ const App: React.FC = () => {
         setCrop(undefined);
         setCompletedCrop(undefined);
         setActiveTool(null);
-        setEditHotspot(null);
-        setDisplayHotspot(null);
+        setMaskDataUrl(null);
+        setIsBrushMode(false);
         setPrompt('');
     } catch (e) {
         setError("Failed to load project files from the cloud.");
@@ -285,22 +305,65 @@ const App: React.FC = () => {
   // === AI & Editing Handlers ===
 
   const handleGenerate = useCallback(async () => {
-    if (!currentImage || !prompt.trim() || !editHotspot) return;
+    if (!currentImage || !prompt.trim()) return;
     setIsLoading(true);
     setError(null);
     try {
-        const editedImageUrl = await generateEditedImage(currentImage, prompt, editHotspot);
+        let imageToSend = currentImage;
+        let finalPrompt = prompt;
+
+        // If a mask exists, prepare the image for inpainting
+        if (maskDataUrl) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error("Could not get canvas context");
+
+            // Load original image to get its natural dimensions
+            const originalImg = new Image();
+            originalImg.src = URL.createObjectURL(currentImage);
+            await new Promise((resolve, reject) => {
+                originalImg.onload = resolve;
+                originalImg.onerror = reject;
+            });
+            
+            canvas.width = originalImg.naturalWidth;
+            canvas.height = originalImg.naturalHeight;
+            
+            // 1. Draw the original image onto the canvas
+            ctx.drawImage(originalImg, 0, 0);
+
+            // Load the mask image (white drawing on transparent background)
+            const maskImg = new Image();
+            maskImg.src = maskDataUrl;
+            await new Promise((resolve, reject) => {
+                maskImg.onload = resolve;
+                maskImg.onerror = reject;
+            });
+            
+            // 2. Use 'destination-out' composite operation. This erases parts of the
+            //    original image (destination) where the mask (source) is drawn.
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.drawImage(maskImg, 0, 0, canvas.width, canvas.height); // Scale mask to fit
+
+            // 3. The canvas now holds the original image with transparent holes.
+            const inpaintingImageDataUrl = canvas.toDataURL('image/png');
+            imageToSend = dataURLtoFile(inpaintingImageDataUrl, `inpainting-${Date.now()}.png`);
+            
+            // 4. Create a specific prompt for the inpainting task.
+            finalPrompt = `The user has provided an image with a transparent area. Your task is to seamlessly and photorealistically fill in ONLY the transparent area based on the user's request: "${prompt}". The existing, non-transparent parts of the image MUST be perfectly preserved.`;
+        }
+        
+        const editedImageUrl = await generateEditedImage(imageToSend, finalPrompt);
         const newImageFile = dataURLtoFile(editedImageUrl, `edited-${Date.now()}.png`);
         addImageToHistory(newImageFile);
-        setEditHotspot(null);
-        setDisplayHotspot(null);
+        setPrompt(''); // Clear prompt on success
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
     } finally {
         setIsLoading(false);
     }
-  }, [currentImage, prompt, editHotspot, addImageToHistory]);
+  }, [currentImage, prompt, addImageToHistory, maskDataUrl]);
   
   const createApiHandler = (apiFn: (file: File, prompt?: string) => Promise<string>, actionName: string) => async (promptOrFile?: string | File) => {
       if (!currentImage) return;
@@ -346,9 +409,32 @@ const App: React.FC = () => {
   }, [completedCrop, addImageToHistory]);
 
   // === Top Bar Action Handlers ===
-  const handleUndo = useCallback(() => canUndo && setHistoryIndex(historyIndex - 1), [canUndo, historyIndex]);
-  const handleRedo = useCallback(() => canRedo && setHistoryIndex(historyIndex + 1), [canRedo, historyIndex]);
-  const handleReset = useCallback(() => history.length > 0 && setHistoryIndex(0), [history]);
+  const handleUndo = useCallback(() => {
+      if (canUndo) {
+          setHistoryIndex(historyIndex - 1);
+          brushCanvasRef.current?.clear();
+          setMaskDataUrl(null);
+          setIsBrushMode(false);
+      }
+  }, [canUndo, historyIndex]);
+
+  const handleRedo = useCallback(() => {
+      if (canRedo) {
+          setHistoryIndex(historyIndex + 1);
+          brushCanvasRef.current?.clear();
+          setMaskDataUrl(null);
+          setIsBrushMode(false);
+      }
+  }, [canRedo, historyIndex]);
+
+  const handleReset = useCallback(() => {
+      if (history.length > 0) {
+          setHistoryIndex(0);
+          brushCanvasRef.current?.clear();
+          setMaskDataUrl(null);
+          setIsBrushMode(false);
+      }
+  }, [history]);
 
   const handleUploadNew = useCallback(() => {
       setHistory([]);
@@ -370,20 +456,7 @@ const App: React.FC = () => {
   const handleFileSelect = (files: FileList | null) => {
     if (files && files[0]) {
         handleImageUpload(files[0]);
-        // No longer set view here, as it's controlled by currentImage existence
     }
-  };
-
-  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (activeTool !== null) return;
-    const img = e.currentTarget;
-    const rect = img.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-    setDisplayHotspot({ x: offsetX, y: offsetY });
-    const originalX = Math.round(offsetX * (img.naturalWidth / img.clientWidth));
-    const originalY = Math.round(offsetY * (img.naturalHeight / img.clientHeight));
-    setEditHotspot({ x: originalX, y: originalY });
   };
   
   const handleLogout = useCallback(async () => {
@@ -393,6 +466,22 @@ const App: React.FC = () => {
     setHistoryIndex(-1);
     setActiveProjectId(null);
   }, []);
+
+  const handleClearMask = useCallback(() => {
+      brushCanvasRef.current?.clear();
+      setMaskDataUrl(null);
+  }, []);
+
+  const handleBrushContainerMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isBrushMode) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setCursorPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    }
+  };
+
+  const handleBrushContainerMouseLeave = () => {
+    setCursorPosition(null);
+  };
 
 
   // === RENDER LOGIC ===
@@ -478,32 +567,80 @@ const App: React.FC = () => {
                 ) : isCompareMode && originalImageUrl ? (
                     <CompareSlider originalImageUrl={originalImageUrl} currentImageUrl={currentImageUrl} />
                 ) : (
-                    <img ref={imgRef} src={currentImageUrl} alt="Current" onClick={handleImageClick} className={`w-full h-auto object-contain max-h-[70vh] rounded-xl ${activeTool === null ? 'cursor-crosshair' : ''}`} />
+                  <div 
+                    className={`relative w-full h-full ${isBrushMode ? 'cursor-none' : ''}`}
+                    onMouseMove={handleBrushContainerMouseMove}
+                    onMouseLeave={handleBrushContainerMouseLeave}
+                  >
+                    <img ref={imgRef} src={currentImageUrl} alt="Current" className="w-full h-auto object-contain max-h-[70vh] rounded-xl pointer-events-none" />
+                    {isBrushMode && imgRef.current && (
+                        <BrushCanvas
+                          ref={brushCanvasRef}
+                          width={imgRef.current.clientWidth}
+                          height={imgRef.current.clientHeight}
+                          brushSize={brushSize}
+                          isErasing={isErasing}
+                          onMaskChange={setMaskDataUrl}
+                        />
+                    )}
+                    {isBrushMode && cursorPosition && (
+                        <div
+                            className={`absolute rounded-full border-2 pointer-events-none transform -translate-x-1/2 -translate-y-1/2 transition-colors duration-100 ${isErasing ? 'border-red-500 bg-red-500/20' : 'border-white bg-white/20'}`}
+                            style={{
+                                left: `${cursorPosition.x}px`,
+                                top: `${cursorPosition.y}px`,
+                                width: `${brushSize}px`,
+                                height: `${brushSize}px`,
+                            }}
+                            aria-hidden="true"
+                        />
+                    )}
+                  </div>
                 )}
-                {displayHotspot && !isLoading && activeTool === null && !isCompareMode && (
-                    <div className="absolute rounded-full w-6 h-6 bg-blue-500/50 border-2 border-white pointer-events-none -translate-x-1/2 -translate-y-1/2 z-10" style={{ left: `${displayHotspot.x}px`, top: `${displayHotspot.y}px` }}>
-                        <div className="absolute inset-0 rounded-full w-6 h-6 animate-ping bg-blue-400"></div>
-                    </div>
+                
+                {isBrushMode && (
+                    <BrushControls 
+                        brushSize={brushSize}
+                        isErasing={isErasing}
+                        onBrushSizeChange={setBrushSize}
+                        onIsErasingChange={setIsErasing}
+                        onClear={handleClearMask}
+                    />
                 )}
+
                 <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
                     <button onClick={() => setIsZoomModalOpen(true)} disabled={isLoading} className="flex items-center gap-2 bg-black/50 hover:bg-black/80 text-white font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm"><ZoomInIcon className="w-5 h-5"/>Zoom</button>
-                    {canUndo && <button onClick={() => setIsCompareMode(!isCompareMode)} disabled={isLoading || activeTool === 'crop'} className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm ${isCompareMode ? 'bg-blue-500 text-white' : 'bg-black/50 hover:bg-black/80 text-white'}`}><EyeIcon className="w-5 h-5"/>Compare</button>}
+                    {canUndo && <button onClick={() => setIsCompareMode(!isCompareMode)} disabled={isLoading || activeTool !== null || isBrushMode} className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm ${isCompareMode ? 'bg-blue-500 text-white' : 'bg-black/50 hover:bg-black/80 text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}><EyeIcon className="w-5 h-5"/>Compare</button>}
                 </div>
             </div>
 
             <div className={`w-full flex flex-col items-center gap-4 transition-opacity duration-300 ${(activeTool !== null || isCompareMode) ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                <p className="text-md text-gray-400">{isCompareMode ? 'Exit Compare mode to enable retouching.' : editHotspot ? 'Describe your edit below.' : 'Click an area on the image for a precise retouch.'}</p>
+                <p className="text-md text-gray-400">
+                    {isBrushMode ? (maskDataUrl ? 'Describe your edit for the masked area.' : 'Draw on the image to select an area for editing.') : 'Describe an edit, or use the mask tool for a precise change.'}
+                </p>
                 <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
-                    <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={editHotspot ? "e.g., 'change shirt color to blue'" : "First click a point on the image"} className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading || !editHotspot}/>
-                    <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed" disabled={isLoading || !prompt.trim() || !editHotspot}>Generate</button>
+                    <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., 'change shirt color to blue' or 'make the sky dramatic'" className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading || (isBrushMode && !maskDataUrl)}/>
+                    <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed" disabled={isLoading || !prompt.trim() || (isBrushMode && !maskDataUrl)}>Generate</button>
                 </form>
             </div>
         </div>
         
         <aside className="w-full md:w-[35%] lg:w-[30%] bg-gray-800/80 border border-gray-700/80 rounded-xl p-4 flex flex-col gap-4 self-start sticky top-[128px] max-h-[calc(100vh-140px)] overflow-y-auto">
             <div>
-              <h3 className="text-lg font-semibold text-gray-200 mb-3 border-b border-gray-700 pb-2">Creative Tools</h3>
-              <div className="grid grid-cols-2 gap-2">
+              <h3 className="text-lg font-semibold text-gray-200 mb-3 border-b border-gray-700 pb-2">Retouch & AI Tools</h3>
+              <div className="grid grid-cols-1 gap-2">
+                <button 
+                  onClick={() => {
+                      setIsBrushMode(!isBrushMode);
+                      setActiveTool(null);
+                  }} 
+                  className={`flex items-center justify-start text-left border text-gray-200 font-semibold py-3 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-700 hover:border-gray-600 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed ${isBrushMode ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-700/50 border-transparent'}`}
+                  disabled={isLoading}
+                >
+                    <BrushIcon className="w-5 h-5 mr-3"/>Generative Mask
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2">
                 <button onClick={() => handleAutoEnhance()} disabled={isLoading} className={sidebarToolButtonClass} title="Automatically improve lighting, color, and sharpness with a single click."><MagicWandIcon className="w-5 h-5 mr-3 text-purple-400"/>Auto Enhance</button>
                 <button onClick={() => handleRemoveBackground()} disabled={isLoading} className={sidebarToolButtonClass} title="Instantly remove the background and make it transparent."><RemoveBgIcon className="w-5 h-5 mr-3 text-pink-400"/>Remove Background</button>
                 <button onClick={() => handleRestoreImage()} disabled={isLoading} className={sidebarToolButtonClass} title="Repair old, blurry, or damaged photos by removing scratches and restoring color."><RestoreIcon className="w-5 h-5 mr-3 text-amber-400"/>Photo Restore</button>
