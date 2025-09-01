@@ -504,13 +504,13 @@ const App: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-200 mb-3 border-b border-gray-700 pb-2">Creative Tools</h3>
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => handleAutoEnhance()} disabled={isLoading} className={sidebarToolButtonClass}><MagicWandIcon className="w-5 h-5 mr-3 text-purple-400"/>Auto Enhance</button>
-                <button onClick={() => handleRemoveBackground()} disabled={isLoading} className={sidebarToolButtonClass}><RemoveBgIcon className="w-5 h-5 mr-3 text-pink-400"/>Remove BG</button>
-                <button onClick={() => handleRestoreImage()} disabled={isLoading} className={sidebarToolButtonClass}><RestoreIcon className="w-5 h-5 mr-3 text-amber-400"/>Restore</button>
-                <button onClick={() => handleStudioPortrait()} disabled={isLoading} className={sidebarToolButtonClass}><PortraitIcon className="w-5 h-5 mr-3 text-cyan-400"/>Studio Portrait</button>
-                <button onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass}><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Comp Card</button>
-                <button onClick={() => handleGenerateThreeViewShot()} disabled={isLoading} className={sidebarToolButtonClass}><ThreeViewIcon className="w-5 h-5 mr-3 text-sky-400"/>3-View Shot</button>
-                <button onClick={() => handleOutpaint()} disabled={isLoading} className={sidebarToolButtonClass}><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Full Body</button>
+                <button onClick={() => handleAutoEnhance()} disabled={isLoading} className={sidebarToolButtonClass} title="Automatically improve lighting, color, and sharpness with a single click."><MagicWandIcon className="w-5 h-5 mr-3 text-purple-400"/>Auto Enhance</button>
+                <button onClick={() => handleRemoveBackground()} disabled={isLoading} className={sidebarToolButtonClass} title="Instantly remove the background and make it transparent."><RemoveBgIcon className="w-5 h-5 mr-3 text-pink-400"/>Remove Background</button>
+                <button onClick={() => handleRestoreImage()} disabled={isLoading} className={sidebarToolButtonClass} title="Repair old, blurry, or damaged photos by removing scratches and restoring color."><RestoreIcon className="w-5 h-5 mr-3 text-amber-400"/>Photo Restore</button>
+                <button onClick={() => handleStudioPortrait()} disabled={isLoading} className={sidebarToolButtonClass} title="Convert your photo into a professional headshot with a clean studio background."><PortraitIcon className="w-5 h-5 mr-3 text-cyan-400"/>Studio Portrait</button>
+                <button onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass} title="Generate a professional, multi-pose modeling composite card."><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Composite Card</button>
+                <button onClick={() => handleGenerateThreeViewShot()} disabled={isLoading} className={sidebarToolButtonClass} title="Create a 3-view (front, side, back) reference shot of a person."><ThreeViewIcon className="w-5 h-5 mr-3 text-sky-400"/>Character Turnaround</button>
+                <button onClick={() => handleOutpaint()} disabled={isLoading} className={sidebarToolButtonClass} title="Expand a cropped image to reveal the full body and a complete background."><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Magic Expand</button>
               </div>
             </div>
             
