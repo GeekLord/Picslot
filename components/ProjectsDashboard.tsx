@@ -19,8 +19,6 @@ interface ProjectsDashboardProps {
 const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({ projects, onSelectProject, onStartNewProject, onDeleteProject }) => {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   
-  const sortedProjects = [...projects].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-
   const cardClass = "group relative aspect-square w-full bg-gray-800/50 border border-gray-700/60 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1";
 
   const handleConfirmDelete = () => {
@@ -54,7 +52,7 @@ const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({ projects, onSelec
         </button>
 
         {/* Project Cards */}
-        {sortedProjects.map(project => (
+        {projects.map(project => (
           <ProjectCard 
             key={project.id}
             project={project}

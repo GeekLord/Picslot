@@ -120,7 +120,7 @@ export const createSignedUrl = async (path: string): Promise<string> => {
 // ==================================
 
 /**
- * Fetches all projects for a given user ID.
+ * Fetches all projects for a given user ID, sorted by last updated.
  * @param userId - The ID of the user.
  * @returns An array of projects.
  */
@@ -128,7 +128,8 @@ export const getProjects = async (userId: string): Promise<Project[]> => {
     const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
 
     if (error) {
         console.error('Error fetching projects:', error);

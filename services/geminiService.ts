@@ -456,51 +456,50 @@ export const generateCompCard = async (
 
 **MODELING COMPOSITE CARD SPECIFICATIONS:**
 
-1. **ABSOLUTE FACIAL PRESERVATION (NON-NEGOTIABLE):**
-   - The subject's facial features, bone structure, ethnic characteristics, and unique identity must remain completely unchanged across ALL FOUR poses.
-   - Preserve authentic ethnic appearance and natural facial characteristics.
-   - Maintain original facial expressions and distinctive features.
-   - Ensure 100% subject recognizability in every pose - crystal-clear facial definition required.
-   - Apply ultra-high definition rendering to all faces - zero blurriness or loss of facial detail permitted.
+1.  **CRITICAL DIRECTIVE: PERFECT IDENTITY PRESERVATION (NON-NEGOTIABLE):**
+    -   **SOURCE OF TRUTH:** The face in the provided photograph is the absolute, unalterable source of truth for the subject's identity.
+    -   **EXACT REPLICATION, NOT INTERPRETATION:** Your primary task is to perfectly replicate this exact face onto each of the new poses. Do not interpret, re-render, or create a "similar" face. You are compositing the original face onto new bodies.
+    -   **PIXEL-LEVEL FIDELITY:** The subject's bone structure, skin texture, unique features (moles, scars), and the precise shape and spacing of the eyes, nose, and mouth must be 100% identical to the source image.
+    -   **FAILURE CONDITION:** Any deviation in facial identity, however minor, constitutes a complete failure of the task. The person in all generated poses must be instantly and perfectly recognizable as the person in the input image. This rule overrides all other stylistic instructions.
 
-2. **PROFESSIONAL COLLAGE COMPOSITION (STRICT LAYOUT RULES):**
-   - **Single Composite Output:** Generate a single, vertically-oriented composite image.
-   - **MANDATORY TRANSPARENT BACKGROUNDS:** Each of the four poses MUST be generated with a perfectly transparent background.
-   - **FINAL COMPOSITE:** These four transparent-background poses must then be arranged on a single, clean, solid #FFFFFF white canvas.
-   - **NO OVERLAPPING (CRITICAL):** The bounding boxes of the four generated poses MUST NOT overlap under any circumstances. There must be clear, visible white space separating each distinct image. Do not allow any part of one pose to obscure any part of another. This is a strict requirement for a clean, professional layout.
-   - **Dynamic Layout:** Within the no-overlapping constraint, create a sophisticated and balanced, magazine-quality arrangement. Avoid a simple, rigid grid.
+2.  **PROFESSIONAL COLLAGE COMPOSITION (STRICT LAYOUT RULES):**
+    -   **Single Composite Output:** Generate a single, vertically-oriented composite image.
+    -   **MANDATORY TRANSPARENT BACKGROUNDS:** Each of the four poses MUST be generated with a perfectly transparent background.
+    -   **FINAL COMPOSITE:** These four transparent-background poses must then be arranged on a single, clean, solid #FFFFFF white canvas.
+    -   **NO OVERLAPPING (CRITICAL):** The bounding boxes of the four generated poses MUST NOT overlap under any circumstances. There must be clear, visible white space separating each distinct image. Do not allow any part of one pose to obscure any part of another. This is a strict requirement for a clean, professional layout.
+    -   **Dynamic Layout:** Within the no-overlapping constraint, create a sophisticated and balanced, magazine-quality arrangement. Avoid a simple, rigid grid.
 
-3. **INDUSTRY-STANDARD FOUR POSES:**
-   - **Main Headshot:** Professional studio headshot (shoulders up) with perfect facial clarity.
-   - **Full-Body Studio Shot:** Complete standing pose showcasing full physique and proportions.
-   - **Three-Quarter Length:** Professional shot from knees up in a complementary pose.
-   - **Profile Shot:** Clean side-view profile highlighting facial structure and bone definition.
+3.  **INDUSTRY-STANDARD FOUR POSES:**
+    -   **Main Headshot:** Professional studio headshot (shoulders up) with perfect facial clarity.
+    -   **Full-Body Studio Shot:** Complete standing pose showcasing full physique and proportions.
+    -   **Three-Quarter Length:** Professional shot from knees up in a complementary pose.
+    -   **Profile Shot:** Clean side-view profile highlighting facial structure and bone definition.
 
-4. **PROFESSIONAL WARDROBE STYLING:**
-   - **Consistent Athletic Wear:** Replace original clothing with sophisticated, form-fitting athletic or swimwear.
-   - **Male Styling:** Premium athletic shorts, briefs, or fitted athletic wear showcasing physique.
-   - **Female Styling:** Professional sports bra and shorts, unitard, or elegant bikini highlighting body lines.
-   - **Physique Showcase:** Attire must clearly display muscle definition, body shape, and proportions.
-   - **Cohesive Aesthetic:** Maintain consistent styling across all four poses for professional unity.
+4.  **PROFESSIONAL WARDROBE STYLING:**
+    -   **Consistent Athletic Wear:** Replace original clothing with sophisticated, form-fitting athletic or swimwear.
+    -   **Male Styling:** Premium athletic shorts, briefs, or fitted athletic wear showcasing physique.
+    -   **Female Styling:** Professional sports bra and shorts, unitard, or elegant bikini highlighting body lines.
+    -   **Physique Showcase:** Attire must clearly display muscle definition, body shape, and proportions.
+    -   **Cohesive Aesthetic:** Maintain consistent styling across all four poses for professional unity.
 
-5. **TECHNICAL MODEL STATISTICS (DATA ANALYSIS):**
-   Based on visual analysis of the original photograph, generate realistic professional modeling statistics:
-   - **Height:** Estimate in both feet/inches and centimeters.
-   - **Measurements:** Professional Bust-Waist-Hips measurements in inches.
-   - **Physical Attributes:** Hair color and eye color analysis.
-   - **Shoe Size:** US sizing estimation.
-   - **Typography:** Clean, minimalist text block positioning at the bottom of the composite.
+5.  **TECHNICAL MODEL STATISTICS (DATA ANALYSIS):**
+    Based on visual analysis of the original photograph, generate realistic professional modeling statistics:
+    -   **Height:** Estimate in both feet/inches and centimeters.
+    -   **Measurements:** Professional Bust-Waist-Hips measurements in inches.
+    -   **Physical Attributes:** Hair color and eye color analysis.
+    -   **Shoe Size:** US sizing estimation.
+    -   **Typography:** Clean, minimalist text block positioning at the bottom of the composite.
 
-6. **FASHION INDUSTRY QUALITY STANDARDS:**
-   - **Magazine-Grade Photography:** Each pose must meet Vogue/Elle publication standards.
-   - **Professional Lighting:** Apply high-fashion studio lighting techniques.
-   - **Model Agency Quality:** Ensure composite meets top-tier agency submission requirements.
-   - **Commercial Viability:** Create a comp card suitable for Fashion Week casting submissions.
+6.  **FASHION INDUSTRY QUALITY STANDARDS:**
+    -   **Magazine-Grade Photography:** Each pose must meet Vogue/Elle publication standards.
+    -   **Professional Lighting:** Apply high-fashion studio lighting techniques.
+    -   **Model Agency Quality:** Ensure composite meets top-tier agency submission requirements.
+    -   **Commercial Viability:** Create a comp card suitable for Fashion Week casting submissions.
 
 **PROFESSIONAL SAFETY STANDARDS:**
-- Preserve authentic ethnic characteristics while achieving fashion industry presentation standards.
-- Maintain subject dignity and professional modeling industry ethics.
-- Ensure all poses meet international modeling agency standards.
+-   Preserve authentic ethnic characteristics while achieving fashion industry presentation standards.
+-   Maintain subject dignity and professional modeling industry ethics.
+-   Ensure all poses meet international modeling agency standards.
 
 **OUTPUT DIRECTIVE:** Return exclusively the final single composite image featuring four professional poses with a statistics block, meeting all specified international modeling agency standards.`;
 
@@ -535,46 +534,46 @@ export const generateThreeViewShot = async (
 
 **THREE-VIEW TECHNICAL DOCUMENTATION:**
 
-1. **ABSOLUTE IDENTITY PRESERVATION (FUNDAMENTAL REQUIREMENT):**
-   - Subject's facial features, bone structure, ethnic characteristics, and unique identity must remain completely unchanged across all three views
-   - Preserve authentic ethnic appearance and natural facial characteristics
-   - Maintain original facial expressions and distinctive features
-   - Ensure 100% subject recognizability in every view with crystal-clear facial definition
+1.  **CRITICAL DIRECTIVE: PERFECT IDENTITY PRESERVATION (NON-NEGOTIABLE):**
+    -   **SOURCE OF TRUTH:** The face in the provided photograph is the absolute, unalterable source of truth for the subject's identity.
+    -   **EXACT REPLICATION, NOT INTERPRETATION:** Your primary task is to perfectly replicate this exact face onto the front-facing pose. For the side-profile view, you must accurately reconstruct the profile based on the frontal features, maintaining all key proportions and characteristics (nose shape, chin, forehead). Do not interpret, re-render, or create a "similar" face.
+    -   **PIXEL-LEVEL FIDELITY:** The subject's bone structure, skin texture, unique features, and the precise shape and spacing of facial features must be 100% consistent with the source image.
+    -   **FAILURE CONDITION:** Any deviation in facial identity constitutes a complete failure. The person in all generated poses must be instantly and perfectly recognizable. This rule overrides all other stylistic instructions.
 
-2. **PROFESSIONAL THREE-VIEW SPECIFICATIONS:**
-   - **Front View (Anatomical Position):** Subject standing straight, facing forward with arms naturally at sides in neutral position
-   - **Side View (Profile Position):** Complete 90-degree profile showing full body silhouette and proportions
-   - **Back View (Posterior Position):** Direct rear view maintaining same neutral standing pose
-   - **Consistent Pose:** Maintain identical "anatomical reference" position across all three views for accurate comparison
+2.  **PROFESSIONAL THREE-VIEW SPECIFICATIONS:**
+    -   **Front View (Anatomical Position):** Subject standing straight, facing forward with arms naturally at sides in neutral position
+    -   **Side View (Profile Position):** Complete 90-degree profile showing full body silhouette and proportions
+    -   **Back View (Posterior Position):** Direct rear view maintaining same neutral standing pose
+    -   **Consistent Pose:** Maintain identical "anatomical reference" position across all three views for accurate comparison
 
-3. **TECHNICAL DOCUMENTATION STANDARDS:**
-   - **Professional Arrangement:** Present three views side-by-side in logical sequence (Side | Front | Back)
-   - **Uniform Scaling:** Ensure identical proportional scaling across all three figures
-   - **Consistent Lighting:** Apply professional studio lighting uniformly across all views
-   - **Technical Accuracy:** Maintain precise anatomical positioning for professional reference use
+3.  **TECHNICAL DOCUMENTATION STANDARDS:**
+    -   **Professional Arrangement:** Present three views side-by-side in logical sequence (Side | Front | Back)
+    -   **Uniform Scaling:** Ensure identical proportional scaling across all three figures
+    -   **Consistent Lighting:** Apply professional studio lighting uniformly across all views
+    -   **Technical Accuracy:** Maintain precise anatomical positioning for professional reference use
 
-4. **PROFESSIONAL WARDROBE SPECIFICATIONS:**
-   - **Male Attire:** Premium athletic shorts, briefs, or fitted athletic wear for clear physique documentation
-   - **Female Attire:** Professional sports bra and shorts, unitard, or elegant athletic wear showcasing body lines
-   - **Physique Documentation:** Attire must clearly display muscle definition, body proportions, and anatomical structure
-   - **Technical Purpose:** Clothing optimized for professional figure reference and proportion analysis
+4.  **PROFESSIONAL WARDROBE SPECIFICATIONS:**
+    -   **Male Attire:** Premium athletic shorts, briefs, or fitted athletic wear for clear physique documentation
+    -   **Female Attire:** Professional sports bra and shorts, unitard, or elegant athletic wear showcasing body lines
+    -   **Physique Documentation:** Attire must clearly display muscle definition, body proportions, and anatomical structure
+    -   **Technical Purpose:** Clothing optimized for professional figure reference and proportion analysis
 
-5. **INDUSTRY-STANDARD PRESENTATION:**
-   - **Pure White Background:** Completely uniform white background meeting professional documentation standards
-   - **PNG Alpha Channel:** Output format optimized for professional use and versatility
-   - **High Resolution:** Technical documentation quality suitable for professional industry use
-   - **Clean Composition:** Eliminate all visual distractions for pure technical reference
+5.  **INDUSTRY-STANDARD PRESENTATION:**
+    -   **Pure White Background:** Completely uniform white background meeting professional documentation standards
+    -   **PNG Alpha Channel:** Output format optimized for professional use and versatility
+    -   **High Resolution:** Technical documentation quality suitable for professional industry use
+    -   **Clean Composition:** Eliminate all visual distractions for pure technical reference
 
-6. **PROFESSIONAL QUALITY ASSURANCE:**
-   - **Anatomical Accuracy:** Ensure poses meet technical reference standards used in fashion and entertainment
-   - **Proportional Consistency:** Maintain accurate body proportions across all three views
-   - **Technical Clarity:** Provide clear, unobstructed view of physique and body structure
-   - **Professional Standards:** Meet industry requirements for casting, costume design, and technical reference
+6.  **PROFESSIONAL QUALITY ASSURANCE:**
+    -   **Anatomical Accuracy:** Ensure poses meet technical reference standards used in fashion and entertainment
+    -   **Proportional Consistency:** Maintain accurate body proportions across all three views
+    -   **Technical Clarity:** Provide clear, unobstructed view of physique and body structure
+    -   **Professional Standards:** Meet industry requirements for casting, costume design, and technical reference
 
 **PROFESSIONAL SAFETY STANDARDS:**
-- Preserve authentic ethnic characteristics while achieving technical documentation standards
-- Maintain subject dignity and professional industry ethics
-- Ensure documentation meets legitimate professional reference requirements
+-   Preserve authentic ethnic characteristics while achieving technical documentation standards
+-   Maintain subject dignity and professional industry ethics
+-   Ensure documentation meets legitimate professional reference requirements
 
 **OUTPUT DIRECTIVE:** Return exclusively the final single composite image showing three professional views on pure white background meeting technical documentation standards.`;
 
