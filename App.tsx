@@ -101,18 +101,16 @@ const App: React.FC = () => {
 
   // Use onAuthStateChange as the single source of truth for the user's session.
   useEffect(() => {
-    setAuthChecked(false);
-  
     // onAuthStateChange fires an event immediately with the initial session state,
-    // and then listens for any subsequent changes.
-    const { data: { subscription } } = supabaseService.supabase.auth.onAuthStateChange((_event, session) => {
+    // and then listens for any subsequent changes (including after OAuth redirect).
+    const { data: authListener } = supabaseService.supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setAuthChecked(true);
     });
   
     // Clean up the subscription when the component unmounts.
     return () => {
-      subscription?.unsubscribe();
+      authListener?.subscription?.unsubscribe();
     };
   }, []);
 
