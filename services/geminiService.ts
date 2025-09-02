@@ -37,6 +37,7 @@ const logGenerationCost = (response: GenerateContentResponse, context: string) =
     - Input (Prompt): ${promptTokenCount.toLocaleString()}
     - Output (Generation): ${candidatesTokenCount.toLocaleString()}
   - Estimated Cost:
+  
     - USD: $${totalCostUSD.toFixed(6)}
     - INR: ₹${totalCostINR.toFixed(4)}
 ----------------------------------------`

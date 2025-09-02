@@ -51,6 +51,14 @@ export const signInWithGoogle = () => {
     });
 };
 
+export const sendPasswordResetEmail = (email: string) => {
+    // The redirectTo option is where the user will be sent after they confirm the password reset.
+    // The link in the email will take them to a Supabase-hosted page to enter a new password.
+    return supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}`, 
+    });
+};
+
 export const signOut = () => {
     return supabase.auth.signOut();
 };
