@@ -5,6 +5,44 @@
 
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 
+const logGenerationCost = (response: GenerateContentResponse, context: string) => {
+    const usage = response.usageMetadata;
+    if (!usage) {
+        console.log(`[COST] Usage metadata not available for ${context}.`);
+        return;
+    }
+
+    const { promptTokenCount = 0, candidatesTokenCount = 0, totalTokenCount = 0 } = usage;
+    
+    // NOTE: These prices are for demonstration purposes and may not reflect the actual
+    // pricing for the 'gemini-2.5-flash-image-preview' model.
+    // Please refer to the official Google Cloud/AI Studio pricing page for accurate costs.
+    // Pricing is assumed based on similar multimodal models.
+    const PRICE_PER_1M_INPUT_TOKENS_USD = 0.35; // Example: $0.35 per 1 million tokens
+    const PRICE_PER_1M_OUTPUT_TOKENS_USD = 1.05; // Example: $1.05 per 1 million tokens
+    const USD_TO_INR_RATE = 83.5; 
+
+    const effectiveTotalTokens = totalTokenCount || (promptTokenCount + candidatesTokenCount);
+
+    const inputCostUSD = (promptTokenCount / 1_000_000) * PRICE_PER_1M_INPUT_TOKENS_USD;
+    const outputCostUSD = (candidatesTokenCount / 1_000_000) * PRICE_PER_1M_OUTPUT_TOKENS_USD;
+    const totalCostUSD = inputCostUSD + outputCostUSD;
+
+    const totalCostINR = totalCostUSD * USD_TO_INR_RATE;
+
+    console.log(
+`----------------------------------------
+[COST & USAGE] Operation: ${context}
+  - Tokens Used: ${effectiveTotalTokens.toLocaleString()}
+    - Input (Prompt): ${promptTokenCount.toLocaleString()}
+    - Output (Generation): ${candidatesTokenCount.toLocaleString()}
+  - Estimated Cost:
+    - USD: $${totalCostUSD.toFixed(6)}
+    - INR: ₹${totalCostINR.toFixed(4)}
+----------------------------------------`
+    );
+};
+
 // Helper function to convert a File object to a Gemini API Part
 const fileToPart = async (file: File): Promise<{ inlineData: { mimeType: string; data: string; } }> => {
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -30,6 +68,9 @@ const handleApiResponse = (
     response: GenerateContentResponse,
     context: string // e.g., "edit", "filter", "adjustment"
 ): string => {
+    // Log cost and token usage
+    logGenerationCost(response, context);
+
     // 1. Check for prompt blocking first
     if (response.promptFeedback?.blockReason) {
         const { blockReason, blockReasonMessage } = response.promptFeedback;
