@@ -4,7 +4,7 @@
 */
 
 import React, { useState, useEffect } from 'react';
-import type { Project } from '../App';
+import type { Project } from '../types';
 import { createSignedUrl } from '../services/supabaseService';
 import { TrashIcon } from './icons';
 

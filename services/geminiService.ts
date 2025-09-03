@@ -744,3 +744,76 @@ export const generateRemovedBackgroundImage = async (
     console.log('Received response from model for background removal.', response);
     return handleApiResponse(response, 'remove-background');
 };
+
+/**
+ * Enhances a user's prompt using generative AI.
+ * @param promptToEnhance The user's prompt text.
+ * @returns A promise that resolves to the enhanced prompt string.
+ */
+export const enhancePrompt = async (
+    promptToEnhance: string,
+): Promise<string> => {
+    console.log(`Starting prompt enhancement for: "${promptToEnhance}"`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    
+    const metaPrompt = `You are a world-class expert prompt engineer specializing in advanced generative image models. Your task is to rewrite the following user's prompt to be more descriptive, clear, structured, and effective for generating a high-quality, photorealistic image.
+
+**Instructions:**
+1.  **Analyze Intent:** Deeply understand the user's core request.
+2.  **Add Detail:** Elaborate on key elements. Specify lighting conditions (e.g., "soft morning light," "dramatic studio lighting"), camera details (e.g., "shot on a DSLR with a 85mm f/1.4 lens," "cinematic wide-angle shot"), composition (e.g., "rule of thirds," "centered close-up"), and artistic style (e.g., "hyperrealistic," "concept art," "vibrant synthwave aesthetic").
+3.  **Preserve Core Subject:** The central subject and action requested by the user must be the primary focus of the rewritten prompt.
+4.  **Structure for Clarity:** Use clear, concise language. You can use comma-separated keywords or descriptive sentences.
+5.  **Output Format:** Respond ONLY with the rewritten prompt text. Do not include any pre-amble, post-amble, or explanations like "Here is the rewritten prompt:".
+
+**User's Prompt to Enhance:**
+"${promptToEnhance}"`;
+
+    console.log('Sending prompt to the model for enhancement...');
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: metaPrompt,
+    });
+    
+    console.log('Received response from model for prompt enhancement.', response);
+    const enhancedText = response.text;
+
+    if (!enhancedText || enhancedText.trim() === '') {
+        throw new Error('The AI model did not return an enhanced prompt. It might be a safety or content issue.');
+    }
+    
+    return enhancedText.trim();
+};
+
+/**
+ * Generates a short, descriptive title for a prompt using generative AI.
+ * @param promptContent The full text of the prompt.
+ * @returns A promise that resolves to the generated title string.
+ */
+export const generatePromptTitle = async (
+    promptContent: string,
+): Promise<string> => {
+    console.log(`Starting prompt title generation...`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    
+    const metaPrompt = `You are an expert at summarizing content. Analyze the following detailed prompt for an image generation model and create a short, descriptive title for it (4-5 words maximum). The title should capture the main essence of the prompt.
+
+**Prompt to summarize:**
+"${promptContent}"
+
+**Output:**
+Respond ONLY with the generated title text. Do not include any other words, preamble, or quotation marks.`;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: metaPrompt,
+    });
+    
+    const generatedTitle = response.text;
+
+    if (!generatedTitle || generatedTitle.trim() === '') {
+        throw new Error('The AI model did not return a title.');
+    }
+    
+    // Clean up potential markdown or quotes
+    return generatedTitle.trim().replace(/["']/g, "");
+};

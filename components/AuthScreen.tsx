@@ -198,7 +198,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
             <form onSubmit={handlePasswordReset} className="flex flex-col gap-4">
               <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} />
               <button type="submit" className={buttonClass} disabled={isLoading}>
-                {isLoading ? <Spinner /> : 'Send Reset Instructions'}
+                {isLoading ? <Spinner size="sm" /> : 'Send Reset Instructions'}
               </button>
             </form>
           ) : (
@@ -222,7 +222,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
               )}
               
               <button type="submit" className={buttonClass} disabled={isLoading}>
-                  {isLoading ? <Spinner /> : (view === 'login' ? 'Login' : 'Create Account')}
+                  {isLoading ? <Spinner size="sm" /> : (view === 'login' ? 'Login' : 'Create Account')}
               </button>
             </form>
           )}

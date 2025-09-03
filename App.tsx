@@ -5,14 +5,14 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
-import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage } from './services/geminiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage, enhancePrompt } from './services/geminiService';
 import * as supabaseService from './services/supabaseService';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, LogoutIcon, SaveIcon, RemoveBgIcon, BrushIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, LogoutIcon, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -22,6 +22,10 @@ import SaveProjectModal from './components/SaveProjectModal';
 import type { User } from '@supabase/supabase-js';
 import BrushCanvas from './components/BrushCanvas';
 import BrushControls from './components/BrushControls';
+import type { Project, Prompt } from './types';
+import PromptManagerModal from './components/PromptManagerModal';
+import PromptSelector from './components/PromptSelector';
+import ControlPanel from './components/ControlPanel';
 
 
 // Helper to convert a data URL string to a File object
@@ -50,16 +54,8 @@ const blobToFile = async (url: string, filename: string): Promise<File> => {
 
 
 type Tool = 'adjust' | 'filters' | 'crop';
-type View = 'dashboard' | 'upload';
+type View = 'control-panel' | 'projects' | 'upload' | 'editor';
 
-export interface Project {
-  id: string;
-  name: string;
-  updated_at: string;
-  history: string[]; // Array of paths in Supabase Storage
-  history_index: number;
-  thumbnail: string; // Path in Supabase Storage
-}
 
 const App: React.FC = () => {
   // Auth & Project State
@@ -74,11 +70,16 @@ const App: React.FC = () => {
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [prompt, setPrompt] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Prompt Manager State
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [isPromptManagerOpen, setIsPromptManagerOpen] = useState(false);
+
   // UI State
   const [activeTool, setActiveTool] = useState<Tool | null>(null);
-  const [view, setView] = useState<View>('dashboard');
+  const [view, setView] = useState<View>('control-panel');
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
   const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
@@ -108,21 +109,29 @@ const App: React.FC = () => {
 
   // Use onAuthStateChange as the single source of truth for the user's session.
   useEffect(() => {
-    // onAuthStateChange fires an event immediately with the initial session state,
-    // and then listens for any subsequent changes (including after OAuth redirect).
     const { data: authListener } = supabaseService.supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setAuthChecked(true);
     });
   
-    // Clean up the subscription when the component unmounts.
     return () => {
       authListener?.subscription?.unsubscribe();
     };
   }, []);
 
 
-  // Load user's projects when they log in
+  const handleRefreshPrompts = useCallback(async () => {
+    if (!user) return;
+    try {
+        const userPrompts = await supabaseService.getPrompts(user.id);
+        setPrompts(userPrompts);
+    } catch (e) {
+        console.error("Failed to refresh prompts:", e);
+        // Do not set a visible error for this, as it's a background refresh
+    }
+  }, [user]);
+
+  // Load user's projects and prompts when they log in
   useEffect(() => {
     if (user) {
         setProjectsLoaded(false);
@@ -134,12 +143,15 @@ const App: React.FC = () => {
                 setProjects([]);
             })
             .finally(() => setProjectsLoaded(true));
+
+        handleRefreshPrompts();
     } else {
-        // Clear projects when user logs out
+        // Clear data when user logs out
         setProjects([]);
+        setPrompts([]);
         setProjectsLoaded(false);
     }
-  }, [user]);
+  }, [user, handleRefreshPrompts]);
 
   // Clean up compare mode when tool changes
   useEffect(() => {
@@ -207,6 +219,8 @@ const App: React.FC = () => {
     setMaskDataUrl(null);
     setCrop(undefined);
     setCompletedCrop(undefined);
+    setIsCompareMode(false);
+    setView('editor');
   }, []);
   
   // === Project Management ===
@@ -260,6 +274,7 @@ const App: React.FC = () => {
   const handleLoadProject = useCallback(async (project: Project) => {
     setIsLoading(true);
     setError(null);
+    setView('editor');
     try {
         const signedUrlPromises = project.history.map(path => supabaseService.createSignedUrl(path));
         const imageUrls = await Promise.all(signedUrlPromises);
@@ -278,6 +293,7 @@ const App: React.FC = () => {
         setMaskDataUrl(null);
         setIsBrushMode(false);
         setPrompt('');
+        setIsCompareMode(false);
     } catch (e) {
         setError("Failed to load project files from the cloud.");
         console.error(e);
@@ -355,7 +371,6 @@ const App: React.FC = () => {
         const editedImageUrl = await generateEditedImage(imageToSend, finalPrompt);
         const newImageFile = dataURLtoFile(editedImageUrl, `edited-${Date.now()}.png`);
         addImageToHistory(newImageFile);
-        setPrompt(''); // Clear prompt on success
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
@@ -364,6 +379,21 @@ const App: React.FC = () => {
     }
   }, [currentImage, prompt, addImageToHistory, maskDataUrl]);
   
+  const handleEnhancePrompt = async () => {
+    if (!prompt.trim()) return;
+    setIsEnhancingPrompt(true);
+    setError(null);
+    try {
+        const enhanced = await enhancePrompt(prompt);
+        setPrompt(enhanced);
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to enhance prompt. ${errorMessage}`);
+    } finally {
+        setIsEnhancingPrompt(false);
+    }
+  }
+
   const createApiHandler = (apiFn: (file: File, prompt?: string) => Promise<string>, actionName: string) => async (promptOrFile?: string | File) => {
       if (!currentImage) return;
       setIsLoading(true);
@@ -410,10 +440,15 @@ const App: React.FC = () => {
   // === Top Bar Action Handlers ===
   const handleUndo = useCallback(() => {
       if (canUndo) {
-          setHistoryIndex(historyIndex - 1);
+          const newIndex = historyIndex - 1;
+          setHistoryIndex(newIndex);
           brushCanvasRef.current?.clear();
           setMaskDataUrl(null);
           setIsBrushMode(false);
+          // If we undo back to the original image, disable compare mode as there's nothing to compare.
+          if (newIndex === 0) {
+              setIsCompareMode(false);
+          }
       }
   }, [canUndo, historyIndex]);
 
@@ -432,6 +467,7 @@ const App: React.FC = () => {
           brushCanvasRef.current?.clear();
           setMaskDataUrl(null);
           setIsBrushMode(false);
+          setIsCompareMode(false); // Resetting removes edits, so turn off compare mode.
       }
   }, [history]);
 
@@ -439,7 +475,8 @@ const App: React.FC = () => {
       setHistory([]);
       setHistoryIndex(-1);
       setActiveProjectId(null);
-      setView('dashboard');
+      setView('control-panel');
+      setIsCompareMode(false);
   }, []);
 
   const handleDownload = useCallback(() => {
@@ -464,6 +501,8 @@ const App: React.FC = () => {
     setHistory([]);
     setHistoryIndex(-1);
     setActiveProjectId(null);
+    setIsCompareMode(false);
+    setView('control-panel');
   }, []);
 
   const handleClearMask = useCallback(() => {
@@ -500,7 +539,7 @@ const App: React.FC = () => {
   if (!authChecked) {
     return (
         <div className="min-h-screen w-full flex items-center justify-center">
-            <Spinner />
+            <Spinner size="lg" />
         </div>
     );
   }
@@ -514,17 +553,38 @@ const App: React.FC = () => {
         <div className="min-h-screen text-gray-100 flex flex-col">
             <Header />
             <main className="flex-grow w-full max-w-7xl mx-auto p-4 md:p-8 flex justify-center items-center">
-                {!projectsLoaded ? <Spinner /> : (
-                    view === 'dashboard' ? 
-                    <ProjectsDashboard 
-                      projects={projects} 
-                      onSelectProject={handleLoadProject} 
-                      onDeleteProject={handleDeleteProject}
-                      onStartNewProject={() => setView('upload')} 
-                    /> : 
-                    <StartScreen onFileSelect={handleFileSelect} />
+                {!projectsLoaded ? <Spinner size="lg" /> : (
+                    <>
+                        {view === 'control-panel' && (
+                            <ControlPanel 
+                                onNavigateToProjects={() => setView('projects')}
+                                onOpenPromptManager={() => setIsPromptManagerOpen(true)}
+                            />
+                        )}
+                        {view === 'projects' && (
+                            <ProjectsDashboard 
+                              projects={projects} 
+                              onSelectProject={handleLoadProject} 
+                              onDeleteProject={handleDeleteProject}
+                              onStartNewProject={() => setView('upload')}
+                              onBack={() => setView('control-panel')}
+                            />
+                        )}
+                        {view === 'upload' && (
+                            <StartScreen onFileSelect={handleFileSelect} />
+                        )}
+                    </>
                 )}
             </main>
+            {user && (
+              <PromptManagerModal
+                isOpen={isPromptManagerOpen}
+                onClose={() => setIsPromptManagerOpen(false)}
+                user={user}
+                onRefreshPrompts={handleRefreshPrompts}
+                initialPrompts={prompts}
+              />
+            )}
         </div>
     );
   }
@@ -544,7 +604,7 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
             <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><SaveIcon className="w-5 h-5"/>Save</button>
-            <button onClick={handleUploadNew} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><UploadIconSVG className="w-5 h-5"/>Projects</button>
+            <button onClick={handleUploadNew} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><UploadIconSVG className="w-5 h-5"/>Dashboard</button>
             <button onClick={handleDownload} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors shadow-md shadow-blue-500/20"><DownloadIcon className="w-5 h-5"/>Download</button>
             <button onClick={handleLogout} title="Logout" className="p-2 bg-gray-800/80 hover:bg-red-500/20 text-gray-200 hover:text-red-400 rounded-md transition-colors"><LogoutIcon className="w-5 h-5"/></button>
         </div>
@@ -555,7 +615,7 @@ const App: React.FC = () => {
             <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20 group">
                 {isLoading && (
                     <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
-                        <Spinner />
+                        <Spinner size="lg" />
                         <p className="text-gray-300">AI is working its magic...</p>
                     </div>
                 )}
@@ -613,13 +673,21 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            <div className={`w-full flex flex-col items-center gap-4 transition-opacity duration-300 ${(activeTool !== null || isCompareMode) ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                <p className="text-md text-gray-400">
-                    {isBrushMode ? (maskDataUrl ? 'Describe your edit for the masked area.' : 'Draw on the image to select an area for editing.') : 'Describe an edit, or use the mask tool for a precise change.'}
-                </p>
+            <div className={`w-full flex flex-col items-center gap-0 transition-opacity duration-300 ${(activeTool !== null || isCompareMode) ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                <PromptSelector prompts={prompts} onSelect={setPrompt} />
                 <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
-                    <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., 'change shirt color to blue' or 'make the sky dramatic'" className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading || (isBrushMode && !maskDataUrl)}/>
-                    <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed" disabled={isLoading || !prompt.trim() || (isBrushMode && !maskDataUrl)}>Generate</button>
+                    <div className="relative flex-grow">
+                        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., 'change shirt color to blue' or 'make the sky dramatic'" rows={2} className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-b-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 resize-none pr-28" disabled={isLoading || (isBrushMode && !maskDataUrl)}/>
+                        <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-2">
+                             <button type="button" onClick={handleEnhancePrompt} title="Enhance Prompt with AI" className="p-2 text-gray-400 hover:text-purple-400 disabled:opacity-50 disabled:cursor-wait" disabled={isEnhancingPrompt || !prompt.trim()}>
+                                {isEnhancingPrompt ? <Spinner size="sm" /> : <MagicWandIcon className="w-5 h-5"/>}
+                             </button>
+                             <button type="button" onClick={() => setIsPromptManagerOpen(true)} title="Manage Prompts" className="p-2 text-gray-400 hover:text-blue-400">
+                                <BookmarkIcon className="w-5 h-5"/>
+                             </button>
+                        </div>
+                    </div>
+                    <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed self-stretch" disabled={isLoading || !prompt.trim() || (isBrushMode && !maskDataUrl)}>Generate</button>
                 </form>
             </div>
         </div>
@@ -673,6 +741,15 @@ const App: React.FC = () => {
         onClose={() => setIsSaveModalOpen(false)}
         initialName={projects.find(p => p.id === activeProjectId)?.name || ''}
       />
+      {user && (
+          <PromptManagerModal
+            isOpen={isPromptManagerOpen}
+            onClose={() => setIsPromptManagerOpen(false)}
+            user={user}
+            onRefreshPrompts={handleRefreshPrompts}
+            initialPrompts={prompts}
+          />
+      )}
     </div>
   );
 };

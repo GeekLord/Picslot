@@ -8,6 +8,8 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 
 - **Precise Retouching**: Click any point on an image to make localized edits. Change colors, remove objects, or add elements with pinpoint accuracy simply by describing what you want.
 - **Cloud-Based Projects**: Securely save your projects to your account and access them from anywhere. Your entire edit history is preserved, and you can easily load, update, or delete projects from your personal dashboard.
+- **Prompt Manager**: A full CRUD (Create, Read, Update, Delete) interface for your favorite prompts. Save, manage, and reuse your best prompts directly within the editor.
+- **AI Prompt Enhancer**: A one-click tool that uses AI to rewrite and improve your prompts, adding professional details to help you achieve better results.
 - **Creative Filters**: Instantly transform your photos with a range of artistic filters like Synthwave, Anime, and Lomo, or create a unique look with a custom text prompt.
 - **Professional Adjustments**: Apply global enhancements like blurring the background for a portrait effect, adding studio lighting, or adjusting the color temperature for a warmer feel.
 - **Non-Destructive Workflow**:
@@ -94,6 +96,25 @@ Follow these instructions to set up and run the project locally.
         USING (auth.uid() = user_id)
         WITH CHECK (auth.uid() = user_id);
         ```
+    -   Return to the SQL Editor, create another new query, and run the following SQL to create the `prompts` table for the new Prompt Manager feature:
+        ```sql
+        CREATE TABLE public.prompts (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+            title TEXT NOT NULL,
+            prompt TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        ALTER TABLE public.prompts ENABLE ROW LEVEL SECURITY;
+
+        CREATE POLICY "Users can manage their own prompts"
+        ON public.prompts
+        FOR ALL
+        USING (auth.uid() = user_id)
+        WITH CHECK (auth.uid() = user_id);
+        ```
 
 5.  **Set Up Storage:**
     -   Go to the **Storage** section in the Supabase dashboard.
@@ -162,6 +183,7 @@ Follow these instructions to set up and run the project locally.
 │   ├── AuthScreen.tsx      # Login/Registration UI
 │   ├── ProjectsDashboard.tsx # UI to display user's cloud projects
 │   └── ...and other UI components
+├── types.ts            # Centralized TypeScript type definitions
 └── README.md           # This file
 ```
 

@@ -4,13 +4,26 @@
 */
 import React from 'react';
 
-const Spinner: React.FC = () => {
+interface SpinnerProps {
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}
+
+const Spinner: React.FC<SpinnerProps> = ({ size = 'md', className = '' }) => {
+  const sizeClasses = {
+    sm: 'h-5 w-5',
+    md: 'h-8 w-8',
+    lg: 'h-16 w-16',
+  };
+
   return (
     <svg
-      className="animate-spin h-16 w-16 text-zinc-800 mx-auto"
+      className={`animate-spin ${sizeClasses[size]} text-white ${className}`}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
+      role="status"
+      aria-live="polite"
     >
       <circle
         className="opacity-25"

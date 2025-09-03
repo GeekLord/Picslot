@@ -4,7 +4,7 @@
  */
 
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
-import type { Project } from '../App';
+import type { Project, Prompt } from '../types';
 
 // --- IMPORTANT ---
 // This file assumes that you have created a script tag in your index.html
@@ -144,8 +144,6 @@ export const getProjects = async (userId: string): Promise<Project[]> => {
         throw new Error(`Failed to fetch projects: ${error.message}`);
     }
 
-    // Supabase returns the raw data. We need to cast it.
-    // In a real app, you might use a library like Zod for validation.
     return data as Project[];
 };
 
@@ -155,7 +153,7 @@ export const getProjects = async (userId: string): Promise<Project[]> => {
  * @param projectData - The project data to save.
  * @returns The saved project data.
  */
-export const saveProject = async (projectData: Omit<Project, 'id' | 'updated_at' | 'user_id'> & { id?: string | null; user_id: string; }): Promise<Project> => {
+export const saveProject = async (projectData: Omit<Partial<Project>, 'id' | 'updated_at'> & { id?: string | null; user_id: string; }): Promise<Project> => {
     const { id, ...updateData } = projectData;
 
     const dbPayload = {
@@ -220,5 +218,71 @@ export const deleteProject = async (project: Project): Promise<void> => {
     if (dbError) {
         console.error('Error deleting project from database:', dbError);
         throw new Error(`Failed to delete project record: ${dbError.message}`);
+    }
+};
+
+// ==================================
+//        Prompt Database
+// ==================================
+
+export const getPrompts = async (userId: string): Promise<Prompt[]> => {
+    const { data, error } = await supabase
+        .from('prompts')
+        .select('id, title, prompt, updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching prompts:', error);
+        throw new Error(`Failed to fetch prompts: ${error.message}`);
+    }
+    return data as Prompt[];
+};
+
+export const savePrompt = async (promptData: { id?: string | null; user_id: string; title: string; prompt: string; }): Promise<Prompt> => {
+    const { id, ...updateData } = promptData;
+
+    const dbPayload = {
+        ...updateData,
+        updated_at: new Date().toISOString(),
+    };
+    
+    let response;
+    if (id) {
+        // Update existing prompt
+        response = await supabase
+            .from('prompts')
+            .update(dbPayload)
+            .eq('id', id)
+            .select()
+            .single();
+    } else {
+        // Create new prompt
+        response = await supabase
+            .from('prompts')
+            .insert(dbPayload)
+            .select()
+            .single();
+    }
+    
+    const { data, error } = response;
+
+    if (error) {
+        console.error('Error saving prompt:', error);
+        throw new Error(`Failed to save prompt: ${error.message}`);
+    }
+
+    return data as Prompt;
+};
+
+export const deletePrompt = async (promptId: string): Promise<void> => {
+    const { error } = await supabase
+        .from('prompts')
+        .delete()
+        .eq('id', promptId);
+
+    if (error) {
+        console.error('Error deleting prompt:', error);
+        throw new Error(`Failed to delete prompt: ${error.message}`);
     }
 };
