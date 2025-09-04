@@ -6,7 +6,7 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 
 ## ✨ Key Features
 
-- **Precise Retouching**: Click any point on an image to make localized edits. Change colors, remove objects, or add elements with pinpoint accuracy simply by describing what you want.
+- **Precise Retouching**: Use the "Generative Mask" to paint over any part of an image and replace it with AI-generated content based on your text prompt. Change colors, remove objects, or add elements with pinpoint accuracy.
 - **Cloud-Based Projects**: Securely save your projects to your account and access them from anywhere. Your entire edit history is preserved, and you can easily load, update, or delete projects from your personal dashboard.
 - **Prompt Manager**: A full CRUD (Create, Read, Update, Delete) interface for your favorite prompts. Save, manage, reuse, and now **share** your best prompts with other users directly within the editor.
 - **AI Prompt Enhancer**: A one-click tool that uses AI to rewrite and improve your prompts, adding professional details to help you achieve better results.
@@ -24,15 +24,15 @@ Picslot leverages advanced generative AI for complex tasks that traditionally re
 - **Remove Background**: Instantly removes the background from your photo, leaving a clean, transparent cutout.
 - **Restore Image**: Magically repair old, blurry, or damaged photos, removing scratches and restoring faded colors.
 - **Studio Portrait**: Convert any casual photo into a professional, forward-facing headshot with a neutral studio background, while preserving the subject's identity.
-- **Full Body Outpainting**: Expands a cropped photo to a full-body shot with a plausible, AI-generated background that matches the original context.
-- **Comp Card Generator**: Automatically create a professional, multi-pose modeling composite card, complete with estimated stats, styled in form-fitting athletic wear.
-- **3-View Shot Generator**: Produce a technical three-view (front, side, back) full-body reference shot, ideal for character design or fashion.
+- **Magic Expand (Outpainting)**: Expands a cropped photo to a full-body shot with a plausible, AI-generated background that matches the original context.
+- **Composite Card Generator**: Automatically create a professional, multi-pose modeling composite card, complete with estimated stats, styled in form-fitting athletic wear.
+- **Character Turnaround (3-View Shot)**: Produce a technical three-view (front, side, back) full-body reference shot, ideal for character design or fashion.
 
 ## 🛠️ Technology Stack
 
 - **Frontend**: React, TypeScript, Tailwind CSS
 - **Backend-as-a-Service**: Supabase (Authentication, PostgreSQL Database, Storage)
-- **AI Engine**: Google Gemini API (`gemini-2.5-flash-image-preview` model)
+- **AI Engine**: Google Gemini API (`gemini-2.5-flash-image-preview` model for vision, `gemini-2.5-flash` for text tasks)
 - **Core Libraries**:
   - `react-image-crop` for the interactive cropping UI.
 - **Bundling**: The project is set up to run directly in the browser using ES Modules and an `importmap`, requiring no local bundling or installation.
@@ -41,11 +41,11 @@ Picslot leverages advanced generative AI for complex tasks that traditionally re
 
 Picslot's magic lies in its sophisticated prompt engineering and robust cloud architecture.
 
-1.  **Authentication**: Users sign up and log in securely via Supabase Auth. Sessions are managed with industry-standard practices.
+1.  **Authentication**: Users sign up and log in securely via Supabase Auth, with support for email/password and Google OAuth. Sessions are managed with industry-standard practices.
 2.  **User Action**: The user uploads an image and selects a tool (e.g., "Restore Image").
 3.  **Prompt Engineering**: A highly specific prompt is generated, instructing the Gemini model to act as a professional (e.g., "a world-class master conservator") and follow strict rules about identity preservation and technical execution.
 4.  **API Request**: The image data and the engineered prompt are sent to the Gemini API.
-5.  **Response Handling**: The application receives the AI-generated image and displays it.
+5.  **Response Handling**: The application receives the AI-generated image, adds it to the non-destructive history stack, and displays it.
 6.  **Cloud Sync**: When a user saves a project, each image in the history stack is uploaded to Supabase Storage. The project metadata, including the storage paths to the images, is saved to a PostgreSQL database. This ensures data is persistent, secure, and accessible across sessions.
 
 ## 🚀 Getting Started
@@ -96,7 +96,7 @@ Follow these instructions to set up and run the project locally.
         USING (auth.uid() = user_id)
         WITH CHECK (auth.uid() = user_id);
         ```
-    -   Return to the SQL Editor, create another new query, and run the following SQL to create the `prompts` table for the new Prompt Manager feature:
+    -   Return to the SQL Editor, create another new query, and run the following SQL to create the `prompts` table for the Prompt Manager feature:
         ```sql
         CREATE TABLE public.prompts (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -169,7 +169,7 @@ Follow these instructions to set up and run the project locally.
     ```
 
 2.  **Set Up API Keys:**
-    The application loads API keys from environment variables. For simple local development without a build tool, you can add them to a script tag in `index.html`.
+    The application loads API keys from environment variables. For simple local development without a build tool, they are configured in a script tag in `index.html`.
     
     **Important:** In a real production environment, you would use a build tool like Vite or Next.js to manage environment variables securely. Do not commit your API keys to version control.
 
@@ -215,6 +215,7 @@ Follow these instructions to set up and run the project locally.
 ├── components/
 │   ├── AuthScreen.tsx      # Login/Registration UI
 │   ├── ProjectsDashboard.tsx # UI to display user's cloud projects
+│   ├── PromptManagerModal.tsx# UI for managing saved prompts
 │   └── ...and other UI components
 ├── types.ts            # Centralized TypeScript type definitions
 └── README.md           # This file
