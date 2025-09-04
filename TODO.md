@@ -1,76 +1,255 @@
-# Picslot - Strategic Roadmap & TODO
+# Picslot - Strategic SaaS Roadmap
 
-This document outlines the strategic roadmap for evolving Picslot from a powerful tool into a professional, profitable platform. We will tackle this in logical phases, starting with the foundational elements required for pro features.
+This document outlines the strategic roadmap for evolving Picslot from a powerful tool into a professional, scalable, and profitable SaaS platform.
 
 ---
 
-## ✅ Phase 1: Foundation for "Pro"
+## ✅ Phase 1: Foundational Infrastructure (Completed)
 
-**Objective:** Build the core infrastructure required for a professional, account-based system using industry-standard cloud services. This phase is complete.
+**Objective:** Build the core infrastructure required for a professional, account-based system using industry-standard cloud services.
 
--   [x] **Implement Production-Grade User Authentication**
-    -   [x] **Replace Local Storage Auth:** Removed insecure `localStorage`-based authentication logic.
-    -   [x] **Integrate Cloud Auth Provider:** Implemented a secure authentication solution using **Supabase Auth**.
-    -   [x] **Implement Secure Flows:** Created robust and secure registration, email confirmation, and login flows.
-    -   [x] **Support Multiple Auth Methods:** Added support for email/password and **Google social login**.
-    -   [x] **Gate Application:** Ensured the main application is accessible only to authenticated users.
-    -   [x] **Implement Logout:** Added secure logout functionality that properly terminates the user's session.
+-   [x] **Implement Production-Grade User Authentication (Supabase Auth)**
+    -   [x] Secure registration, email confirmation, password reset, and login flows.
+    -   [x] Support for email/password and Google social logins.
+-   [x] **Implement Cloud-Based Project Storage (Supabase Storage & PostgreSQL)**
+    -   [x] Cloud storage for all user-generated images and project assets.
+    -   [x] "My Projects" dashboard to view, load, update, and delete saved work.
+-   [x] **Implement Full Suite of Core AI Features (Gemini API)**
+    -   [x] Generative Mask & Retouching
+    -   [x] One-click tools: Background Removal, Auto Enhance, Restore, Studio Portrait, Magic Expand, Composite Card, and Character Turnaround.
+-   [x] **Implement Prompt Management System**
+    -   [x] Full CRUD for user-saved prompts.
+    -   [x] AI-powered prompt enhancement and title generation.
+    -   [x] Ability to share prompts with other users via email.
 
--   [x] **Implement Cloud-Based Project Storage**
-    -   [x] **Replace Local Storage Projects:** Removed the `localStorage`-based project saving mechanism.
-    -   [x] **Integrate Cloud Storage:** Used **Supabase Storage** for all user-generated images and project assets.
-    -   [x] **Design Database Schema:** Created a database schema in Supabase's PostgreSQL to store project metadata.
-    -   [x] **Implement Project Management:**
-        -   [x] Users can save their complete editing sessions to their cloud account.
-        -   [x] "My Projects" dashboard to view, load, update, and delete all saved work from the cloud.
-
--   [x] **Implement Full Suite of AI Features**
-    -   [x] **Precise Retouching (Generative Edit):** Users can select an area and fill or replace it with AI-generated content based on a prompt.
-    -   [x] **Background Removal:** Implemented a one-click tool to remove the background, making it transparent.
-    -   [x] **Auto Enhance:** One-click tool to improve lighting, color, and sharpness.
-    -   [x] **Image Restoration:** One-click tool to repair old or damaged photos.
-    -   [x] **Studio Portrait Generation:** One-click tool to create a professional headshot.
-    -   [x] **Comp Card Generation:** One-click tool to create a model's composite card.
-    -   [x] **3-View Shot Generation:** One-click tool to create a character turnaround sheet.
-    -   [x] **Full Body Outpainting:** One-click tool to expand a cropped image to a full-body view.
-
-### **Setup & Integration Checklist (for Supabase)**
--   [x] Create a new project on [Supabase](https://supabase.com/).
--   [x] In the project settings, find the **Project URL** and **`anon` public key**.
--   [x] Set up environment variables for the application (`index.html` script tag).
--   [x] Enable Auth Providers (Email, Google) in the Supabase dashboard.
--   [x] Use the Supabase SQL editor to create a `projects` table for storing project metadata.
--   [x] Enable and configure Supabase Storage, creating a bucket (`project-images`) with appropriate security policies.
--   [x] Install the required client library: `@supabase/supabase-js`.
 ---
 
-## Phase 2: Monetization Launch
+## Phase 2: The Professional SaaS Experience
 
-**Objective:** Introduce a Freemium model to convert users into paying customers.
+**Objective:** Overhaul the user experience and implement the core features expected of a modern SaaS application.
+
+### Phase 2A: UI/UX & Navigation Overhaul
+
+-   [x] **Comprehensive Navigation System**
+    -   [x] **Primary Navigation Bar**: Implemented Dashboard, Projects, and Editor links.
+    -   [x] **User Menu**: Profile, Settings, Billing, Notifications, Logout (Existing, ready for expansion).
+    -   [ ] **Mobile-Responsive "Hamburger" Menu** with smooth transitions.
+    -   [ ] **Breadcrumb Navigation** within nested pages (e.g., Settings > Security).
+    -   [x] **Consistent Iconography** with descriptive tooltips.
+
+-   [x] **Enhanced User Dashboard**
+    -   [ ] **Usage Analytics Section**:
+        -   [ ] Visual progress bar for AI credits used vs. remaining.
+        -   [ ] Chart for monthly/weekly project creation trends.
+        -   [ ] Donut chart showing most-used AI features.
+        -   [x] Added placeholder for this section.
+    -   [x] **Quick Actions Panel**:
+        -   [x] "Recent Projects" list with thumbnail previews.
+        -   [ ] "Start from a Template" gallery.
+        -   [ ] "Community Spotlight" to feature inspiring user creations.
+    -   [ ] **Notification Center**:
+        -   [ ] In-app widget for system updates, feature announcements, and usage alerts.
+
+-   [ ] **Comprehensive User Profile Management**
+    -   [ ] **Profile Information**:
+        -   [ ] Profile photo upload (with option for AI background removal).
+        -   [ ] Display name, professional title, bio, and social media links.
+    -   [ ] **Public Portfolio**:
+        -   [ ] Ability to feature selected projects in a public gallery.
+        -   [ ] Unique, shareable public URL (e.g., `picslot.com/username`).
+    -   [ ] **Activity Timeline**:
+        -   [ ] Chronological feed of recent edits, created projects, and shared prompts.
+    -   [ ] **Gamification/Achievements**:
+        -   [ ] Award badges for milestones (e.g., "100th Edit," "Restoration Master").
+
+### Phase 2B: Advanced Account & Billing Management
+
+-   [ ] **Centralized Settings Interface**
+    -   [ ] **General**: Manage profile info, theme (dark/light mode), language.
+    -   [ ] **Security**:
+        -   [ ] Password change flow.
+        -   [ ] **Two-Factor Authentication (2FA)** setup.
+        -   [ ] View and revoke active login sessions.
+    -   [ ] **Privacy**: Control public profile visibility and usage analytics opt-in.
+    -   [ ] **Notifications**: Granular control over in-app and email notifications.
+    -   [ ] **API & Integrations**: (Future) API key management.
+    -   [ ] **Data Management**: Export or delete user data.
+
+-   [ ] **Subscription & Billing Portal**
+    -   [ ] **Plan Management**: View current plan, see usage against limits, and access upgrade/downgrade options.
+    -   [ ] **Billing History**: Access and download past invoices.
+    -   [ ] **Payment Methods**: Add or update credit card information.
+    -   [ ] **Usage Analytics**: Detailed charts on monthly credit consumption.
+    -   [ ] **Credit Packs**: Offer "Pay-as-you-go" credit packs as an alternative to subscriptions.
+
+### Phase 2C: Core Experience & Workflow Enhancements
+
+-   [ ] **Robust Notification System**
+    -   [ ] **In-App**: Real-time alerts for AI job completion, shared content, etc.
+    -   [ ] **Email**: Welcome series, usage summaries, and feature announcements.
+
+-   [ ] **Integrated Help & Support System**
+    -   [ ] **Interactive Onboarding Tour** for new users.
+    -   [ ] **In-App Help Center**: Searchable knowledge base and video tutorials.
+    -   [ ] **Support Ticketing System** or live chat integration.
+
+-   [ ] **Advanced Project Management**
+    -   [ ] **Organization**: Create folders, add tags, and use advanced search/filters.
+    -   [ ] **Version History**: Create named "snapshots" of an edit history to easily revert to.
+    -   [ ] **Templates**: Save a series of edits as a reusable preset.
+
+### Phase 2D: Analytics & Platform Management
+
+-   [ ] **User-Facing Analytics Dashboard**
+    -   [ ] Provide insights into personal productivity (e.g., time spent editing, most used tools).
+    -   [ ] Show before/after quality metrics on enhancements.
+
+-   [ ] **Admin Panel (for Internal Management)**
+    -   [ ] **User Management**: View user list, manage roles, and handle support requests.
+    -   [ ] **System Analytics**: Monitor platform-wide usage, performance, and error rates.
+    -   [ ] **Content Moderation**: Flag and review potentially inappropriate public content.
+    -   [ ] **Feature Flag Management**: Enable/disable new features for specific user segments for A/B testing or phased rollouts.
+
+---
+
+## Phase 3: Monetization & Public Launch
+
+**Objective:** Introduce a Freemium model, integrate a payment gateway, and launch a public-facing marketing website to attract and convert users.
 
 -   [ ] **Implement Freemium Logic**
-    -   [ ] Introduce an AI "credit" system for the free tier (e.g., 10 free credits/month).
-    -   [ ] Gate premium features (e.g., high-res export) behind a subscription.
+    -   [ ] Introduce an AI "credit" system (e.g., 10 free credits/month).
+    -   [ ] Gate premium features (e.g., high-res export, batch processing) behind a subscription.
     -   [ ] Add a subtle watermark to all exports from the free tier.
--   [ ] **Integrate Payment Gateway**
-    -   [ ] Integrate a payment provider like Stripe for handling subscriptions.
-    -   [ ] Create a simple pricing page and checkout flow.
--   [ ] **Add Pro-Tier Features**
-    -   [ ] Enable high-resolution exports for Pro subscribers.
-    -   [ ] Remove watermarks for Pro subscribers.
-    -   [ ] Grant unlimited AI credits to Pro subscribers.
+
+-   [ ] **Integrate Payment Gateway (e.g., Stripe)**
+    -   [ ] Build a secure checkout flow for subscriptions and credit packs.
+    -   [ ] Automate credit allocation and feature access based on subscription status.
+
+-   [ ] **Build Public-Facing Website**
+    -   [ ] **Home Page**: Compelling value proposition and hero section.
+    -   [ ] **Features Page**: Detailed breakdown of all AI tools.
+    -   [ ] **Pricing Page**: Clear comparison of Free and Pro tiers.
+    -   [ ] **Community/Gallery Page**: Showcase best user-created content.
+    -   [ ] **Blog/Content Hub**: For tutorials and announcements.
+    -   [ ] **Legal Pages**: Terms of Use, Privacy Policy.
+    -   [ ] **About & Contact Pages**.
 
 ---
 
-## Phase 3: Ecosystem & Collaboration
+## Phase 4: Ecosystem & Collaboration
 
 **Objective:** Expand the platform with features for power users, professionals, and teams.
--   [ ] **Build Power-User Features**
-    -   [ ] **Batch Processing:** Allow users to apply the same edit or filter to multiple images at once.
-    -   [ ] **Asset Library:** Give users a personal cloud library for their uploaded images and generated assets.
--   [ ] **Develop Team/Business Tier Features**
-    -   [ ] **Shared Workspaces:** Allow users to create teams and share projects.
-    -   [ ] **Commenting & Feedback:** Enable team members to leave comments on image projects.
-    -   [ ] **Brand Kit:** Allow teams to upload brand assets (logos, colors, fonts) for easy access.
--   [ ] **Expand Content & Templates**
-    -   [ ] Develop a rich library of templates for social media, marketing, and more.
+
+-   [ ] **Batch Processing**: Apply the same edit or filter to multiple images at once.
+-   [ ] **Team Workspaces**
+    -   [ ] Invite members to a shared workspace.
+    -   [ ] Role-based access control (Admin, Editor, Viewer).
+    -   [ ] Shared projects, asset libraries, and billing.
+    -   [ ] Real-time collaboration features (e.g., commenting on images).
+-   [ ] **Public API**
+    -   [ ] Allow developers to integrate Picslot's AI capabilities into their own applications.
+-   [ ] **Community Marketplace**
+    -   [ ] Allow users to share or sell their custom prompts and filter presets.
+
+---
+
+## Technical Implementation Blueprints
+
+### Database Schema Expansion
+
+Extend the Supabase schema to support new features.
+
+```sql
+-- User profiles to store additional public and private user data
+CREATE TABLE public.user_profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    display_name TEXT,
+    bio TEXT,
+    profile_image_url TEXT,
+    website TEXT,
+    social_links JSONB,
+    -- preferences like theme, language
+    preferences JSONB,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Function to create a profile when a new user signs up
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.user_profiles (id)
+  VALUES (new.id);
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to call the function
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+
+-- User activity tracking for timelines and analytics
+CREATE TABLE public.user_activities (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    activity_type TEXT NOT NULL,
+    activity_data JSONB,
+    created_at TIMESTAMTz DEFAULT NOW()
+);
+
+-- Subscription management
+CREATE TABLE public.subscriptions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+    plan_id TEXT NOT NULL, -- e.g., 'free', 'pro_monthly'
+    status TEXT NOT NULL, -- e.g., 'active', 'canceled', 'past_due'
+    credits_remaining INTEGER,
+    billing_cycle_start TIMESTAMPTZ,
+    billing_cycle_end TIMESTAMPTZ,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Notifications table
+CREATE TABLE public.notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'system', 'project', 'community'
+    is_read BOOLEAN DEFAULT FALSE,
+    action_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### Proposed Frontend Component Architecture
+
+```
+src/
+├── components/
+│   ├── core/              # Reusable atoms (Button, Input, Spinner)
+│   ├── layout/            # Layout components (Navbar, Sidebar, PageWrapper)
+│   ├── auth/              # Auth-related components
+│   ├── editor/            # All editor-specific components
+│   ├── dashboard/
+│   │   ├── DashboardLayout.tsx
+│   │   ├── AnalyticsCard.tsx
+│   │   └── UsageChart.tsx
+│   ├── profile/
+│   │   ├── ProfileEditor.tsx
+│   │   └── PortfolioGallery.tsx
+│   ├── settings/
+│   │   ├── SettingsLayout.tsx
+│   │   ├── SecuritySettings.tsx
+│   │   └── BillingSettings.tsx
+│   └── admin/
+│       ├── AdminLayout.tsx
+│       └── UserManagementTable.tsx
+├── hooks/                 # Custom hooks (useUser, useSubscription)
+├── contexts/              # React contexts (AuthContext, ThemeContext)
+├── pages/                 # Page-level components (DashboardPage, SettingsPage)
+└── services/              # API services (Supabase, Gemini, Stripe)
+```

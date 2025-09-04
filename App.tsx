@@ -12,7 +12,7 @@ import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, LogoutIcon, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -25,7 +25,7 @@ import BrushControls from './components/BrushControls';
 import type { Project, Prompt } from './types';
 import PromptManagerModal from './components/PromptManagerModal';
 import PromptSelector from './components/PromptSelector';
-import ControlPanel from './components/ControlPanel';
+import Dashboard from './components/Dashboard';
 
 
 // Helper to convert a data URL string to a File object
@@ -54,7 +54,7 @@ const blobToFile = async (url: string, filename: string): Promise<File> => {
 
 
 type Tool = 'adjust' | 'filters' | 'crop';
-type View = 'control-panel' | 'projects' | 'upload' | 'editor';
+export type Page = 'dashboard' | 'projects' | 'upload' | 'editor';
 
 
 const App: React.FC = () => {
@@ -79,7 +79,7 @@ const App: React.FC = () => {
 
   // UI State
   const [activeTool, setActiveTool] = useState<Tool | null>(null);
-  const [view, setView] = useState<View>('control-panel');
+  const [page, setPage] = useState<Page>('dashboard');
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
   const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
@@ -111,7 +111,14 @@ const App: React.FC = () => {
   // Use onAuthStateChange as the single source of truth for the user's session.
   useEffect(() => {
     const { data: authListener } = supabaseService.supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (!currentUser) {
+        // If user logs out, reset state and go to dashboard (which will then show AuthScreen)
+        setHistory([]);
+        setHistoryIndex(-1);
+        setPage('dashboard');
+      }
       setAuthChecked(true);
     });
   
@@ -221,7 +228,7 @@ const App: React.FC = () => {
     setCrop(undefined);
     setCompletedCrop(undefined);
     setIsCompareMode(false);
-    setView('editor');
+    setPage('editor');
   }, []);
   
   // === Project Management ===
@@ -275,7 +282,7 @@ const App: React.FC = () => {
   const handleLoadProject = useCallback(async (project: Project) => {
     setIsLoading(true);
     setError(null);
-    setView('editor');
+    setPage('editor');
     try {
         const signedUrlPromises = project.history.map(path => supabaseService.createSignedUrl(path));
         const imageUrls = await Promise.all(signedUrlPromises);
@@ -476,7 +483,7 @@ const App: React.FC = () => {
       setHistory([]);
       setHistoryIndex(-1);
       setActiveProjectId(null);
-      setView('control-panel');
+      setPage('dashboard');
       setIsCompareMode(false);
   }, []);
 
@@ -502,12 +509,7 @@ const App: React.FC = () => {
 
   const handleLogout = useCallback(async () => {
     await supabaseService.signOut();
-    // The onAuthStateChange listener will handle setting user to null
-    setHistory([]);
-    setHistoryIndex(-1);
-    setActiveProjectId(null);
-    setIsCompareMode(false);
-    setView('control-panel');
+    // The onAuthStateChange listener will handle setting user to null and resetting state.
   }, []);
 
   const handleClearMask = useCallback(() => {
@@ -552,50 +554,167 @@ const App: React.FC = () => {
   if (!user) {
     return <AuthScreen />;
   }
-    
-  if (!currentImageUrl) {
-    return (
-        <div className="min-h-screen text-gray-100 flex flex-col">
-            <Header />
-            <main className="flex-grow w-full max-w-7xl mx-auto p-4 md:p-8 flex justify-center items-center">
-                {!projectsLoaded ? <Spinner size="lg" /> : (
-                    <>
-                        {view === 'control-panel' && (
-                            <ControlPanel 
-                                onNavigateToProjects={() => setView('projects')}
-                                onOpenPromptManager={() => setIsPromptManagerOpen(true)}
-                            />
-                        )}
-                        {view === 'projects' && (
-                            <ProjectsDashboard 
-                              projects={projects} 
-                              onSelectProject={handleLoadProject} 
-                              onDeleteProject={handleDeleteProject}
-                              onStartNewProject={() => setView('upload')}
-                              onBack={() => setView('control-panel')}
-                            />
-                        )}
-                        {view === 'upload' && (
-                            <StartScreen onFileSelect={handleFileSelect} />
-                        )}
-                    </>
-                )}
-            </main>
-            {user && (
-              <PromptManagerModal
-                isOpen={isPromptManagerOpen}
-                onClose={() => setIsPromptManagerOpen(false)}
-                user={user}
-                onRefreshPrompts={handleRefreshPrompts}
-                initialPrompts={prompts}
-              />
-            )}
-        </div>
-    );
-  }
-
+  
   const mainToolButtonClass = (tool: Tool) => `flex flex-col items-center justify-center gap-2 w-full font-semibold py-3 px-2 rounded-lg transition-all duration-200 text-sm ${activeTool === tool ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:text-white hover:bg-gray-700'}`;
   const sidebarToolButtonClass = `flex items-center justify-start text-left bg-gray-700/50 border border-transparent text-gray-200 font-semibold py-3 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-700 hover:border-gray-600 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-700/50`;
+
+  const renderPageContent = () => {
+    if (!projectsLoaded && page !== 'editor') {
+      return <Spinner size="lg" />;
+    }
+
+    switch (page) {
+        case 'dashboard':
+            return <Dashboard 
+                        user={user}
+                        recentProjects={projects.slice(0, 5)}
+                        onNavigateToProjects={() => setPage('projects')}
+                        onStartNewProject={() => setPage('upload')}
+                        onOpenPromptManager={() => setIsPromptManagerOpen(true)}
+                        onSelectProject={handleLoadProject}
+                    />;
+        case 'projects':
+            return <ProjectsDashboard 
+                      projects={projects} 
+                      onSelectProject={handleLoadProject} 
+                      onDeleteProject={handleDeleteProject}
+                      onNavigate={setPage}
+                    />;
+        case 'upload':
+            return <StartScreen onFileSelect={handleFileSelect} />;
+        case 'editor':
+            if (!currentImageUrl) {
+                return <StartScreen onFileSelect={handleFileSelect} />; // Fallback to upload if editor is active but no image
+            }
+            return (
+                <div className="flex-grow w-full max-w-[1800px] mx-auto flex flex-col md:flex-row gap-8">
+                  <div className="flex-grow flex flex-col gap-4 items-center md:w-[65%] lg:w-[70%]">
+                      <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20 group">
+                          {isLoading && (
+                              <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
+                                  <Spinner size="lg" />
+                                  <p className="text-gray-300">AI is working its magic...</p>
+                              </div>
+                          )}
+                          {activeTool === 'crop' ? (
+                            <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)} aspect={aspect} className="max-h-[70vh]">
+                              <img ref={imgRef} src={currentImageUrl} alt="Crop this image" className="w-full h-auto object-contain max-h-[70vh] rounded-xl"/>
+                            </ReactCrop>
+                          ) : isCompareMode && originalImageUrl ? (
+                              <CompareSlider originalImageUrl={originalImageUrl} currentImageUrl={currentImageUrl} />
+                          ) : (
+                            <div 
+                              className={`relative w-full h-full ${isBrushMode ? 'cursor-none' : ''}`}
+                              onMouseMove={handleBrushContainerMouseMove}
+                              onMouseLeave={handleBrushContainerMouseLeave}
+                            >
+                              <img ref={imgRef} src={currentImageUrl} alt="Current" className="w-full h-auto object-contain max-h-[70vh] rounded-xl pointer-events-none" />
+                              {isBrushMode && imgRef.current && (
+                                  <BrushCanvas
+                                    ref={brushCanvasRef}
+                                    width={imgRef.current.clientWidth}
+                                    height={imgRef.current.clientHeight}
+                                    brushSize={brushSize}
+                                    isErasing={isErasing}
+                                    onMaskChange={setMaskDataUrl}
+                                  />
+                              )}
+                              {isBrushMode && cursorPosition && (
+                                  <div
+                                      className={`absolute rounded-full border-2 pointer-events-none transform -translate-x-1/2 -translate-y-1/2 transition-colors duration-100 ${isErasing ? 'border-red-500 bg-red-500/20' : 'border-white bg-white/20'}`}
+                                      style={{
+                                          left: `${cursorPosition.x}px`,
+                                          top: `${cursorPosition.y}px`,
+                                          width: `${brushSize}px`,
+                                          height: `${brushSize}px`,
+                                      }}
+                                      aria-hidden="true"
+                                  />
+                              )}
+                            </div>
+                          )}
+                          
+                          {isBrushMode && (
+                              <BrushControls 
+                                  brushSize={brushSize}
+                                  isErasing={isErasing}
+                                  onBrushSizeChange={setBrushSize}
+                                  onIsErasingChange={setIsErasing}
+                                  onClear={handleClearMask}
+                              />
+                          )}
+
+                          <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+                              <button onClick={() => setIsZoomModalOpen(true)} disabled={isLoading} className="flex items-center gap-2 bg-black/50 hover:bg-black/80 text-white font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm"><ZoomInIcon className="w-5 h-5"/>Zoom</button>
+                              {canUndo && <button onClick={() => setIsCompareMode(!isCompareMode)} disabled={isLoading || activeTool !== null || isBrushMode} className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm ${isCompareMode ? 'bg-blue-500 text-white' : 'bg-black/50 hover:bg-black/80 text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}><EyeIcon className="w-5 h-5"/>Compare</button>}
+                          </div>
+                      </div>
+
+                      <div className={`w-full flex flex-col items-center gap-0 transition-opacity duration-300 ${(activeTool !== null || isCompareMode) ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                          <PromptSelector prompts={prompts} onSelect={setPrompt} />
+                          <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
+                              <div className="relative flex-grow">
+                                  <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., 'change shirt color to blue' or 'make the sky dramatic'" rows={2} className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-b-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 resize-none pr-28" disabled={isLoading || (isBrushMode && !maskDataUrl)}/>
+                                  <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-2">
+                                      <button type="button" onClick={handleEnhancePrompt} title="Enhance Prompt with AI" className="p-2 text-gray-400 hover:text-purple-400 disabled:opacity-50 disabled:cursor-wait" disabled={isEnhancingPrompt || !prompt.trim()}>
+                                        {isEnhancingPrompt ? <Spinner size="sm" /> : <MagicWandIcon className="w-5 h-5"/>}
+                                      </button>
+                                      <button type="button" onClick={() => setIsPromptManagerOpen(true)} title="Manage Prompts" className="p-2 text-gray-400 hover:text-blue-400">
+                                        <BookmarkIcon className="w-5 h-5"/>
+                                      </button>
+                                  </div>
+                              </div>
+                              <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed self-stretch" disabled={isLoading || !prompt.trim() || (isBrushMode && !maskDataUrl)}>Generate</button>
+                          </form>
+                      </div>
+                  </div>
+                  
+                  <aside className="w-full md:w-[35%] lg:w-[30%] bg-gray-800/80 border border-gray-700/80 rounded-xl p-4 flex flex-col gap-4 self-start sticky top-[128px] max-h-[calc(100vh-140px)] overflow-y-auto">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-200 mb-3 border-b border-gray-700 pb-2">Retouch & AI Tools</h3>
+                        <div className="grid grid-cols-1 gap-2">
+                          <button 
+                            onClick={() => {
+                                setIsBrushMode(!isBrushMode);
+                                setActiveTool(null);
+                            }} 
+                            className={`flex items-center justify-start text-left border text-gray-200 font-semibold py-3 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-700 hover:border-gray-600 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed ${isBrushMode ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-700/50 border-transparent'}`}
+                            disabled={isLoading}
+                          >
+                              <BrushIcon className="w-5 h-5 mr-3"/>Generative Mask
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <button onClick={() => handleAutoEnhance()} disabled={isLoading} className={sidebarToolButtonClass} title="Automatically improve lighting, color, and sharpness with a single click."><MagicWandIcon className="w-5 h-5 mr-3 text-purple-400"/>Auto Enhance</button>
+                          <button onClick={() => handleRemoveBackground()} disabled={isLoading} className={sidebarToolButtonClass} title="Instantly remove the background and make it transparent."><RemoveBgIcon className="w-5 h-5 mr-3 text-pink-400"/>Remove Background</button>
+                          <button onClick={() => handleRestoreImage()} disabled={isLoading} className={sidebarToolButtonClass} title="Repair old, blurry, or damaged photos by removing scratches and restoring color."><RestoreIcon className="w-5 h-5 mr-3 text-amber-400"/>Photo Restore</button>
+                          <button onClick={() => handleStudioPortrait()} disabled={isLoading} className={sidebarToolButtonClass} title="Convert your photo into a professional headshot with a clean studio background."><PortraitIcon className="w-5 h-5 mr-3 text-cyan-400"/>Studio Portrait</button>
+                          <button onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass} title="Generate a professional, multi-pose modeling composite card."><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Composite Card</button>
+                          <button onClick={() => handleGenerateThreeViewShot()} disabled={isLoading} className={sidebarToolButtonClass} title="Create a 3-view (front, side, back) reference shot of a person."><ThreeViewIcon className="w-5 h-5 mr-3 text-sky-400"/>Character Turnaround</button>
+                          <button onClick={() => handleOutpaint()} disabled={isLoading} className={sidebarToolButtonClass} title="Expand a cropped image to reveal the full body and a complete background."><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Magic Expand</button>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-200 mt-4 mb-3 border-b border-gray-700 pb-2">Manual Edits</h3>
+                        <div className="grid grid-cols-3 gap-2">
+                            <button onClick={() => setActiveTool(activeTool === 'adjust' ? null : 'adjust')} className={mainToolButtonClass('adjust')}><AdjustmentsIcon className="w-6 h-6"/>Adjust</button>
+                            <button onClick={() => setActiveTool(activeTool === 'filters' ? null : 'filters')} className={mainToolButtonClass('filters')}><LayersIcon className="w-6 h-6"/>Filters</button>
+                            <button onClick={() => setActiveTool(activeTool === 'crop' ? null : 'crop')} className={mainToolButtonClass('crop')}><CropIcon className="w-6 h-6"/>Crop</button>
+                        </div>
+                        <div className="mt-4">
+                            {activeTool === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />}
+                            {activeTool === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />}
+                            {activeTool === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
+                        </div>
+                      </div>
+                  </aside>
+                </div>
+            );
+        default:
+            return null;
+    }
+  };
   
   return (
     <div className="min-h-screen text-gray-100 flex flex-col">
@@ -606,145 +725,35 @@ const App: React.FC = () => {
         className="hidden" 
         accept="image/*" 
       />
-      <Header />
+      <Header 
+        user={user} 
+        onLogout={handleLogout} 
+        page={page}
+        onNavigate={setPage}
+        isEditorActive={!!currentImageUrl}
+      />
       
-      <div className="w-full bg-gray-900/70 backdrop-blur-sm border-b border-gray-700/80 p-2 flex items-center justify-between gap-2 sticky top-[65px] z-40">
-        <div className="flex items-center gap-2">
-            <button onClick={handleUndo} disabled={!canUndo || isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><UndoIcon className="w-5 h-5"/>Undo</button>
-            <button onClick={handleRedo} disabled={!canRedo || isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><RedoIcon className="w-5 h-5"/>Redo</button>
-            <button onClick={handleReset} disabled={!canUndo || isLoading} className="bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Reset</button>
-        </div>
-        <div className="flex items-center gap-2">
-            <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><SaveIcon className="w-5 h-5"/>Save</button>
-            <button onClick={handleNewImageClick} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><UploadIconSVG className="w-5 h-5"/>New Image</button>
-            <button onClick={handleGoToDashboard} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><LayoutGridIcon className="w-5 h-5"/>Dashboard</button>
-            <button onClick={handleDownload} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors shadow-md shadow-blue-500/20"><DownloadIcon className="w-5 h-5"/>Download</button>
-            <button onClick={handleLogout} title="Logout" className="p-2 bg-gray-800/80 hover:bg-red-500/20 text-gray-200 hover:text-red-400 rounded-md transition-colors"><LogoutIcon className="w-5 h-5"/></button>
-        </div>
-      </div>
+      {page === 'editor' && currentImageUrl && (
+          <div className="w-full bg-gray-900/70 backdrop-blur-sm border-b border-gray-700/80 p-2 flex items-center justify-between gap-2 sticky top-[65px] z-40">
+            <div className="flex items-center gap-2">
+                <button onClick={handleUndo} disabled={!canUndo || isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><UndoIcon className="w-5 h-5"/>Undo</button>
+                <button onClick={handleRedo} disabled={!canRedo || isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><RedoIcon className="w-5 h-5"/>Redo</button>
+                <button onClick={handleReset} disabled={!canUndo || isLoading} className="bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Reset</button>
+            </div>
+            <div className="flex items-center gap-2">
+                <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><SaveIcon className="w-5 h-5"/>Save</button>
+                <button onClick={() => setPage('upload')} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><UploadIconSVG className="w-5 h-5"/>New Image</button>
+                <button onClick={handleDownload} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors shadow-md shadow-blue-500/20"><DownloadIcon className="w-5 h-5"/>Download</button>
+            </div>
+          </div>
+      )}
 
-      <main className="flex-grow w-full max-w-[1800px] mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
-        <div className="flex-grow flex flex-col gap-4 items-center md:w-[65%] lg:w-[70%]">
-            <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20 group">
-                {isLoading && (
-                    <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
-                        <Spinner size="lg" />
-                        <p className="text-gray-300">AI is working its magic...</p>
-                    </div>
-                )}
-                {activeTool === 'crop' ? (
-                  <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)} aspect={aspect} className="max-h-[70vh]">
-                    <img ref={imgRef} src={currentImageUrl} alt="Crop this image" className="w-full h-auto object-contain max-h-[70vh] rounded-xl"/>
-                  </ReactCrop>
-                ) : isCompareMode && originalImageUrl ? (
-                    <CompareSlider originalImageUrl={originalImageUrl} currentImageUrl={currentImageUrl} />
-                ) : (
-                  <div 
-                    className={`relative w-full h-full ${isBrushMode ? 'cursor-none' : ''}`}
-                    onMouseMove={handleBrushContainerMouseMove}
-                    onMouseLeave={handleBrushContainerMouseLeave}
-                  >
-                    <img ref={imgRef} src={currentImageUrl} alt="Current" className="w-full h-auto object-contain max-h-[70vh] rounded-xl pointer-events-none" />
-                    {isBrushMode && imgRef.current && (
-                        <BrushCanvas
-                          ref={brushCanvasRef}
-                          width={imgRef.current.clientWidth}
-                          height={imgRef.current.clientHeight}
-                          brushSize={brushSize}
-                          isErasing={isErasing}
-                          onMaskChange={setMaskDataUrl}
-                        />
-                    )}
-                    {isBrushMode && cursorPosition && (
-                        <div
-                            className={`absolute rounded-full border-2 pointer-events-none transform -translate-x-1/2 -translate-y-1/2 transition-colors duration-100 ${isErasing ? 'border-red-500 bg-red-500/20' : 'border-white bg-white/20'}`}
-                            style={{
-                                left: `${cursorPosition.x}px`,
-                                top: `${cursorPosition.y}px`,
-                                width: `${brushSize}px`,
-                                height: `${brushSize}px`,
-                            }}
-                            aria-hidden="true"
-                        />
-                    )}
-                  </div>
-                )}
-                
-                {isBrushMode && (
-                    <BrushControls 
-                        brushSize={brushSize}
-                        isErasing={isErasing}
-                        onBrushSizeChange={setBrushSize}
-                        onIsErasingChange={setIsErasing}
-                        onClear={handleClearMask}
-                    />
-                )}
-
-                <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                    <button onClick={() => setIsZoomModalOpen(true)} disabled={isLoading} className="flex items-center gap-2 bg-black/50 hover:bg-black/80 text-white font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm"><ZoomInIcon className="w-5 h-5"/>Zoom</button>
-                    {canUndo && <button onClick={() => setIsCompareMode(!isCompareMode)} disabled={isLoading || activeTool !== null || isBrushMode} className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm ${isCompareMode ? 'bg-blue-500 text-white' : 'bg-black/50 hover:bg-black/80 text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}><EyeIcon className="w-5 h-5"/>Compare</button>}
-                </div>
-            </div>
-
-            <div className={`w-full flex flex-col items-center gap-0 transition-opacity duration-300 ${(activeTool !== null || isCompareMode) ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                <PromptSelector prompts={prompts} onSelect={setPrompt} />
-                <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
-                    <div className="relative flex-grow">
-                        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., 'change shirt color to blue' or 'make the sky dramatic'" rows={2} className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-b-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 resize-none pr-28" disabled={isLoading || (isBrushMode && !maskDataUrl)}/>
-                        <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-2">
-                             <button type="button" onClick={handleEnhancePrompt} title="Enhance Prompt with AI" className="p-2 text-gray-400 hover:text-purple-400 disabled:opacity-50 disabled:cursor-wait" disabled={isEnhancingPrompt || !prompt.trim()}>
-                                {isEnhancingPrompt ? <Spinner size="sm" /> : <MagicWandIcon className="w-5 h-5"/>}
-                             </button>
-                             <button type="button" onClick={() => setIsPromptManagerOpen(true)} title="Manage Prompts" className="p-2 text-gray-400 hover:text-blue-400">
-                                <BookmarkIcon className="w-5 h-5"/>
-                             </button>
-                        </div>
-                    </div>
-                    <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed self-stretch" disabled={isLoading || !prompt.trim() || (isBrushMode && !maskDataUrl)}>Generate</button>
-                </form>
-            </div>
-        </div>
-        
-        <aside className="w-full md:w-[35%] lg:w-[30%] bg-gray-800/80 border border-gray-700/80 rounded-xl p-4 flex flex-col gap-4 self-start sticky top-[128px] max-h-[calc(100vh-140px)] overflow-y-auto">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-200 mb-3 border-b border-gray-700 pb-2">Retouch & AI Tools</h3>
-              <div className="grid grid-cols-1 gap-2">
-                <button 
-                  onClick={() => {
-                      setIsBrushMode(!isBrushMode);
-                      setActiveTool(null);
-                  }} 
-                  className={`flex items-center justify-start text-left border text-gray-200 font-semibold py-3 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-700 hover:border-gray-600 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed ${isBrushMode ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-700/50 border-transparent'}`}
-                  disabled={isLoading}
-                >
-                    <BrushIcon className="w-5 h-5 mr-3"/>Generative Mask
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <button onClick={() => handleAutoEnhance()} disabled={isLoading} className={sidebarToolButtonClass} title="Automatically improve lighting, color, and sharpness with a single click."><MagicWandIcon className="w-5 h-5 mr-3 text-purple-400"/>Auto Enhance</button>
-                <button onClick={() => handleRemoveBackground()} disabled={isLoading} className={sidebarToolButtonClass} title="Instantly remove the background and make it transparent."><RemoveBgIcon className="w-5 h-5 mr-3 text-pink-400"/>Remove Background</button>
-                <button onClick={() => handleRestoreImage()} disabled={isLoading} className={sidebarToolButtonClass} title="Repair old, blurry, or damaged photos by removing scratches and restoring color."><RestoreIcon className="w-5 h-5 mr-3 text-amber-400"/>Photo Restore</button>
-                <button onClick={() => handleStudioPortrait()} disabled={isLoading} className={sidebarToolButtonClass} title="Convert your photo into a professional headshot with a clean studio background."><PortraitIcon className="w-5 h-5 mr-3 text-cyan-400"/>Studio Portrait</button>
-                <button onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass} title="Generate a professional, multi-pose modeling composite card."><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Composite Card</button>
-                <button onClick={() => handleGenerateThreeViewShot()} disabled={isLoading} className={sidebarToolButtonClass} title="Create a 3-view (front, side, back) reference shot of a person."><ThreeViewIcon className="w-5 h-5 mr-3 text-sky-400"/>Character Turnaround</button>
-                <button onClick={() => handleOutpaint()} disabled={isLoading} className={sidebarToolButtonClass} title="Expand a cropped image to reveal the full body and a complete background."><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Magic Expand</button>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold text-gray-200 mt-4 mb-3 border-b border-gray-700 pb-2">Manual Edits</h3>
-              <div className="grid grid-cols-3 gap-2">
-                  <button onClick={() => setActiveTool(activeTool === 'adjust' ? null : 'adjust')} className={mainToolButtonClass('adjust')}><AdjustmentsIcon className="w-6 h-6"/>Adjust</button>
-                  <button onClick={() => setActiveTool(activeTool === 'filters' ? null : 'filters')} className={mainToolButtonClass('filters')}><LayersIcon className="w-6 h-6"/>Filters</button>
-                  <button onClick={() => setActiveTool(activeTool === 'crop' ? null : 'crop')} className={mainToolButtonClass('crop')}><CropIcon className="w-6 h-6"/>Crop</button>
-              </div>
-              <div className="mt-4">
-                  {activeTool === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />}
-                  {activeTool === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />}
-                  {activeTool === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
-              </div>
-            </div>
-        </aside>
+      <main className={`flex-grow w-full mx-auto ${
+          page === 'editor' && currentImageUrl
+          ? 'max-w-[1800px] p-4 md:p-8'
+          : 'max-w-7xl p-4 md:p-8 flex justify-center items-center'
+      }`}>
+        {renderPageContent()}
       </main>
       
       <ZoomModal isOpen={isZoomModalOpen} onClose={() => setIsZoomModalOpen(false)} imageUrl={currentImageUrl} />

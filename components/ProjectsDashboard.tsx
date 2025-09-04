@@ -8,16 +8,16 @@ import type { Project } from '../types';
 import { PlusIcon, ChevronLeftIcon } from './icons';
 import ProjectCard from './ProjectCard';
 import ConfirmationModal from './ConfirmationModal';
+import type { Page } from '../App';
 
 interface ProjectsDashboardProps {
   projects: Project[];
   onSelectProject: (project: Project) => void;
-  onStartNewProject: () => void;
   onDeleteProject: (project: Project) => void;
-  onBack: () => void;
+  onNavigate: (page: Page) => void;
 }
 
-const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({ projects, onSelectProject, onStartNewProject, onDeleteProject, onBack }) => {
+const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({ projects, onSelectProject, onDeleteProject, onNavigate }) => {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   
   const cardClass = "group relative aspect-square w-full bg-gray-800/50 border border-gray-700/60 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1";
@@ -32,7 +32,7 @@ const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({ projects, onSelec
   return (
     <div className="w-full max-w-6xl mx-auto p-4 md:p-8 animate-fade-in">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={onBack} className="p-2 rounded-full bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white transition-colors" aria-label="Back to Control Panel">
+        <button onClick={() => onNavigate('dashboard')} className="p-2 rounded-full bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white transition-colors" aria-label="Back to Dashboard">
             <ChevronLeftIcon className="w-6 h-6" />
         </button>
         <div className="text-left">
@@ -49,7 +49,7 @@ const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({ projects, onSelec
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
         {/* New Project Card */}
         <button
-          onClick={onStartNewProject}
+          onClick={() => onNavigate('upload')}
           className={`${cardClass} flex flex-col items-center justify-center gap-3 text-gray-400 hover:text-white`}
         >
           <div className="w-16 h-16 rounded-full bg-gray-700/50 flex items-center justify-center border-2 border-dashed border-gray-600 group-hover:border-blue-500 transition-colors">
