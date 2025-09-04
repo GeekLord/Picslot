@@ -9,8 +9,9 @@ import * as supabaseService from '../services/supabaseService';
 import { enhancePrompt, generatePromptTitle } from '../services/geminiService';
 import type { User } from '@supabase/supabase-js';
 import ConfirmationModal from './ConfirmationModal';
-import { PlusIcon, TrashIcon, BookmarkIcon, MagicWandIcon, DuplicateIcon } from './icons';
+import { PlusIcon, TrashIcon, BookmarkIcon, MagicWandIcon, DuplicateIcon, ShareIcon } from './icons';
 import Spinner from './Spinner';
+import SharePromptModal from './SharePromptModal';
 
 interface PromptManagerModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ const PromptManagerModal: React.FC<PromptManagerModalProps> = ({ isOpen, onClose
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [promptToDelete, setPromptToDelete] = useState<Prompt | null>(null);
+  const [promptToShare, setPromptToShare] = useState<Prompt | null>(null);
 
   useEffect(() => {
       setPrompts(initialPrompts);
@@ -166,6 +168,14 @@ const PromptManagerModal: React.FC<PromptManagerModalProps> = ({ isOpen, onClose
     }
   };
 
+  const handleShare = async (email: string) => {
+    if (!promptToShare || !user) {
+        throw new Error("No prompt selected to share.");
+    };
+    await supabaseService.sharePrompt(promptToShare.id, email);
+  };
+
+
   if (!isOpen) return null;
 
   return (
@@ -268,9 +278,9 @@ const PromptManagerModal: React.FC<PromptManagerModalProps> = ({ isOpen, onClose
                             {selectedPrompt && (
                                 <div className="flex items-center gap-2">
                                   <button
-                                  type="button"
-                                  onClick={() => setPromptToDelete(selectedPrompt)}
-                                  className="text-red-500 hover:text-red-400 font-semibold flex items-center gap-2 p-2 rounded-md hover:bg-red-500/10"
+                                    type="button"
+                                    onClick={() => setPromptToDelete(selectedPrompt)}
+                                    className="text-red-500 hover:text-red-400 font-semibold flex items-center gap-2 p-2 rounded-md hover:bg-red-500/10"
                                   >
                                       <TrashIcon className="w-5 h-5"/> Delete
                                   </button>
@@ -282,6 +292,15 @@ const PromptManagerModal: React.FC<PromptManagerModalProps> = ({ isOpen, onClose
                                     title="Duplicate this prompt"
                                   >
                                     <DuplicateIcon className="w-5 h-5"/> Duplicate
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPromptToShare(selectedPrompt)}
+                                    className="text-gray-300 hover:text-white font-semibold flex items-center gap-2 p-2 rounded-md hover:bg-gray-700/50"
+                                    disabled={isLoading}
+                                    title="Share this prompt"
+                                  >
+                                    <ShareIcon className="w-5 h-5"/> Share
                                   </button>
                                 </div>
                             )}
@@ -308,6 +327,14 @@ const PromptManagerModal: React.FC<PromptManagerModalProps> = ({ isOpen, onClose
         title="Delete Prompt?"
         message={`Are you sure you want to permanently delete "${promptToDelete?.title}"? This action cannot be undone.`}
       />
+      {promptToShare && (
+        <SharePromptModal 
+            isOpen={!!promptToShare}
+            onClose={() => setPromptToShare(null)}
+            onShare={handleShare}
+            promptTitle={promptToShare.title}
+        />
+      )}
     </div>
   );
 };

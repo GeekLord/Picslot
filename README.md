@@ -8,7 +8,7 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 
 - **Precise Retouching**: Click any point on an image to make localized edits. Change colors, remove objects, or add elements with pinpoint accuracy simply by describing what you want.
 - **Cloud-Based Projects**: Securely save your projects to your account and access them from anywhere. Your entire edit history is preserved, and you can easily load, update, or delete projects from your personal dashboard.
-- **Prompt Manager**: A full CRUD (Create, Read, Update, Delete) interface for your favorite prompts. Save, manage, and reuse your best prompts directly within the editor.
+- **Prompt Manager**: A full CRUD (Create, Read, Update, Delete) interface for your favorite prompts. Save, manage, reuse, and now **share** your best prompts with other users directly within the editor.
 - **AI Prompt Enhancer**: A one-click tool that uses AI to rewrite and improve your prompts, adding professional details to help you achieve better results.
 - **Creative Filters**: Instantly transform your photos with a range of artistic filters like Synthwave, Anime, and Lomo, or create a unique look with a custom text prompt.
 - **Professional Adjustments**: Apply global enhancements like blurring the background for a portrait effect, adding studio lighting, or adjusting the color temperature for a warmer feel.
@@ -72,7 +72,7 @@ Follow these instructions to set up and run the project locally.
     -   Enable the **Email** provider (it's usually on by default, but confirm "Confirm email" is enabled).
     -   Enable the **Google** provider. You will need to provide a Client ID and Secret, which you can get from the [Google Cloud Console](https://console.cloud.google.com/). Follow the Supabase documentation for the exact steps.
 
-4.  **Set Up Database Table:**
+4.  **Set Up Database Tables & Functions:**
     -   Go to the **SQL Editor** in the Supabase dashboard.
     -   Click **+ New query**.
     -   Paste and run the following SQL to create the `projects` table:
@@ -114,6 +114,39 @@ Follow these instructions to set up and run the project locally.
         FOR ALL
         USING (auth.uid() = user_id)
         WITH CHECK (auth.uid() = user_id);
+        ```
+    -   **IMPORTANT**: Create one more new query, and run the following SQL to create the function required for sharing prompts between users:
+        ```sql
+        CREATE OR REPLACE FUNCTION share_prompt_with_user(prompt_id_to_share UUID, recipient_email TEXT)
+        RETURNS VOID AS $$
+        DECLARE
+            recipient_user_id UUID;
+            prompt_to_share RECORD;
+        BEGIN
+            -- 1. Find the recipient's user ID from their email.
+            --    This requires elevated privileges, so the function is set to SECURITY DEFINER.
+            SELECT id INTO recipient_user_id FROM auth.users WHERE email = recipient_email;
+
+            -- 2. If no user is found with that email, raise an error.
+            IF recipient_user_id IS NULL THEN
+                RAISE EXCEPTION 'Recipient email not found';
+            END IF;
+
+            -- 3. Get the prompt details, ensuring the current user is the owner.
+            --    auth.uid() refers to the user *calling* the function.
+            SELECT * INTO prompt_to_share FROM public.prompts
+            WHERE id = prompt_id_to_share AND user_id = auth.uid();
+
+            -- 4. If the prompt doesn't exist or doesn't belong to the current user, raise an error.
+            IF prompt_to_share IS NULL THEN
+                RAISE EXCEPTION 'Prompt not found or you do not have permission to share it';
+            END IF;
+
+            -- 5. Insert a copy of the prompt for the recipient user.
+            INSERT INTO public.prompts (user_id, title, prompt, created_at, updated_at)
+            VALUES (recipient_user_id, '(Shared) ' || prompt_to_share.title, prompt_to_share.prompt, NOW(), NOW());
+        END;
+        $$ LANGUAGE plpgsql SECURITY DEFINER;
         ```
 
 5.  **Set Up Storage:**

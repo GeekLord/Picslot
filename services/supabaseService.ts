@@ -286,3 +286,19 @@ export const deletePrompt = async (promptId: string): Promise<void> => {
         throw new Error(`Failed to delete prompt: ${error.message}`);
     }
 };
+
+export const sharePrompt = async (promptId: string, recipientEmail: string): Promise<void> => {
+    const { error } = await supabase.rpc('share_prompt_with_user', {
+        prompt_id_to_share: promptId,
+        recipient_email: recipientEmail,
+    });
+
+    if (error) {
+        console.error('Error sharing prompt:', error);
+        // Provide a more user-friendly error message
+        if (error.message.includes('Recipient email not found')) {
+            throw new Error('No user found with that email address. Please check the email and try again.');
+        }
+        throw new Error(`Failed to share prompt: ${error.message}`);
+    }
+};
