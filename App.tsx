@@ -12,7 +12,7 @@ import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, LogoutIcon, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, LogoutIcon, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -98,6 +98,7 @@ const App: React.FC = () => {
   const [aspect, setAspect] = useState<number | undefined>();
 
   const imgRef = useRef<HTMLImageElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const currentImage = history[historyIndex] ?? null;
   const originalImage = history[0] ?? null;
@@ -471,7 +472,7 @@ const App: React.FC = () => {
       }
   }, [history]);
 
-  const handleUploadNew = useCallback(() => {
+  const handleGoToDashboard = useCallback(() => {
       setHistory([]);
       setHistoryIndex(-1);
       setActiveProjectId(null);
@@ -495,6 +496,10 @@ const App: React.FC = () => {
     }
   };
   
+  const handleNewImageClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
   const handleLogout = useCallback(async () => {
     await supabaseService.signOut();
     // The onAuthStateChange listener will handle setting user to null
@@ -594,6 +599,13 @@ const App: React.FC = () => {
   
   return (
     <div className="min-h-screen text-gray-100 flex flex-col">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={(e) => handleFileSelect(e.target.files)} 
+        className="hidden" 
+        accept="image/*" 
+      />
       <Header />
       
       <div className="w-full bg-gray-900/70 backdrop-blur-sm border-b border-gray-700/80 p-2 flex items-center justify-between gap-2 sticky top-[65px] z-40">
@@ -604,7 +616,8 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
             <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><SaveIcon className="w-5 h-5"/>Save</button>
-            <button onClick={handleUploadNew} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><UploadIconSVG className="w-5 h-5"/>Dashboard</button>
+            <button onClick={handleNewImageClick} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><UploadIconSVG className="w-5 h-5"/>New Image</button>
+            <button onClick={handleGoToDashboard} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><LayoutGridIcon className="w-5 h-5"/>Dashboard</button>
             <button onClick={handleDownload} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors shadow-md shadow-blue-500/20"><DownloadIcon className="w-5 h-5"/>Download</button>
             <button onClick={handleLogout} title="Logout" className="p-2 bg-gray-800/80 hover:bg-red-500/20 text-gray-200 hover:text-red-400 rounded-md transition-colors"><LogoutIcon className="w-5 h-5"/></button>
         </div>
