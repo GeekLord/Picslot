@@ -52,6 +52,7 @@ const SnapshotItem: React.FC<SnapshotItemProps> = ({ snapshot, onRestore, onDele
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
                 <button
+                    type="button"
                     onClick={() => onRestore(snapshot)}
                     disabled={isLoading}
                     className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-3 rounded-md transition-colors text-sm disabled:opacity-50"
@@ -59,6 +60,7 @@ const SnapshotItem: React.FC<SnapshotItemProps> = ({ snapshot, onRestore, onDele
                     Restore
                 </button>
                 <button
+                    type="button"
                     onClick={() => onDelete(snapshot)}
                     disabled={isLoading}
                     className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors disabled:opacity-50"
@@ -144,7 +146,7 @@ const SnapshotsModal: React.FC<SnapshotsModalProps> = ({ isOpen, onClose, snapsh
                 <HistoryIcon className="w-6 h-6 text-blue-400"/>
                 <h2 className="text-xl font-bold text-white">Version History (Snapshots)</h2>
             </div>
-            <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+            <button type="button" onClick={onClose} className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
                 <XMarkIcon className="w-6 h-6" />
             </button>
         </header>

@@ -118,6 +118,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
               We've sent a confirmation link to <span className="font-semibold text-blue-400">{email}</span>. Please click the link to activate your account.
             </p>
             <button
+              type="button"
               onClick={() => {
                 setNeedsConfirmation(false);
                 switchView('login');
@@ -142,6 +143,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
               If an account exists for <span className="font-semibold text-blue-400">{email}</span>, we've sent a password reset link.
             </p>
             <button
+              type="button"
               onClick={() => {
                 setResetEmailSent(false);
                 switchView('login');
@@ -235,7 +237,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
                 <span className="text-gray-500 font-semibold">OR</span>
                 <hr className="w-full border-gray-600" />
               </div>
-              <button onClick={handleGoogleLogin} className={googleButtonClass}>
+              <button type="button" onClick={handleGoogleLogin} className={googleButtonClass}>
                 <GoogleIcon className="w-6 h-6" />
                 Sign in with Google
               </button>
@@ -246,7 +248,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
             {view === 'login' && (
                 <p className="text-gray-400">
                 Don't have an account?{' '}
-                <button onClick={() => switchView('register')} className="font-semibold text-blue-400 hover:text-blue-300">
+                <button type="button" onClick={() => switchView('register')} className="font-semibold text-blue-400 hover:text-blue-300">
                     Sign up
                 </button>
                 </p>
@@ -254,7 +256,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
             {view === 'register' && (
                 <p className="text-gray-400">
                 Already have an account?{' '}
-                <button onClick={() => switchView('login')} className="font-semibold text-blue-400 hover:text-blue-300">
+                <button type="button" onClick={() => switchView('login')} className="font-semibold text-blue-400 hover:text-blue-300">
                     Sign in
                 </button>
                 </p>
@@ -262,7 +264,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
             {view === 'forgotPassword' && (
                 <p className="text-gray-400">
                 Remembered your password?{' '}
-                <button onClick={() => switchView('login')} className="font-semibold text-blue-400 hover:text-blue-300">
+                <button type="button" onClick={() => switchView('login')} className="font-semibold text-blue-400 hover:text-blue-300">
                     Back to Sign in
                 </button>
                 </p>

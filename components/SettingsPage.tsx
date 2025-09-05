@@ -37,13 +37,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, userProfile, onProfil
             <aside className="w-full md:w-1/4 lg:w-1/5 flex-shrink-0">
                 <h1 className="text-2xl font-bold text-white mb-6 px-4 md:px-0">Settings</h1>
                 <nav className="flex flex-col gap-2">
-                    <button onClick={() => setActiveTab('profile')} className={navItemClass('profile')}>
+                    <button type="button" onClick={() => setActiveTab('profile')} className={navItemClass('profile')}>
                         <IdentificationIcon className="w-5 h-5" /> Profile
                     </button>
-                     <button className={disabledNavItemClass} disabled title="Coming Soon">
+                     <button type="button" className={disabledNavItemClass} disabled title="Coming Soon">
                         <Cog6ToothIcon className="w-5 h-5" /> Account
                     </button>
-                    <button className={disabledNavItemClass} disabled title="Coming Soon">
+                    <button type="button" className={disabledNavItemClass} disabled title="Coming Soon">
                         <CreditCardIcon className="w-5 h-5" /> Billing
                     </button>
                 </nav>

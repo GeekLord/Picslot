@@ -62,7 +62,7 @@ const Header: React.FC<HeaderProps> = ({ user, userProfile, onLogout, page, onNa
     <header className="w-full py-3 px-4 md:px-8 border-b border-gray-700/80 bg-gray-900/70 backdrop-blur-sm sticky top-0 z-50 h-[65px]" ref={headerRef}>
       <div className="flex items-center justify-between gap-3 max-w-[1800px] mx-auto">
           <div className="flex items-center gap-6">
-            <button onClick={() => onNavigate('dashboard')} className="flex items-center gap-3" title="Go to Dashboard">
+            <button type="button" onClick={() => onNavigate('dashboard')} className="flex items-center gap-3" title="Go to Dashboard">
               <SparkleIcon className="w-6 h-6 text-blue-400" />
               <h1 className="text-xl font-bold tracking-tight text-gray-100">
                 Picslot
@@ -70,9 +70,10 @@ const Header: React.FC<HeaderProps> = ({ user, userProfile, onLogout, page, onNa
             </button>
             {user && (
               <nav className="hidden lg:flex items-center gap-2 bg-gray-900/50 p-1 rounded-lg border border-gray-700/60">
-                  <button onClick={() => onNavigate('dashboard')} className={navLinkClass('dashboard')}>Dashboard</button>
-                  <button onClick={() => onNavigate('projects')} className={navLinkClass('projects')}>Projects</button>
+                  <button type="button" onClick={() => onNavigate('dashboard')} className={navLinkClass('dashboard')}>Dashboard</button>
+                  <button type="button" onClick={() => onNavigate('projects')} className={navLinkClass('projects')}>Projects</button>
                   <button 
+                    type="button"
                     onClick={() => onNavigate('editor')} 
                     disabled={!isEditorActive}
                     className={isEditorActive ? navLinkClass('editor') : disabledNavLinkClass()}
@@ -89,6 +90,7 @@ const Header: React.FC<HeaderProps> = ({ user, userProfile, onLogout, page, onNa
             {user && (
               <div className="lg:hidden">
                 <button 
+                  type="button"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                   className="p-2 rounded-md text-gray-300 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
                   aria-controls="mobile-menu"
@@ -113,9 +115,10 @@ const Header: React.FC<HeaderProps> = ({ user, userProfile, onLogout, page, onNa
             id="mobile-menu"
         >
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                <button onClick={() => handleMobileNavClick('dashboard')} className={navLinkClass('dashboard', true)}>Dashboard</button>
-                <button onClick={() => handleMobileNavClick('projects')} className={navLinkClass('projects', true)}>Projects</button>
+                <button type="button" onClick={() => handleMobileNavClick('dashboard')} className={navLinkClass('dashboard', true)}>Dashboard</button>
+                <button type="button" onClick={() => handleMobileNavClick('projects')} className={navLinkClass('projects', true)}>Projects</button>
                 <button 
+                type="button"
                 onClick={() => handleMobileNavClick('editor')} 
                 disabled={!isEditorActive}
                 className={isEditorActive ? navLinkClass('editor', true) : disabledNavLinkClass(true)}

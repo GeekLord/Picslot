@@ -44,6 +44,7 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
       <div className="grid grid-cols-2 gap-2">
         {presets.map(preset => (
           <button
+            type="button"
             key={preset.name}
             onClick={() => handlePresetClick(preset.prompt)}
             disabled={isLoading}
@@ -66,6 +67,7 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
       {activePrompt && (
         <div className="animate-fade-in flex flex-col gap-4 pt-2">
             <button
+                type="button"
                 onClick={handleApply}
                 className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 text-base disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed"
                 disabled={isLoading || !activePrompt.trim()}

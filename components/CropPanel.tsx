@@ -36,6 +36,7 @@ const CropPanel: React.FC<CropPanelProps> = ({ onApplyCrop, onSetAspect, isLoadi
       <div className="grid grid-cols-4 gap-2 w-full">
         {aspects.map(({ name, value }) => (
           <button
+            type="button"
             key={name}
             onClick={() => handleAspectChange(name, value)}
             disabled={isLoading}
@@ -51,6 +52,7 @@ const CropPanel: React.FC<CropPanelProps> = ({ onApplyCrop, onSetAspect, isLoadi
       </div>
 
       <button
+        type="button"
         onClick={onApplyCrop}
         disabled={isLoading || !isCropping}
         className="w-full mt-2 bg-gradient-to-br from-green-600 to-green-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/40 hover:-translate-y-px active:scale-95 text-base disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed"

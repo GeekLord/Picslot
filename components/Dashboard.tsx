@@ -42,21 +42,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects
           <div>
             <h2 className="text-2xl font-bold text-white mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button onClick={onStartNewProject} className={cardClass}>
+              <button type="button" onClick={onStartNewProject} className={cardClass}>
                 <div className="flex items-center justify-center w-12 h-12 bg-blue-600/20 text-blue-400 rounded-lg mb-4">
                   <PlusIcon className="w-7 h-7" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1">New Project</h3>
                 <p className="text-gray-400">Start with a blank canvas.</p>
               </button>
-              <button onClick={onNavigateToProjects} className={cardClass}>
+              <button type="button" onClick={onNavigateToProjects} className={cardClass}>
                 <div className="flex items-center justify-center w-12 h-12 bg-gray-700 rounded-lg mb-4">
                   <LayoutGridIcon className="w-7 h-7 text-gray-300" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1">All Projects</h3>
                 <p className="text-gray-400">View and manage all your work.</p>
               </button>
-              <button onClick={onOpenPromptManager} className={cardClass}>
+              <button type="button" onClick={onOpenPromptManager} className={cardClass}>
                 <div className="flex items-center justify-center w-12 h-12 bg-gray-700 rounded-lg mb-4">
                   <BookmarkIcon className="w-7 h-7 text-gray-300" />
                 </div>

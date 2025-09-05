@@ -33,6 +33,7 @@ const BrushControls: React.FC<BrushControlsProps> = ({ brushSize, isErasing, onB
       
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={() => onIsErasingChange(false)}
           className={`px-3 py-1 rounded-md text-sm font-semibold transition-colors ${
             !isErasing ? 'bg-blue-500 text-white' : 'bg-gray-600/50 text-gray-200 hover:bg-gray-600'
@@ -41,6 +42,7 @@ const BrushControls: React.FC<BrushControlsProps> = ({ brushSize, isErasing, onB
           Brush
         </button>
         <button
+          type="button"
           onClick={() => onIsErasingChange(true)}
           className={`px-3 py-1 rounded-md text-sm font-semibold transition-colors ${
             isErasing ? 'bg-blue-500 text-white' : 'bg-gray-600/50 text-gray-200 hover:bg-gray-600'
@@ -52,7 +54,7 @@ const BrushControls: React.FC<BrushControlsProps> = ({ brushSize, isErasing, onB
 
       <div className="w-px h-6 bg-gray-500/50" />
       
-      <button onClick={onClear} className="text-gray-300 hover:text-white font-semibold text-sm">
+      <button type="button" onClick={onClear} className="text-gray-300 hover:text-white font-semibold text-sm">
         Clear Mask
       </button>
     </div>
