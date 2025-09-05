@@ -12,7 +12,7 @@ import { IdentificationIcon, Cog6ToothIcon, CreditCardIcon } from './icons';
 interface SettingsPageProps {
   user: User;
   userProfile: UserProfile | null;
-  onProfileUpdate: (updates: Partial<Pick<UserProfile, 'display_name' | 'bio'>>) => Promise<void>;
+  onProfileUpdate: (updates: Partial<UserProfile>) => Promise<void>;
 }
 
 type SettingsTab = 'profile' | 'account' | 'billing';

@@ -53,7 +53,7 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
 -   [ ] **Comprehensive User Profile Management**
     -   [ ] **Profile Information**:
         -   [x] Profile photo upload (with option for AI background removal and AI user avatar maker).
-        -   [x] Display name, professional title, bio, and social media links. (Name and Bio complete).
+        -   [x] Display name, professional title, bio, and website link.
     -   [ ] **Public Portfolio**:
         -   [ ] Ability to feature selected projects in a public gallery.
         -   [ ] Unique, shareable public URL (e.g., `picslot.com/username`).
@@ -164,12 +164,10 @@ Extend the Supabase schema to support new features.
 CREATE TABLE public.user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     display_name TEXT,
+    title TEXT,
     bio TEXT,
-    profile_image_url TEXT,
     website TEXT,
-    social_links JSONB,
-    -- preferences like theme, language
-    preferences JSONB,
+    profile_image_url TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -177,8 +175,8 @@ CREATE TABLE public.user_profiles (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.user_profiles (id)
-  VALUES (new.id);
+  INSERT INTO public.user_profiles (id, display_name)
+  VALUES (new.id, new.email);
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

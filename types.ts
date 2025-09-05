@@ -22,7 +22,9 @@ export interface Prompt {
 export interface UserProfile {
   id: string; // Corresponds to auth.users.id
   display_name: string | null;
+  title: string | null;
   bio: string | null;
+  website: string | null;
   profile_image_url: string | null;
   updated_at: string;
 }

@@ -16,7 +16,9 @@ interface ProfileSettingsProps {
 
 const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }) => {
     const [displayName, setDisplayName] = useState('');
+    const [title, setTitle] = useState('');
     const [bio, setBio] = useState('');
+    const [website, setWebsite] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -26,11 +28,17 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
     useEffect(() => {
         if (userProfile) {
             setDisplayName(userProfile.display_name || '');
+            setTitle(userProfile.title || '');
             setBio(userProfile.bio || '');
+            setWebsite(userProfile.website || '');
         }
     }, [userProfile]);
 
-    const isChanged = displayName !== (userProfile?.display_name || '') || bio !== (userProfile?.bio || '');
+    const isChanged = displayName !== (userProfile?.display_name || '') ||
+                      title !== (userProfile?.title || '') ||
+                      bio !== (userProfile?.bio || '') ||
+                      website !== (userProfile?.website || '');
+                      
     // Append a timestamp to the image URL to bypass browser cache when the image is updated
     const avatarUrl = userProfile?.profile_image_url ? `${userProfile.profile_image_url}?t=${new Date(userProfile.updated_at).getTime()}` : null;
 
@@ -46,7 +54,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
         try {
             await onSave({
                 display_name: displayName.trim(),
+                title: title.trim(),
                 bio: bio.trim(),
+                website: website.trim(),
             });
             setSuccess("Profile updated successfully!");
             setTimeout(() => setSuccess(null), 3000); // Clear success message after 3s
@@ -134,6 +144,19 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
                     </div>
                     
                     <div>
+                        <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">Professional Title</label>
+                        <input
+                            id="title"
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="e.g., Photographer, Digital Artist"
+                            className={inputClass}
+                            maxLength={50}
+                        />
+                    </div>
+
+                    <div>
                         <label htmlFor="bio" className="block text-sm font-medium text-gray-300 mb-2">Bio</label>
                         <textarea
                             id="bio"
@@ -146,8 +169,21 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
                         />
                         <p className="text-right text-xs text-gray-500 mt-1">{bio.length} / 300</p>
                     </div>
+
+                    <div>
+                        <label htmlFor="website" className="block text-sm font-medium text-gray-300 mb-2">Website</label>
+                        <input
+                            id="website"
+                            type="url"
+                            value={website}
+                            onChange={(e) => setWebsite(e.target.value)}
+                            placeholder="https://your-portfolio.com"
+                            className={inputClass}
+                            maxLength={100}
+                        />
+                    </div>
                     
-                    <div className="flex justify-end items-center gap-4 mt-4">
+                    <div className="flex justify-end items-center gap-4">
                         {success && <p className="text-green-400 text-sm animate-fade-in">{success}</p>}
                         {error && <p className="text-red-400 text-sm">{error}</p>}
                         <button type="submit" disabled={!isChanged || isLoading} className={buttonClass}>

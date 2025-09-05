@@ -160,7 +160,9 @@ Follow these instructions to set up and run the project locally.
         CREATE TABLE public.user_profiles (
             id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
             display_name TEXT,
+            title TEXT,
             bio TEXT,
+            website TEXT,
             profile_image_url TEXT,
             updated_at TIMESTAMPTZ DEFAULT NOW()
         );
