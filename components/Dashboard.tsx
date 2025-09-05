@@ -5,9 +5,10 @@
 
 import React from 'react';
 import type { User } from '@supabase/supabase-js';
-import type { Project, UserProfile } from '../types';
+import type { Project, UserProfile, Template } from '../types';
 import { LayoutGridIcon, BookmarkIcon, PlusIcon } from './icons';
 import ProjectCard from './ProjectCard';
+import TemplateGallery from './TemplateGallery';
 
 interface DashboardProps {
   user: User;
@@ -17,9 +18,10 @@ interface DashboardProps {
   onStartNewProject: () => void;
   onOpenPromptManager: () => void;
   onSelectProject: (project: Project) => void;
+  onSelectTemplate: (template: Template) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects, onNavigateToProjects, onStartNewProject, onOpenPromptManager, onSelectProject }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects, onNavigateToProjects, onStartNewProject, onOpenPromptManager, onSelectProject, onSelectTemplate }) => {
   const cardClass = "group relative bg-gray-800/50 border border-gray-700/60 rounded-xl p-6 transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1 flex flex-col items-start text-left";
   const displayName = userProfile?.display_name || user.email?.split('@')[0];
 
@@ -83,6 +85,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects
               </div>
             )}
           </div>
+
+          <TemplateGallery onSelectTemplate={onSelectTemplate} />
         </div>
 
         {/* Right Column: Usage Analytics */}

@@ -37,3 +37,10 @@ export interface UserProfile {
   profile_image_url: string | null;
   updated_at: string;
 }
+
+export interface Template {
+  title: string;
+  description: string;
+  imageUrl: string;
+  prompt: string;
+}

@@ -22,7 +22,7 @@ import SaveProjectModal from './components/SaveProjectModal';
 import type { User } from '@supabase/supabase-js';
 import BrushCanvas from './components/BrushCanvas';
 import BrushControls from './components/BrushControls';
-import type { Project, Prompt, UserProfile, Snapshot } from './types';
+import type { Project, Prompt, UserProfile, Snapshot, Template } from './types';
 import PromptManagerModal from './components/PromptManagerModal';
 import PromptSelector from './components/PromptSelector';
 import Dashboard from './components/Dashboard';
@@ -231,7 +231,7 @@ const App: React.FC = () => {
 
   // === Event Handlers ===
   
-  const handleImageUpload = useCallback((file: File) => {
+  const handleImageUpload = useCallback((file: File, initialPrompt: string = '') => {
     setError(null);
     setHistory([file]);
     setHistoryIndex(0);
@@ -242,9 +242,46 @@ const App: React.FC = () => {
     setCrop(undefined);
     setCompletedCrop(undefined);
     setIsCompareMode(false);
+    setPrompt(initialPrompt);
     setPage('editor');
   }, []);
+
+  const handleSelectTemplate = useCallback(async (template: Template) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+        const imageFile = await blobToFile(template.imageUrl, `template-${template.title.replace(/\s+/g, '-')}.png`);
+        handleImageUpload(imageFile, template.prompt);
+    } catch (e) {
+        setError("Failed to load the template image. Please try again.");
+        console.error(e);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [handleImageUpload]);
   
+  // === Navigation ===
+  const handleNavigate = useCallback((targetPage: Page) => {
+    // Perform cleanup and state resets when navigating away from the editor
+    if (page === 'editor' && targetPage !== 'editor') {
+        if (isLoading) {
+            // Unblock UI if an AI task was running
+            setIsLoading(false);
+        }
+        // Reset the editor state to ensure a clean slate next time
+        setHistory([]);
+        setHistoryIndex(-1);
+        setActiveProjectId(null);
+        setIsCompareMode(false);
+        setActiveTool(null);
+        setIsBrushMode(false);
+        setMaskDataUrl(null);
+        setPrompt('');
+    }
+
+    setPage(targetPage);
+  }, [page, isLoading]);
+
   // === Project Management ===
 
   const handleSaveProject = async (projectName: string) => {
@@ -514,14 +551,6 @@ const App: React.FC = () => {
       }
   }, [history]);
 
-  const handleGoToDashboard = useCallback(() => {
-      setHistory([]);
-      setHistoryIndex(-1);
-      setActiveProjectId(null);
-      setPage('dashboard');
-      setIsCompareMode(false);
-  }, []);
-
   const handleDownload = useCallback(() => {
       if (currentImage) {
           const link = document.createElement('a');
@@ -661,8 +690,8 @@ const App: React.FC = () => {
   const sidebarToolButtonClass = `flex items-center justify-start text-left bg-gray-700/50 border border-transparent text-gray-200 font-semibold py-3 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-700 hover:border-gray-600 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-700/50`;
 
   const renderPageContent = () => {
-    if (!projectsLoaded && page !== 'editor') {
-      return <Spinner size="lg" />;
+    if (page !== 'editor' && (!projectsLoaded || isLoading)) {
+        return <Spinner size="lg" />;
     }
 
     switch (page) {
@@ -671,17 +700,18 @@ const App: React.FC = () => {
                         user={user}
                         userProfile={userProfile}
                         recentProjects={projects.slice(0, 5)}
-                        onNavigateToProjects={() => setPage('projects')}
-                        onStartNewProject={() => setPage('upload')}
+                        onNavigateToProjects={() => handleNavigate('projects')}
+                        onStartNewProject={() => handleNavigate('upload')}
                         onOpenPromptManager={() => setIsPromptManagerOpen(true)}
                         onSelectProject={handleLoadProject}
+                        onSelectTemplate={handleSelectTemplate}
                     />;
         case 'projects':
             return <ProjectsDashboard 
                       projects={projects} 
                       onSelectProject={handleLoadProject} 
                       onDeleteProject={handleDeleteProject}
-                      onNavigate={setPage}
+                      onNavigate={handleNavigate}
                     />;
         case 'upload':
             return <StartScreen onFileSelect={handleFileSelect} />;
@@ -839,7 +869,7 @@ const App: React.FC = () => {
         userProfile={userProfile}
         onLogout={handleLogout} 
         page={page}
-        onNavigate={setPage}
+        onNavigate={handleNavigate}
         isEditorActive={!!currentImageUrl}
       />
       
@@ -853,7 +883,7 @@ const App: React.FC = () => {
             <div className="flex items-center gap-2">
                 <button onClick={() => setIsSaveModalOpen(true)} disabled={isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><SaveIcon className="w-5 h-5"/>Save</button>
                 <button onClick={() => setIsSnapshotsModalOpen(true)} disabled={!activeProjectId || isLoading} title={!activeProjectId ? "Save the project first to enable snapshots" : "Manage Snapshots"} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><HistoryIcon className="w-5 h-5"/>Snapshots</button>
-                <button onClick={() => setPage('upload')} disabled={isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><UploadIconSVG className="w-5 h-5"/>New Image</button>
+                <button onClick={() => handleNavigate('upload')} disabled={isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><UploadIconSVG className="w-5 h-5"/>New Image</button>
                 <button onClick={handleDownload} disabled={isLoading} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"><DownloadIcon className="w-5 h-5"/>Download</button>
             </div>
           </div>

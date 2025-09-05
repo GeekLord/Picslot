@@ -45,7 +45,7 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
         -   [x] Added placeholder for this section.
     -   [x] **Quick Actions Panel**:
         -   [x] "Recent Projects" list with thumbnail previews.
-        -   [ ] "Start from a Template" gallery.
+        -   [x] "Start from a Template" gallery.
         -   [ ] "Community Spotlight" to feature inspiring user creations.
     -   [ ] **Notification Center**:
         -   [ ] In-app widget for system updates, feature announcements, and usage alerts.
