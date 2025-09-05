@@ -61,7 +61,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, userProfile, onLogout, onNavi
             <button type="button" onClick={() => {}} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem" disabled>
               <UserCircleIcon className="w-5 h-5" /> Profile
             </button>
-            <button type="button" onClick={() => handleNavigation('settings')} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700" role="menuitem">
+            <button type="button" onClick={(e) => { e.preventDefault(); handleNavigation('settings'); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700" role="menuitem">
               <Cog6ToothIcon className="w-5 h-5" /> Settings
             </button>
             <button type="button" onClick={() => {}} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem" disabled>

@@ -32,7 +32,7 @@ const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({ projects, onSelec
   return (
     <div className="w-full max-w-6xl mx-auto p-4 md:p-8 animate-fade-in">
       <div className="flex items-center gap-4 mb-8">
-        <button type="button" onClick={() => onNavigate('dashboard')} className="p-2 rounded-full bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white transition-colors" aria-label="Back to Dashboard">
+        <button type="button" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }} className="p-2 rounded-full bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white transition-colors" aria-label="Back to Dashboard">
             <ChevronLeftIcon className="w-6 h-6" />
         </button>
         <div className="text-left">
@@ -50,7 +50,7 @@ const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({ projects, onSelec
         {/* New Project Card */}
         <button
           type="button"
-          onClick={() => onNavigate('upload')}
+          onClick={(e) => { e.preventDefault(); onNavigate('upload'); }}
           className={`${cardClass} flex flex-col items-center justify-center gap-3 text-gray-400 hover:text-white`}
         >
           <div className="w-16 h-16 rounded-full bg-gray-700/50 flex items-center justify-center border-2 border-dashed border-gray-600 group-hover:border-blue-500 transition-colors">
