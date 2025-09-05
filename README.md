@@ -7,7 +7,7 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 ## ✨ Key Features
 
 - **Responsive Design**: Fully responsive layout that works seamlessly on desktop, tablet, and mobile devices.
-- **User Profile Management**: A dedicated settings page where users can set a custom display name, bio, and upload a profile photo for a personalized experience.
+- **User Profile Management**: A dedicated settings page where users can set a custom display name, professional title, bio, website link, and upload a profile photo for a personalized experience.
 - **Precise Retouching**: Use the "Generative Mask" to paint over any part of an image and replace it with AI-generated content based on your text prompt. Change colors, remove objects, or add elements with pinpoint accuracy.
 - **Cloud-Based Projects**: Securely save your projects to your account and access them from anywhere. Your entire edit history is preserved, and you can easily load, update, or delete projects from your personal dashboard.
 - **Prompt Manager**: A full CRUD (Create, Read, Update, Delete) interface for your favorite prompts. Save, manage, reuse, and now **share** your best prompts with other users directly within the editor.

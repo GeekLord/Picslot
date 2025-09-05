@@ -51,7 +51,7 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
         -   [ ] In-app widget for system updates, feature announcements, and usage alerts.
 
 -   [ ] **Comprehensive User Profile Management**
-    -   [ ] **Profile Information**:
+    -   [x] **Profile Information**:
         -   [x] Profile photo upload (with option for AI background removal and AI user avatar maker).
         -   [x] Display name, professional title, bio, and website link.
     -   [ ] **Public Portfolio**:
