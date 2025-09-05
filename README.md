@@ -17,6 +17,7 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 - **Non-Destructive Workflow**:
   - **Undo/Redo**: Full history tracking allows you to step backward and forward through your edits.
   - **Compare Mode**: A dynamic slider lets you instantly compare your current edit with the original image.
+  - **Version History (Snapshots)**: Save named "snapshots" of your edit history at any point, allowing you to create different versions of your work and restore them later.
 
 ### 🤖 One-Click AI Superpowers
 
@@ -74,130 +75,11 @@ Follow these instructions to set up and run the project locally.
     -   Enable the **Email** provider (it's usually on by default, but confirm "Confirm email" is enabled).
     -   Enable the **Google** provider. You will need to provide a Client ID and Secret, which you can get from the [Google Cloud Console](https://console.cloud.google.com/). Follow the Supabase documentation for the exact steps.
 
-4.  **Set Up Database Tables & Functions:**
-    -   Go to the **SQL Editor** in the Supabase dashboard.
+4.  **Set Up Database Schema:**
+    -   Go to the **SQL Editor** in your Supabase project dashboard.
     -   Click **+ New query**.
-    -   Run the queries below one by one.
-
-        ```sql
-        -- Create the 'projects' table for saving user work
-        CREATE TABLE public.projects (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-            name TEXT NOT NULL,
-            history JSONB NOT NULL,
-            history_index INTEGER NOT NULL,
-            thumbnail TEXT NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
-
-        ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
-
-        CREATE POLICY "Users can manage their own projects"
-        ON public.projects
-        FOR ALL
-        USING (auth.uid() = user_id)
-        WITH CHECK (auth.uid() = user_id);
-        ```
-
-        ```sql
-        -- Create the 'prompts' table for the Prompt Manager feature
-        CREATE TABLE public.prompts (
-            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-            user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-            title TEXT NOT NULL,
-            prompt TEXT NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
-
-        ALTER TABLE public.prompts ENABLE ROW LEVEL SECURITY;
-
-        CREATE POLICY "Users can manage their own prompts"
-        ON public.prompts
-        FOR ALL
-        USING (auth.uid() = user_id)
-        WITH CHECK (auth.uid() = user_id);
-        ```
-
-        ```sql
-        -- Create the function required for sharing prompts between users
-        CREATE OR REPLACE FUNCTION share_prompt_with_user(prompt_id_to_share UUID, recipient_email TEXT)
-        RETURNS VOID AS $$
-        DECLARE
-            recipient_user_id UUID;
-            prompt_to_share RECORD;
-        BEGIN
-            -- 1. Find the recipient's user ID from their email.
-            --    This requires elevated privileges, so the function is set to SECURITY DEFINER.
-            SELECT id INTO recipient_user_id FROM auth.users WHERE email = recipient_email;
-
-            -- 2. If no user is found with that email, raise an error.
-            IF recipient_user_id IS NULL THEN
-                RAISE EXCEPTION 'Recipient email not found';
-            END IF;
-
-            -- 3. Get the prompt details, ensuring the current user is the owner.
-            --    auth.uid() refers to the user *calling* the function.
-            SELECT * INTO prompt_to_share FROM public.prompts
-            WHERE id = prompt_id_to_share AND user_id = auth.uid();
-
-            -- 4. If the prompt doesn't exist or doesn't belong to the current user, raise an error.
-            IF prompt_to_share IS NULL THEN
-                RAISE EXCEPTION 'Prompt not found or you do not have permission to share it';
-            END IF;
-
-            -- 5. Insert a copy of the prompt for the recipient user.
-            INSERT INTO public.prompts (user_id, title, prompt, created_at, updated_at)
-            VALUES (recipient_user_id, '(Shared) ' || prompt_to_share.title, prompt_to_share.prompt, NOW(), NOW());
-        END;
-        $$ LANGUAGE plpgsql SECURITY DEFINER;
-        ```
-        
-        ```sql
-        -- Create the 'user_profiles' table for storing public user data
-        CREATE TABLE public.user_profiles (
-            id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-            display_name TEXT,
-            title TEXT,
-            bio TEXT,
-            website TEXT,
-            profile_image_url TEXT,
-            updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
-
-        ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
-
-        CREATE POLICY "Users can manage their own profile"
-        ON public.user_profiles
-        FOR ALL
-        USING (auth.uid() = id)
-        WITH CHECK (auth.uid() = id);
-
-        CREATE POLICY "Users can view public profiles"
-        ON public.user_profiles
-        FOR SELECT
-        USING (true);
-        ```
-
-        ```sql
-        -- Create a function to automatically create a profile when a new user signs up
-        CREATE OR REPLACE FUNCTION public.handle_new_user()
-        RETURNS TRIGGER AS $$
-        BEGIN
-          INSERT INTO public.user_profiles (id, display_name)
-          VALUES (new.id, new.email);
-          RETURN new;
-        END;
-        $$ LANGUAGE plpgsql SECURITY DEFINER;
-        
-        -- Create a trigger to call the function after a new user is created in the auth schema
-        CREATE TRIGGER on_auth_user_created
-          AFTER INSERT ON auth.users
-          FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
-        ```
-
+    -   Open the `SQL.md` file located in the root of this project.
+    -   Copy the entire content of the file, paste it into the Supabase SQL Editor, and click **Run**. This single script is designed to be run multiple times safely and will set up all the necessary tables, policies, and functions.
 
 5.  **Set Up Storage:**
     -   Go to the **Storage** section in the Supabase dashboard.
@@ -269,6 +151,7 @@ Follow these instructions to set up and run the project locally.
 ├── index.html          # Main HTML entry point with importmap and env setup
 ├── index.tsx           # Main React application entry point
 ├── App.tsx             # Root component containing the main application logic and UI
+├── SQL.md              # Single source of truth for the Supabase database schema
 ├── services/
 │   ├── geminiService.ts# Functions for interacting with the Gemini API
 │   └── supabaseService.ts# Functions for Supabase (Auth, DB, Storage)

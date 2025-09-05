@@ -12,7 +12,7 @@ import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -22,11 +22,12 @@ import SaveProjectModal from './components/SaveProjectModal';
 import type { User } from '@supabase/supabase-js';
 import BrushCanvas from './components/BrushCanvas';
 import BrushControls from './components/BrushControls';
-import type { Project, Prompt, UserProfile } from './types';
+import type { Project, Prompt, UserProfile, Snapshot } from './types';
 import PromptManagerModal from './components/PromptManagerModal';
 import PromptSelector from './components/PromptSelector';
 import Dashboard from './components/Dashboard';
 import SettingsPage from './components/SettingsPage';
+import SnapshotsModal from './components/SnapshotsModal';
 
 
 // Helper to convert a data URL string to a File object
@@ -83,6 +84,7 @@ const App: React.FC = () => {
   const [activeTool, setActiveTool] = useState<Tool | null>(null);
   const [page, setPage] = useState<Page>('dashboard');
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
+  const [isSnapshotsModalOpen, setIsSnapshotsModalOpen] = useState<boolean>(false);
   const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
 
@@ -107,6 +109,7 @@ const App: React.FC = () => {
 
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  const activeProject = projects.find(p => p.id === activeProjectId) || null;
 
   // === Effects ===
 
@@ -249,27 +252,32 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-        const tempProjectId = activeProjectId || `temp_${Date.now()}`;
+        const existingProject = projects.find(p => p.id === activeProjectId) || null;
         
-        // Upload all images in history to cloud storage
+        // This is a complex operation: upload ALL files in history to storage.
+        // This could be optimized in a real app (e.g., only upload new files),
+        // but for simplicity, we re-upload. Supabase storage might handle this efficiently.
         const historyPaths = await Promise.all(
-            history.map(file => supabaseService.uploadProjectFile(user.id, tempProjectId, file))
+            history.map((file, index) => 
+                supabaseService.uploadProjectFile(user.id, activeProjectId || `temp_${Date.now()}`, file, `history_item_${index}_${Date.now()}.png`)
+            )
         );
         
         const thumbnailPath = historyPaths[historyIndex];
 
         const projectData = {
+            ...existingProject,
             id: activeProjectId,
             user_id: user.id,
             name: projectName,
             history: historyPaths,
             history_index: historyIndex,
             thumbnail: thumbnailPath,
+            snapshots: existingProject?.snapshots || [], // Preserve existing snapshots
         };
 
         const savedProject = await supabaseService.saveProject(projectData);
         
-        // Update local state with the saved project
         setProjects(prevProjects => {
             const existingIndex = prevProjects.findIndex(p => p.id === savedProject.id);
             if (existingIndex > -1) {
@@ -555,6 +563,73 @@ const App: React.FC = () => {
     setCursorPosition(null);
   };
 
+  // === Snapshots Handlers ===
+  const handleSaveSnapshot = async (snapshotName: string) => {
+    if (!currentImage || !user || !activeProjectId) {
+        throw new Error("Cannot save snapshot without an active, saved project.");
+    }
+    const project = projects.find(p => p.id === activeProjectId);
+    if (!project) {
+      throw new Error("Active project not found.");
+    }
+
+    const snapshotId = `snap_${Date.now()}`;
+    // The snapshot thumbnail IS the current full-res image.
+    const thumbnailPath = await supabaseService.uploadProjectFile(user.id, activeProjectId, currentImage, `snapshots/${snapshotId}.png`);
+
+    const newSnapshot: Snapshot = {
+        id: snapshotId,
+        name: snapshotName,
+        history_index: historyIndex,
+        created_at: new Date().toISOString(),
+        thumbnail_path: thumbnailPath,
+    };
+
+    const updatedSnapshots = [...(project.snapshots || []), newSnapshot];
+    // FIX: Add user_id, which is required by the saveProject function.
+    const updatedProjectData = { ...project, user_id: user.id, snapshots: updatedSnapshots };
+
+    const savedProject = await supabaseService.saveProject(updatedProjectData);
+
+    // Update local state to reflect the change immediately
+    setProjects(prev => prev.map(p => p.id === savedProject.id ? savedProject : p));
+  };
+  
+  const handleRestoreSnapshot = (snapshot: Snapshot) => {
+    setHistoryIndex(snapshot.history_index);
+    setIsSnapshotsModalOpen(false); // Close modal on restore
+    // Reset transient states
+    brushCanvasRef.current?.clear();
+    setMaskDataUrl(null);
+    setIsBrushMode(false);
+  };
+
+  const handleDeleteSnapshot = async (snapshot: Snapshot) => {
+      if (!user || !activeProjectId) {
+        throw new Error("Cannot delete snapshot without an active, saved project.");
+      }
+      const project = projects.find(p => p.id === activeProjectId);
+      if (!project) {
+        throw new Error("Active project not found.");
+      }
+
+      // 1. Delete thumbnail from storage
+      try {
+        await supabaseService.supabase.storage.from('project-images').remove([snapshot.thumbnail_path]);
+      } catch (storageError) {
+          console.error("Failed to delete snapshot thumbnail from storage, but proceeding:", storageError);
+      }
+
+      // 2. Update project document in DB
+      const updatedSnapshots = project.snapshots.filter(s => s.id !== snapshot.id);
+      // FIX: Add user_id, which is required by the saveProject function.
+      const updatedProjectData = { ...project, user_id: user.id, snapshots: updatedSnapshots };
+      const savedProject = await supabaseService.saveProject(updatedProjectData);
+
+      // 3. Update local state
+      setProjects(prev => prev.map(p => p.id === savedProject.id ? savedProject : p));
+  };
+
 
   // === RENDER LOGIC ===
 
@@ -776,9 +851,10 @@ const App: React.FC = () => {
                 <button onClick={handleReset} disabled={!canUndo || isLoading} className="bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Reset</button>
             </div>
             <div className="flex items-center gap-2">
-                <button onClick={() => setIsSaveModalOpen(true)} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><SaveIcon className="w-5 h-5"/>Save</button>
-                <button onClick={() => setPage('upload')} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors"><UploadIconSVG className="w-5 h-5"/>New Image</button>
-                <button onClick={handleDownload} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors shadow-md shadow-blue-500/20"><DownloadIcon className="w-5 h-5"/>Download</button>
+                <button onClick={() => setIsSaveModalOpen(true)} disabled={isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><SaveIcon className="w-5 h-5"/>Save</button>
+                <button onClick={() => setIsSnapshotsModalOpen(true)} disabled={!activeProjectId || isLoading} title={!activeProjectId ? "Save the project first to enable snapshots" : "Manage Snapshots"} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><HistoryIcon className="w-5 h-5"/>Snapshots</button>
+                <button onClick={() => setPage('upload')} disabled={isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><UploadIconSVG className="w-5 h-5"/>New Image</button>
+                <button onClick={handleDownload} disabled={isLoading} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-md transition-colors shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"><DownloadIcon className="w-5 h-5"/>Download</button>
             </div>
           </div>
       )}
@@ -796,8 +872,18 @@ const App: React.FC = () => {
         isOpen={isSaveModalOpen} 
         onSave={handleSaveProject}
         onClose={() => setIsSaveModalOpen(false)}
-        initialName={projects.find(p => p.id === activeProjectId)?.name || ''}
+        initialName={activeProject?.name || ''}
       />
+       {activeProject && (
+          <SnapshotsModal
+            isOpen={isSnapshotsModalOpen}
+            onClose={() => setIsSnapshotsModalOpen(false)}
+            snapshots={activeProject.snapshots || []}
+            onSave={handleSaveSnapshot}
+            onRestore={handleRestoreSnapshot}
+            onDelete={handleDeleteSnapshot}
+          />
+        )}
       {user && (
           <PromptManagerModal
             isOpen={isPromptManagerOpen}

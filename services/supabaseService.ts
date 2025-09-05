@@ -175,27 +175,30 @@ export const updateUserProfile = async (userId: string, updates: Partial<Omit<Us
 const STORAGE_BUCKET_NAME = 'project-images';
 
 /**
- * Uploads a file to Supabase Storage.
+ * Uploads a file to Supabase Storage within a project folder.
  * @param userId - The ID of the user, used for creating a folder path.
  * @param projectId - The ID of the project, used for creating a subfolder.
  * @param file - The file to upload.
- * @returns The path of the uploaded file in the bucket.
+ * @param specificPath - An optional specific sub-path and filename (e.g., 'snapshots/snap123.png').
+ * @returns The full path of the uploaded file in the bucket.
  */
-export const uploadProjectFile = async (userId: string, projectId: string, file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop() || 'png';
-    const path = `${userId}/${projectId}/${Date.now()}.${fileExt}`;
+export const uploadProjectFile = async (userId: string, projectId: string, file: File, specificPath?: string): Promise<string> => {
+    const finalPath = specificPath 
+        ? `${userId}/${projectId}/${specificPath}`
+        : `${userId}/${projectId}/${Date.now()}.${file.name.split('.').pop() || 'png'}`;
     
     const { error } = await supabase.storage
         .from(STORAGE_BUCKET_NAME)
-        .upload(path, file);
+        .upload(finalPath, file);
 
     if (error) {
         console.error('Error uploading file to Supabase Storage:', error);
         throw new Error(`Failed to upload file: ${error.message}`);
     }
 
-    return path;
+    return finalPath;
 };
+
 
 /**
  * Creates a temporary, signed URL to access a private file.
@@ -288,10 +291,17 @@ export const saveProject = async (projectData: Omit<Partial<Project>, 'id' | 'up
  * @param project - The project object to delete.
  */
 export const deleteProject = async (project: Project): Promise<void> => {
-    // 1. Delete all associated files from storage.
-    // The `history` array contains all file paths for this project.
-    const filePaths = project.history;
-    if (filePaths && filePaths.length > 0) {
+    // 1. Collect all file paths to delete, including history and snapshot thumbnails.
+    const filePaths = [...project.history];
+    if (project.snapshots && project.snapshots.length > 0) {
+        project.snapshots.forEach(snapshot => {
+            if (snapshot.thumbnail_path) {
+                filePaths.push(snapshot.thumbnail_path);
+            }
+        });
+    }
+    
+    if (filePaths.length > 0) {
         const { error: storageError } = await supabase.storage
             .from(STORAGE_BUCKET_NAME)
             .remove(filePaths);

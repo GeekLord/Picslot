@@ -95,7 +95,7 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
 
 -   [ ] **Advanced Project Management**
     -   [ ] **Organization**: Create folders, add tags, and use advanced search/filters.
-    -   [ ] **Version History**: Create named "snapshots" of an edit history to easily revert to.
+    -   [x] **Version History**: Create named "snapshots" of an edit history to easily revert to.
     -   [ ] **Templates**: Save a series of edits as a reusable preset.
 
 ### Phase 2D: Analytics & Platform Management
@@ -155,73 +155,9 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
 
 ## Technical Implementation Blueprints
 
-### Database Schema Expansion
+### Database Schema
 
-Extend the Supabase schema to support new features.
-
-```sql
--- User profiles to store additional public and private user data
-CREATE TABLE public.user_profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    display_name TEXT,
-    title TEXT,
-    bio TEXT,
-    website TEXT,
-    profile_image_url TEXT,
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Function to create a profile when a new user signs up
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.user_profiles (id, display_name)
-  VALUES (new.id, new.email);
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger to call the function
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
-
-
--- User activity tracking for timelines and analytics
-CREATE TABLE public.user_activities (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    activity_type TEXT NOT NULL,
-    activity_data JSONB,
-    created_at TIMESTAMTz DEFAULT NOW()
-);
-
--- Subscription management
-CREATE TABLE public.subscriptions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
-    plan_id TEXT NOT NULL, -- e.g., 'free', 'pro_monthly'
-    status TEXT NOT NULL, -- e.g., 'active', 'canceled', 'past_due'
-    credits_remaining INTEGER,
-    billing_cycle_start TIMESTAMPTZ,
-    billing_cycle_end TIMESTAMPTZ,
-    stripe_customer_id TEXT,
-    stripe_subscription_id TEXT,
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Notifications table
-CREATE TABLE public.notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    title TEXT NOT NULL,
-    message TEXT NOT NULL,
-    type TEXT NOT NULL, -- 'system', 'project', 'community'
-    is_read BOOLEAN DEFAULT FALSE,
-    action_url TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+All database schema definitions, including tables, policies, functions, and triggers, are managed in the `SQL.md` file. This serves as the single source of truth for the database structure and should be used for initial setup and any subsequent migrations.
 
 ### Proposed Frontend Component Architecture
 

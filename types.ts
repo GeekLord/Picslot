@@ -3,6 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
+export interface Snapshot {
+  id: string;
+  name: string;
+  history_index: number;
+  created_at: string;
+  thumbnail_path: string; // path in Supabase storage
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -10,6 +18,7 @@ export interface Project {
   history: string[]; // Array of paths in Supabase Storage
   history_index: number;
   thumbnail: string; // Path in Supabase Storage
+  snapshots: Snapshot[];
 }
 
 export interface Prompt {
