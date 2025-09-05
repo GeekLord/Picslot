@@ -107,6 +107,9 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Add title column if it's missing from an older schema version to prevent errors.
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS title TEXT;
+
 -- Enable RLS for user profiles.
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
