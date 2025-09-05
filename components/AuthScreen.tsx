@@ -196,17 +196,17 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
 
           {view === 'forgotPassword' ? (
             <form onSubmit={handlePasswordReset} className="flex flex-col gap-4">
-              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} />
+              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} autoComplete="email" />
               <button type="submit" className={buttonClass} disabled={isLoading}>
                 {isLoading ? <Spinner size="sm" /> : 'Send Reset Instructions'}
               </button>
             </form>
           ) : (
             <form onSubmit={view === 'login' ? handleLogin : handleRegister} className="flex flex-col gap-4">
-              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass}/>
-              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className={inputClass} />
+              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} autoComplete="email"/>
+              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className={inputClass} autoComplete={view === 'login' ? 'current-password' : 'new-password'} />
               {view === 'register' && (
-                <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={inputClass} />
+                <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={inputClass} autoComplete="new-password" />
               )}
 
               {view === 'login' && (
