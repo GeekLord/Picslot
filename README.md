@@ -6,6 +6,8 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 
 ## ✨ Key Features
 
+- **Responsive Design**: Fully responsive layout that works seamlessly on desktop, tablet, and mobile devices.
+- **User Profile Management**: A dedicated settings page where users can set a custom display name, bio, and upload a profile photo for a personalized experience.
 - **Precise Retouching**: Use the "Generative Mask" to paint over any part of an image and replace it with AI-generated content based on your text prompt. Change colors, remove objects, or add elements with pinpoint accuracy.
 - **Cloud-Based Projects**: Securely save your projects to your account and access them from anywhere. Your entire edit history is preserved, and you can easily load, update, or delete projects from your personal dashboard.
 - **Prompt Manager**: A full CRUD (Create, Read, Update, Delete) interface for your favorite prompts. Save, manage, reuse, and now **share** your best prompts with other users directly within the editor.
@@ -75,8 +77,10 @@ Follow these instructions to set up and run the project locally.
 4.  **Set Up Database Tables & Functions:**
     -   Go to the **SQL Editor** in the Supabase dashboard.
     -   Click **+ New query**.
-    -   Paste and run the following SQL to create the `projects` table:
+    -   Run the queries below one by one.
+
         ```sql
+        -- Create the 'projects' table for saving user work
         CREATE TABLE public.projects (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -96,8 +100,9 @@ Follow these instructions to set up and run the project locally.
         USING (auth.uid() = user_id)
         WITH CHECK (auth.uid() = user_id);
         ```
-    -   Return to the SQL Editor, create another new query, and run the following SQL to create the `prompts` table for the Prompt Manager feature:
+
         ```sql
+        -- Create the 'prompts' table for the Prompt Manager feature
         CREATE TABLE public.prompts (
             id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
             user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -115,8 +120,9 @@ Follow these instructions to set up and run the project locally.
         USING (auth.uid() = user_id)
         WITH CHECK (auth.uid() = user_id);
         ```
-    -   **IMPORTANT**: Create one more new query, and run the following SQL to create the function required for sharing prompts between users:
+
         ```sql
+        -- Create the function required for sharing prompts between users
         CREATE OR REPLACE FUNCTION share_prompt_with_user(prompt_id_to_share UUID, recipient_email TEXT)
         RETURNS VOID AS $$
         DECLARE
@@ -148,17 +154,69 @@ Follow these instructions to set up and run the project locally.
         END;
         $$ LANGUAGE plpgsql SECURITY DEFINER;
         ```
+        
+        ```sql
+        -- Create the 'user_profiles' table for storing public user data
+        CREATE TABLE public.user_profiles (
+            id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+            display_name TEXT,
+            bio TEXT,
+            profile_image_url TEXT,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
+        CREATE POLICY "Users can manage their own profile"
+        ON public.user_profiles
+        FOR ALL
+        USING (auth.uid() = id)
+        WITH CHECK (auth.uid() = id);
+
+        CREATE POLICY "Users can view public profiles"
+        ON public.user_profiles
+        FOR SELECT
+        USING (true);
+        ```
+
+        ```sql
+        -- Create a function to automatically create a profile when a new user signs up
+        CREATE OR REPLACE FUNCTION public.handle_new_user()
+        RETURNS TRIGGER AS $$
+        BEGIN
+          INSERT INTO public.user_profiles (id, display_name)
+          VALUES (new.id, new.email);
+          RETURN new;
+        END;
+        $$ LANGUAGE plpgsql SECURITY DEFINER;
+        
+        -- Create a trigger to call the function after a new user is created in the auth schema
+        CREATE TRIGGER on_auth_user_created
+          AFTER INSERT ON auth.users
+          FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+        ```
+
 
 5.  **Set Up Storage:**
     -   Go to the **Storage** section in the Supabase dashboard.
-    -   Create a new bucket named `project-images`. **This name must be exact.**
-    -   Make the bucket **private**.
-    -   Go to the policies for the `project-images` bucket and create a new policy with the following rules to allow users to manage their own files:
-        -   **Policy Name**: `User can manage their own project images`
-        -   **Allowed operations**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`
-        -   **Target roles**: `authenticated`
-        -   **USING expression**: `bucket_id = 'project-images' AND auth.uid()::text = (storage.foldername(name))[1]`
-        -   **WITH CHECK expression**: `bucket_id = 'project-images' AND auth.uid()::text = (storage.foldername(name))[1]`
+    -   **Create a private bucket for projects:**
+        -   Create a new bucket named `project-images`. **This name must be exact.**
+        -   Make the bucket **private**.
+        -   Go to the policies for the `project-images` bucket and create a new policy with the following rules to allow users to manage their own files:
+            -   **Policy Name**: `User can manage their own project images`
+            -   **Allowed operations**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`
+            -   **Target roles**: `authenticated`
+            -   **USING expression**: `bucket_id = 'project-images' AND auth.uid()::text = (storage.foldername(name))[1]`
+            -   **WITH CHECK expression**: `bucket_id = 'project-images' AND auth.uid()::text = (storage.foldername(name))[1]`
+    -   **Create a public bucket for avatars:**
+        -   Create a new bucket named `avatars`. **This name must be exact.**
+        -   Make the bucket **public**.
+        -   Go to the policies for the `avatars` bucket and create a new policy to allow users to manage their own avatar:
+            -   **Policy Name**: `User can manage their own avatar`
+            -   **Allowed operations**: `SELECT`, `INSERT`, `UPDATE`
+            -   **Target roles**: `authenticated`
+            -   **USING expression**: `bucket_id = 'avatars' AND name = auth.uid()::text`
+            -   **WITH CHECK expression**: `bucket_id = 'avatars' AND name = auth.uid()::text`
 
 ### Local Application Setup
 

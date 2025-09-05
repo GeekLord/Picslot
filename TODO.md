@@ -32,8 +32,8 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
 
 -   [x] **Comprehensive Navigation System**
     -   [x] **Primary Navigation Bar**: Implemented Dashboard, Projects, and Editor links.
-    -   [x] **User Menu**: Profile, Settings, Billing, Notifications, Logout (Existing, ready for expansion).
-    -   [ ] **Mobile-Responsive "Hamburger" Menu** with smooth transitions.
+    -   [x] **User Menu**: Profile, Settings, Billing, Notifications, Logout.
+    -   [x] **Mobile-Responsive "Hamburger" Menu** with smooth transitions.
     -   [ ] **Breadcrumb Navigation** within nested pages (e.g., Settings > Security).
     -   [x] **Consistent Iconography** with descriptive tooltips.
 
@@ -52,8 +52,8 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
 
 -   [ ] **Comprehensive User Profile Management**
     -   [ ] **Profile Information**:
-        -   [ ] Profile photo upload (with option for AI background removal).
-        -   [ ] Display name, professional title, bio, and social media links.
+        -   [x] Profile photo upload (with option for AI background removal and AI user avatar maker).
+        -   [x] Display name, professional title, bio, and social media links. (Name and Bio complete).
     -   [ ] **Public Portfolio**:
         -   [ ] Ability to feature selected projects in a public gallery.
         -   [ ] Unique, shareable public URL (e.g., `picslot.com/username`).
@@ -64,8 +64,8 @@ This document outlines the strategic roadmap for evolving Picslot from a powerfu
 
 ### Phase 2B: Advanced Account & Billing Management
 
--   [ ] **Centralized Settings Interface**
-    -   [ ] **General**: Manage profile info, theme (dark/light mode), language.
+-   [x] **Centralized Settings Interface**
+    -   [x] **General**: Manage profile info (Name, Bio). Theme (dark/light mode), language.
     -   [ ] **Security**:
         -   [ ] Password change flow.
         -   [ ] **Two-Factor Authentication (2FA)** setup.

@@ -18,3 +18,11 @@ export interface Prompt {
   prompt: string;
   updated_at: string;
 }
+
+export interface UserProfile {
+  id: string; // Corresponds to auth.users.id
+  display_name: string | null;
+  bio: string | null;
+  profile_image_url: string | null;
+  updated_at: string;
+}

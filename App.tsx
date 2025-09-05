@@ -22,10 +22,11 @@ import SaveProjectModal from './components/SaveProjectModal';
 import type { User } from '@supabase/supabase-js';
 import BrushCanvas from './components/BrushCanvas';
 import BrushControls from './components/BrushControls';
-import type { Project, Prompt } from './types';
+import type { Project, Prompt, UserProfile } from './types';
 import PromptManagerModal from './components/PromptManagerModal';
 import PromptSelector from './components/PromptSelector';
 import Dashboard from './components/Dashboard';
+import SettingsPage from './components/SettingsPage';
 
 
 // Helper to convert a data URL string to a File object
@@ -54,12 +55,13 @@ const blobToFile = async (url: string, filename: string): Promise<File> => {
 
 
 type Tool = 'adjust' | 'filters' | 'crop';
-export type Page = 'dashboard' | 'projects' | 'upload' | 'editor';
+export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings';
 
 
 const App: React.FC = () => {
   // Auth & Project State
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoaded, setProjectsLoaded] = useState(false);
@@ -110,13 +112,22 @@ const App: React.FC = () => {
 
   // Use onAuthStateChange as the single source of truth for the user's session.
   useEffect(() => {
-    const { data: authListener } = supabaseService.supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabaseService.supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      if (!currentUser) {
+      if (currentUser) {
+        try {
+          const profile = await supabaseService.getUserProfile(currentUser.id);
+          setUserProfile(profile);
+        } catch (e) {
+          console.error("Failed to fetch user profile:", e);
+          setError("Could not load your user profile.");
+        }
+      } else {
         // If user logs out, reset state and go to dashboard (which will then show AuthScreen)
         setHistory([]);
         setHistoryIndex(-1);
+        setUserProfile(null);
         setPage('dashboard');
       }
       setAuthChecked(true);
@@ -323,6 +334,22 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, []);
+  
+  const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) return;
+    try {
+      // Update the profile in the database
+      await supabaseService.updateUserProfile(user.id, updates);
+      // After a successful update, re-fetch the entire profile to ensure local state is in sync
+      const refreshedProfile = await supabaseService.getUserProfile(user.id);
+      setUserProfile(refreshedProfile);
+    } catch (e: any) {
+      setError(`Failed to update profile: ${e.message}`);
+      console.error(e);
+      // Re-throw so the component can handle its own error state
+      throw e;
+    }
+  };
 
 
   // === AI & Editing Handlers ===
@@ -567,6 +594,7 @@ const App: React.FC = () => {
         case 'dashboard':
             return <Dashboard 
                         user={user}
+                        userProfile={userProfile}
                         recentProjects={projects.slice(0, 5)}
                         onNavigateToProjects={() => setPage('projects')}
                         onStartNewProject={() => setPage('upload')}
@@ -582,6 +610,12 @@ const App: React.FC = () => {
                     />;
         case 'upload':
             return <StartScreen onFileSelect={handleFileSelect} />;
+        case 'settings':
+            return <SettingsPage 
+                      user={user} 
+                      userProfile={userProfile} 
+                      onProfileUpdate={handleUpdateProfile}
+                   />;
         case 'editor':
             if (!currentImageUrl) {
                 return <StartScreen onFileSelect={handleFileSelect} />; // Fallback to upload if editor is active but no image
@@ -727,6 +761,7 @@ const App: React.FC = () => {
       />
       <Header 
         user={user} 
+        userProfile={userProfile}
         onLogout={handleLogout} 
         page={page}
         onNavigate={setPage}

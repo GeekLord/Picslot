@@ -4,7 +4,7 @@
  */
 
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
-import type { Project, Prompt } from '../types';
+import type { Project, Prompt, UserProfile } from '../types';
 
 // --- IMPORTANT ---
 // This file assumes that you have created a script tag in your index.html
@@ -73,6 +73,100 @@ export const onAuthStateChange = (callback) => {
         callback(session?.user ?? null);
     });
 };
+
+// ==================================
+//        User Profile
+// ==================================
+
+const AVATAR_BUCKET_NAME = 'avatars';
+
+/**
+ * Uploads a user's avatar image to public storage.
+ * @param userId The ID of the user, which will be the filename.
+ * @param file The image file to upload.
+ * @returns The public URL of the uploaded avatar.
+ */
+export const uploadAvatar = async (userId: string, file: File): Promise<string> => {
+    // The user's ID is used as the filename. `upsert: true` ensures that
+    // uploading a new avatar will overwrite the old one, saving storage space.
+    const { error: uploadError } = await supabase.storage
+        .from(AVATAR_BUCKET_NAME)
+        .upload(userId, file, {
+            upsert: true,
+            contentType: file.type,
+        });
+
+    if (uploadError) {
+        console.error("Error uploading avatar:", uploadError);
+        throw uploadError;
+    }
+
+    // Get the public URL for the newly uploaded file.
+    const { data } = supabase.storage
+        .from(AVATAR_BUCKET_NAME)
+        .getPublicUrl(userId);
+
+    if (!data.publicUrl) {
+        throw new Error("Could not get public URL for avatar.");
+    }
+    
+    return data.publicUrl;
+};
+
+/**
+ * Fetches a user's public profile.
+ * @param userId The ID of the user.
+ * @returns The user profile data, or null if not found.
+ */
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+    const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+    
+    // PGRST116: Supabase code for "exact one row not found"
+    if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching user profile:", error);
+        throw error;
+    }
+    
+    return data;
+};
+
+/**
+ * Updates or creates a user's public profile.
+ * @param userId The ID of the user to update.
+ * @param updates An object containing the fields to update.
+ * @returns The updated user profile data.
+ */
+export const updateUserProfile = async (userId: string, updates: Partial<Omit<UserProfile, 'id' | 'updated_at'>>): Promise<UserProfile> => {
+    // Upsert requires the primary key (`id`) to be part of the payload.
+    const payload = {
+        id: userId,
+        ...updates,
+        updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+        .from('user_profiles')
+        .upsert(payload)
+        .select()
+        .single();
+    
+    if (error) {
+        console.error("Error upserting user profile:", error);
+        throw error;
+    }
+
+    if (!data) {
+        // This is a safeguard, as upsert should always return data on success.
+        throw new Error("User profile data not returned after update.");
+    }
+    
+    return data;
+};
+
 
 // ==================================
 //        Project Storage (Supabase)

@@ -5,12 +5,13 @@
 
 import React from 'react';
 import type { User } from '@supabase/supabase-js';
-import type { Project } from '../types';
+import type { Project, UserProfile } from '../types';
 import { LayoutGridIcon, BookmarkIcon, PlusIcon } from './icons';
 import ProjectCard from './ProjectCard';
 
 interface DashboardProps {
   user: User;
+  userProfile: UserProfile | null;
   recentProjects: Project[];
   onNavigateToProjects: () => void;
   onStartNewProject: () => void;
@@ -18,14 +19,15 @@ interface DashboardProps {
   onSelectProject: (project: Project) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, recentProjects, onNavigateToProjects, onStartNewProject, onOpenPromptManager, onSelectProject }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects, onNavigateToProjects, onStartNewProject, onOpenPromptManager, onSelectProject }) => {
   const cardClass = "group relative bg-gray-800/50 border border-gray-700/60 rounded-xl p-6 transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1 flex flex-col items-start text-left";
+  const displayName = userProfile?.display_name || user.email?.split('@')[0];
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 md:p-8 animate-fade-in">
       <div className="mb-10">
         <h1 className="text-4xl font-extrabold tracking-tight text-gray-100 sm:text-5xl">
-          Welcome back, {user.user_metadata?.full_name || user.email?.split('@')[0]}
+          Welcome back, {displayName}
         </h1>
         <p className="mt-2 text-lg text-gray-400">
           Ready to create something amazing? Here's your dashboard.
