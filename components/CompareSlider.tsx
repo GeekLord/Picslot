@@ -57,7 +57,7 @@ const CompareSlider: React.FC<CompareSliderProps> = ({ originalImageUrl, current
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-h-[60vh] overflow-hidden rounded-xl select-none cursor-ew-resize"
+      className="relative w-full max-h-[70vh] overflow-hidden rounded-xl select-none cursor-ew-resize"
       onMouseDown={(e) => handleInteractionStart(e.clientX)}
       onTouchStart={(e) => handleInteractionStart(e.touches[0].clientX)}
     >
@@ -66,7 +66,7 @@ const CompareSlider: React.FC<CompareSliderProps> = ({ originalImageUrl, current
         src={currentImageUrl}
         alt="Edited version"
         draggable={false}
-        className="w-full h-auto object-contain max-h-[60vh] rounded-xl pointer-events-none"
+        className="w-full h-auto object-contain max-h-[70vh] rounded-xl pointer-events-none"
       />
 
       {/* Original (Before) Image - Top Layer, Clipped */}
@@ -78,7 +78,7 @@ const CompareSlider: React.FC<CompareSliderProps> = ({ originalImageUrl, current
           src={originalImageUrl}
           alt="Original version"
           draggable={false}
-          className="w-full h-auto object-contain max-h-[60vh] rounded-xl pointer-events-none"
+          className="w-full h-auto object-contain max-h-[70vh] rounded-xl pointer-events-none"
         />
       </div>
 

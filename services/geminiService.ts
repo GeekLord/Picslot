@@ -5,6 +5,8 @@
 
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 
+console.log('[GeminiService] Module loaded.');
+
 const logGenerationCost = (response: GenerateContentResponse, context: string) => {
     const usage = response.usageMetadata;
     if (!usage) {
@@ -117,7 +119,10 @@ export const generateEditedImage = async (
     imageToEdit: File,
     userPrompt: string,
 ): Promise<string> => {
+    console.log('[GeminiService] Called generateEditedImage.');
+    console.log(`[GeminiService] API_KEY available: ${!!process.env.API_KEY}`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    console.log('[GeminiService] GoogleGenAI client initialized.');
     const imagePart = await fileToPart(imageToEdit);
 
     const fullPrompt = `You are a master-level professional photo editor and creative artist. Execute a sophisticated edit based on the user's request.
@@ -139,7 +144,7 @@ export const generateEditedImage = async (
 
     const contents = { parts: [imagePart, { text: fullPrompt }] };
 
-    console.log('Sending image and prompt to the model for editing...');
+    console.log('[GeminiService] Sending image and prompt to the model for editing...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: contents,
@@ -148,7 +153,7 @@ export const generateEditedImage = async (
         },
     });
 
-    console.log('Received response from model.', response);
+    console.log('[GeminiService] Received response from model.', response);
     return handleApiResponse(response, 'edit');
 };
 
@@ -163,7 +168,7 @@ export const generateFilteredImage = async (
     originalImage: File,
     filterPrompt: string,
 ): Promise<string> => {
-    console.log(`Starting filter generation: ${filterPrompt}`);
+    console.log(`[GeminiService] Called generateFilteredImage with prompt: "${filterPrompt}"`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
@@ -207,7 +212,7 @@ Requested Style: "${filterPrompt}"
 
     const textPart = { text: prompt };
 
-    console.log('Sending image and filter prompt to the model...');
+    console.log('[GeminiService] Sending image and filter prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts: [originalImagePart, textPart] },
@@ -216,7 +221,7 @@ Requested Style: "${filterPrompt}"
         },
     });
 
-    console.log('Received response from model for filter.', response);
+    console.log('[GeminiService] Received response from model for filter.', response);
     return handleApiResponse(response, 'filter');
 };
 
@@ -230,7 +235,7 @@ export const generateAdjustedImage = async (
     originalImage: File,
     adjustmentPrompt: string,
 ): Promise<string> => {
-    console.log(`Starting global adjustment generation: ${adjustmentPrompt}`);
+    console.log(`[GeminiService] Called generateAdjustedImage with prompt: "${adjustmentPrompt}"`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
@@ -274,7 +279,7 @@ User Request: "${adjustmentPrompt}"
 
     const textPart = { text: prompt };
 
-    console.log('Sending image and adjustment prompt to the model...');
+    console.log('[GeminiService] Sending image and adjustment prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts: [originalImagePart, textPart] },
@@ -283,7 +288,7 @@ User Request: "${adjustmentPrompt}"
         },
     });
 
-    console.log('Received response from model for adjustment.', response);
+    console.log('[GeminiService] Received response from model for adjustment.', response);
     return handleApiResponse(response, 'adjustment');
 };
 
@@ -295,7 +300,7 @@ User Request: "${adjustmentPrompt}"
 export const generateAutoEnhancedImage = async (
     originalImage: File,
 ): Promise<string> => {
-    console.log(`Starting auto-enhancement`);
+    console.log(`[GeminiService] Called generateAutoEnhancedImage.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
@@ -342,7 +347,7 @@ export const generateAutoEnhancedImage = async (
 
     const textPart = { text: prompt };
 
-    console.log('Sending image and auto-enhance prompt to the model...');
+    console.log('[GeminiService] Sending image and auto-enhance prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts: [originalImagePart, textPart] },
@@ -351,7 +356,7 @@ export const generateAutoEnhancedImage = async (
         },
     });
 
-    console.log('Received response from model for auto-enhancement.', response);
+    console.log('[GeminiService] Received response from model for auto-enhancement.', response);
     return handleApiResponse(response, 'auto-enhance');
 };
 
@@ -363,7 +368,7 @@ export const generateAutoEnhancedImage = async (
 export const generateRestoredImage = async (
     originalImage: File,
 ): Promise<string> => {
-    console.log(`Starting image restoration`);
+    console.log(`[GeminiService] Called generateRestoredImage.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
@@ -415,7 +420,7 @@ export const generateRestoredImage = async (
 
     const textPart = { text: prompt };
 
-    console.log('Sending image and restoration prompt to the model...');
+    console.log('[GeminiService] Sending image and restoration prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts: [originalImagePart, textPart] },
@@ -424,7 +429,7 @@ export const generateRestoredImage = async (
         },
     });
 
-    console.log('Received response from model for restoration.', response);
+    console.log('[GeminiService] Received response from model for restoration.', response);
     return handleApiResponse(response, 'restoration');
 };
 
@@ -436,7 +441,7 @@ export const generateRestoredImage = async (
 export const generateStudioPortrait = async (
     originalImage: File,
 ): Promise<string> => {
-    console.log(`Starting studio portrait generation`);
+    console.log(`[GeminiService] Called generateStudioPortrait.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
@@ -469,7 +474,7 @@ export const generateStudioPortrait = async (
 
     const textPart = { text: prompt };
 
-    console.log('Sending image and studio portrait prompt to the model...');
+    console.log('[GeminiService] Sending image and studio portrait prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts: [originalImagePart, textPart] },
@@ -478,7 +483,7 @@ export const generateStudioPortrait = async (
         },
     });
 
-    console.log('Received response from model for studio portrait.', response);
+    console.log('[GeminiService] Received response from model for studio portrait.', response);
     return handleApiResponse(response, 'studio-portrait');
 };
 
@@ -490,7 +495,7 @@ export const generateStudioPortrait = async (
 export const generateCompCard = async (
     originalImage: File,
 ): Promise<string> => {
-    console.log(`Starting Comp Card generation`);
+    console.log(`[GeminiService] Called generateCompCard.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
@@ -547,7 +552,7 @@ export const generateCompCard = async (
 
     const textPart = { text: prompt };
 
-    console.log('Sending image and Comp Card prompt to the model...');
+    console.log('[GeminiService] Sending image and Comp Card prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts: [originalImagePart, textPart] },
@@ -556,7 +561,7 @@ export const generateCompCard = async (
         },
     });
 
-    console.log('Received response from model for Comp Card.', response);
+    console.log('[GeminiService] Received response from model for Comp Card.', response);
     return handleApiResponse(response, 'comp-card');
 };
 
@@ -568,7 +573,7 @@ export const generateCompCard = async (
 export const generateThreeViewShot = async (
     originalImage: File,
 ): Promise<string> => {
-    console.log(`Starting 3-View Shot generation`);
+    console.log(`[GeminiService] Called generateThreeViewShot.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
@@ -621,7 +626,7 @@ export const generateThreeViewShot = async (
 
     const textPart = { text: prompt };
 
-    console.log('Sending image and 3-View Shot prompt to the model...');
+    console.log('[GeminiService] Sending image and 3-View Shot prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts: [originalImagePart, textPart] },
@@ -630,7 +635,7 @@ export const generateThreeViewShot = async (
         },
     });
 
-    console.log('Received response from model for 3-View Shot.', response);
+    console.log('[GeminiService] Received response from model for 3-View Shot.', response);
     return handleApiResponse(response, '3-view-shot');
 };
 
@@ -642,7 +647,7 @@ export const generateThreeViewShot = async (
 export const generateOutpaintedImage = async (
     originalImage: File,
 ): Promise<string> => {
-    console.log(`Starting full-body outpainting`);
+    console.log(`[GeminiService] Called generateOutpaintedImage.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
@@ -679,7 +684,7 @@ export const generateOutpaintedImage = async (
 
     const textPart = { text: prompt };
 
-    console.log('Sending image and outpainting prompt to the model...');
+    console.log('[GeminiService] Sending image and outpainting prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts: [originalImagePart, textPart] },
@@ -688,7 +693,7 @@ export const generateOutpaintedImage = async (
         },
     });
 
-    console.log('Received response from model for outpainting.', response);
+    console.log('[GeminiService] Received response from model for outpainting.', response);
     return handleApiResponse(response, 'outpaint');
 };
 
@@ -700,7 +705,7 @@ export const generateOutpaintedImage = async (
 export const generateRemovedBackgroundImage = async (
     originalImage: File,
 ): Promise<string> => {
-    console.log(`Starting background removal`);
+    console.log(`[GeminiService] Called generateRemovedBackgroundImage.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
@@ -732,7 +737,7 @@ export const generateRemovedBackgroundImage = async (
 
     const textPart = { text: prompt };
 
-    console.log('Sending image and background removal prompt to the model...');
+    console.log('[GeminiService] Sending image and background removal prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
         contents: { parts: [originalImagePart, textPart] },
@@ -741,7 +746,7 @@ export const generateRemovedBackgroundImage = async (
         },
     });
 
-    console.log('Received response from model for background removal.', response);
+    console.log('[GeminiService] Received response from model for background removal.', response);
     return handleApiResponse(response, 'remove-background');
 };
 
@@ -753,7 +758,7 @@ export const generateRemovedBackgroundImage = async (
 export const enhancePrompt = async (
     promptToEnhance: string,
 ): Promise<string> => {
-    console.log(`Starting prompt enhancement for: "${promptToEnhance}"`);
+    console.log(`[GeminiService] Called enhancePrompt.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     
     const metaPrompt = `You are a world-class expert prompt engineer specializing in advanced generative image models. Your task is to rewrite the following user's prompt to be more descriptive, clear, structured, and effective for generating a high-quality, photorealistic image.
@@ -768,13 +773,13 @@ export const enhancePrompt = async (
 **User's Prompt to Enhance:**
 "${promptToEnhance}"`;
 
-    console.log('Sending prompt to the model for enhancement...');
+    console.log('[GeminiService] Sending prompt to the model for enhancement...');
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: metaPrompt,
     });
     
-    console.log('Received response from model for prompt enhancement.', response);
+    console.log('[GeminiService] Received response from model for prompt enhancement.', response);
     const enhancedText = response.text;
 
     if (!enhancedText || enhancedText.trim() === '') {
@@ -792,7 +797,7 @@ export const enhancePrompt = async (
 export const generatePromptTitle = async (
     promptContent: string,
 ): Promise<string> => {
-    console.log(`Starting prompt title generation...`);
+    console.log(`[GeminiService] Called generatePromptTitle.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     
     const metaPrompt = `You are an expert at summarizing content. Analyze the following detailed prompt for an image generation model and create a short, descriptive title for it (4-5 words maximum). The title should capture the main essence of the prompt.

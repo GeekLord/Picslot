@@ -60,10 +60,10 @@ export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings';
 
 
 const App: React.FC = () => {
+  console.log('[App] --- Component Render/Re-render ---');
   // Auth & Project State
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null | undefined>(undefined);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoaded, setProjectsLoaded] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -111,22 +111,37 @@ const App: React.FC = () => {
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const activeProject = projects.find(p => p.id === activeProjectId) || null;
 
+  console.log('[App] Current State:', {
+    user: user === undefined ? 'undefined (loading)' : (user ? `User(${user.id})` : 'null'),
+    userProfile: !!userProfile,
+    page,
+    isLoading,
+    projectsLoaded,
+    hasCurrentImage: !!currentImage,
+  });
+
   // === Effects ===
 
   // Use onAuthStateChange as the single source of truth for the user's session.
   useEffect(() => {
+    console.log('[App Auth Effect] Setting up onAuthStateChange listener.');
     const { data: authListener } = supabaseService.supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log(`[App Auth Effect] onAuthStateChange triggered. Event: ${_event}, Session exists: ${!!session}`);
       const currentUser = session?.user ?? null;
-      setUser(currentUser);
+      setUser(currentUser); // Trigger re-render with user object or null
+      console.log(`[App Auth Effect] setUser state updated to: ${currentUser ? currentUser.id : 'null'}`);
       if (currentUser) {
+        console.log('[App Auth Effect] User found, fetching profile...');
         try {
           const profile = await supabaseService.getUserProfile(currentUser.id);
           setUserProfile(profile);
+          console.log('[App Auth Effect] User profile fetched and set.');
         } catch (e) {
-          console.error("Failed to fetch user profile:", e);
+          console.error("[App] Failed to fetch user profile:", e);
           setError("Could not load your user profile.");
         }
       } else {
+        console.log('[App Auth Effect] No user session. Resetting state.');
         // If user logs out, reset state and go to dashboard (which will then show AuthScreen)
         setHistory([]);
         setHistoryIndex(-1);
@@ -135,69 +150,100 @@ const App: React.FC = () => {
         // Reset loading state to prevent it from persisting across sessions
         setIsLoading(false);
       }
-      setAuthChecked(true);
     });
   
     return () => {
+      console.log('[App Auth Effect] Cleaning up: Unsubscribing from onAuthStateChange.');
       authListener?.subscription?.unsubscribe();
     };
   }, []);
 
-
+  // Callback for child components (like PromptManager) to trigger a refresh of prompts
   const handleRefreshPrompts = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('[App Prompts] Refresh requested but no user is logged in.');
+      return;
+    }
+    console.log('[App Prompts] Refreshing user prompts...');
     try {
         const userPrompts = await supabaseService.getPrompts(user.id);
         setPrompts(userPrompts);
+        console.log(`[App Prompts] Successfully refreshed ${userPrompts.length} prompts.`);
     } catch (e) {
         console.error("Failed to refresh prompts:", e);
-        // Do not set a visible error for this, as it's a background refresh
+        setError("Could not refresh your prompts list.");
     }
   }, [user]);
 
-  // Load user's projects and prompts when they log in
+  // Load all user data (projects, prompts) when the user logs in or a session is detected
   useEffect(() => {
-    if (user) {
-        setProjectsLoaded(false);
-        supabaseService.getProjects(user.id)
-            .then(setProjects)
-            .catch(e => {
-                console.error("Failed to load projects:", e);
-                setError("Could not load your saved projects.");
-                setProjects([]);
-            })
-            .finally(() => setProjectsLoaded(true));
+    const loadUserData = async () => {
+        if (user) {
+            console.log('[App Data Effect] User detected, loading data.');
+            setProjectsLoaded(false);
+            try {
+                const [loadedProjects, userPrompts] = await Promise.all([
+                    supabaseService.getProjects(user.id),
+                    supabaseService.getPrompts(user.id)
+                ]);
 
-        handleRefreshPrompts();
-    } else {
-        // Clear data when user logs out
-        setProjects([]);
-        setPrompts([]);
-        setProjectsLoaded(false);
-    }
-  }, [user, handleRefreshPrompts]);
+                setProjects(loadedProjects);
+                console.log(`[App Data Effect] Loaded ${loadedProjects.length} projects.`);
+                
+                setPrompts(userPrompts);
+                console.log(`[App Prompts] Successfully refreshed ${userPrompts.length} prompts.`);
+
+            } catch (e) {
+                console.error("Failed to load user data:", e);
+                setError("Could not load your saved data.");
+                setProjects([]);
+                setPrompts([]);
+            } finally {
+                setProjectsLoaded(true);
+                console.log('[App Data Effect] User data loading finished.');
+            }
+        } else {
+            console.log('[App Data Effect] No user detected. Clearing projects and prompts.');
+            setProjects([]);
+            setPrompts([]);
+            setProjectsLoaded(false);
+        }
+    };
+
+    loadUserData();
+  }, [user]);
 
   // Clean up compare mode when tool changes
   useEffect(() => {
     if (activeTool !== null || isBrushMode) {
-      setIsCompareMode(false);
+      if (isCompareMode) {
+        console.log('[App UI Effect] Active tool changed, disabling compare mode.');
+        setIsCompareMode(false);
+      }
     }
-  }, [activeTool, isBrushMode]);
+  }, [activeTool, isBrushMode, isCompareMode]);
 
   // Deactivate brush mode if another tool is selected
   useEffect(() => {
     if (activeTool !== null) {
-      setIsBrushMode(false);
+      if (isBrushMode) {
+        console.log('[App UI Effect] Active tool selected, disabling brush mode.');
+        setIsBrushMode(false);
+      }
     }
-  }, [activeTool]);
+  }, [activeTool, isBrushMode]);
   
 
   // Create Object URLs for images in history for performance
   useEffect(() => {
     if (currentImage) {
+      console.log('[App Image URL Effect] Creating Object URL for current image.');
       const url = URL.createObjectURL(currentImage);
       setCurrentImageUrl(url);
-      return () => URL.revokeObjectURL(url);
+      return () => {
+        console.log('[App Image URL Effect] Revoking Object URL for current image.');
+        URL.revokeObjectURL(url);
+      }
     } else {
       setCurrentImageUrl(null);
     }
@@ -205,9 +251,13 @@ const App: React.FC = () => {
   
   useEffect(() => {
     if (originalImage) {
+      console.log('[App Image URL Effect] Creating Object URL for original image.');
       const url = URL.createObjectURL(originalImage);
       setOriginalImageUrl(url);
-      return () => URL.revokeObjectURL(url);
+      return () => {
+        console.log('[App Image URL Effect] Revoking Object URL for original image.');
+        URL.revokeObjectURL(url);
+      }
     } else {
       setOriginalImageUrl(null);
     }
@@ -219,10 +269,12 @@ const App: React.FC = () => {
   const canRedo = historyIndex < history.length - 1;
 
   const addImageToHistory = useCallback((newImageFile: File) => {
+    console.log('[App History] Adding new image to history.');
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newImageFile);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
+    console.log(`[App History] History updated. New length: ${newHistory.length}, New index: ${newHistory.length - 1}`);
     // Clear transient state
     setCrop(undefined);
     setCompletedCrop(undefined);
@@ -234,10 +286,11 @@ const App: React.FC = () => {
   // === Event Handlers ===
   
   const handleImageUpload = useCallback((file: File, initialPrompt: string = '') => {
+    console.log('[App Event] Handling new image upload.');
     setError(null);
     setHistory([file]);
     setHistoryIndex(0);
-    setActiveProjectId(null); // It's a new, unsaved project
+    setActiveProjectId(null);
     setActiveTool(null);
     setIsBrushMode(false);
     setMaskDataUrl(null);
@@ -246,62 +299,67 @@ const App: React.FC = () => {
     setIsCompareMode(false);
     setPrompt(initialPrompt);
     setPage('editor');
+    console.log('[App Event] Image upload complete, state reset for editor.');
   }, []);
 
   const handleSelectTemplate = useCallback(async (template: Template) => {
+    console.log(`[App Event] Template selected: "${template.title}"`);
     setIsLoading(true);
     setError(null);
     try {
         const imageFile = await blobToFile(template.imageUrl, `template-${template.title.replace(/\s+/g, '-')}.png`);
         handleImageUpload(imageFile, template.prompt);
     } catch (e) {
+        console.error('[App Event] Error loading template:', e);
         setError("Failed to load the template image. Please try again.");
-        console.error(e);
     } finally {
         setIsLoading(false);
+        console.log('[App Event] Template loading finished.');
     }
   }, [handleImageUpload]);
   
   // === Navigation ===
   const handleNavigate = useCallback((targetPage: Page) => {
-    // Perform cleanup and state resets when navigating away from the editor
-    if (page === 'editor' && targetPage !== 'editor') {
-        // Unconditionally set isLoading to false when leaving the editor.
-        // This prevents the UI from getting stuck on a loading screen due to race conditions,
-        // where a navigation event occurs before the isLoading state update from an AI call is processed.
-        setIsLoading(false);
-        
-        // Reset the editor state to ensure a clean slate next time
-        setHistory([]);
-        setHistoryIndex(-1);
-        setActiveProjectId(null);
-        setIsCompareMode(false);
-        setActiveTool(null);
-        setIsBrushMode(false);
-        setMaskDataUrl(null);
-        setPrompt('');
-    }
-
-    setPage(targetPage);
-  }, [page]);
+    setPage(currentPage => {
+        console.log(`[App Navigation] Navigating from '${currentPage}' to '${targetPage}'.`);
+        if (currentPage === 'editor' && targetPage !== 'editor') {
+            console.log('[App Navigation] Leaving editor page, performing cleanup.');
+            setIsLoading(false);
+            setHistory([]);
+            setHistoryIndex(-1);
+            setActiveProjectId(null);
+            setIsCompareMode(false);
+            setActiveTool(null);
+            setIsBrushMode(false);
+            setMaskDataUrl(null);
+            setPrompt('');
+            console.log('[App Navigation] Editor state has been reset.');
+        }
+        return targetPage;
+    });
+  }, []);
 
   // === Project Management ===
 
   const handleSaveProject = async (projectName: string) => {
-    if (!currentImage || !user) return;
+    if (!currentImage || !user) {
+      console.warn('[App Project] Save aborted: no current image or user.');
+      return;
+    }
+    console.log(`[App Project] Saving project with name: "${projectName}"`);
     setIsLoading(true);
 
     try {
         const existingProject = projects.find(p => p.id === activeProjectId) || null;
+        console.log(`[App Project] Is this an existing project? ${!!existingProject}`);
         
-        // This is a complex operation: upload ALL files in history to storage.
-        // This could be optimized in a real app (e.g., only upload new files),
-        // but for simplicity, we re-upload. Supabase storage might handle this efficiently.
+        console.log('[App Project] Uploading history files to storage...');
         const historyPaths = await Promise.all(
             history.map((file, index) => 
                 supabaseService.uploadProjectFile(user.id, activeProjectId || `temp_${Date.now()}`, file, `history_item_${index}_${Date.now()}.png`)
             )
         );
+        console.log(`[App Project] Uploaded ${historyPaths.length} history files.`);
         
         const thumbnailPath = historyPaths[historyIndex];
 
@@ -313,10 +371,12 @@ const App: React.FC = () => {
             history: historyPaths,
             history_index: historyIndex,
             thumbnail: thumbnailPath,
-            snapshots: existingProject?.snapshots || [], // Preserve existing snapshots
+            snapshots: existingProject?.snapshots || [],
         };
 
+        console.log('[App Project] Saving project metadata to database...');
         const savedProject = await supabaseService.saveProject(projectData);
+        console.log(`[App Project] Project saved successfully. ID: ${savedProject.id}`);
         
         setProjects(prevProjects => {
             const existingIndex = prevProjects.findIndex(p => p.id === savedProject.id);
@@ -330,30 +390,34 @@ const App: React.FC = () => {
         setActiveProjectId(savedProject.id);
 
     } catch (e: any) {
+        console.error('[App Project] Failed to save project:', e);
         setError(`Failed to save project: ${e.message}`);
-        console.error(e);
     } finally {
         setIsSaveModalOpen(false);
         setIsLoading(false);
+        console.log('[App Project] Save operation finished.');
     }
   };
 
   const handleLoadProject = useCallback(async (project: Project) => {
+    console.log(`[App Project] Loading project: "${project.name}" (ID: ${project.id})`);
     setIsLoading(true);
     setError(null);
     setPage('editor');
     try {
+        console.log('[App Project] Creating signed URLs for history files...');
         const signedUrlPromises = project.history.map(path => supabaseService.createSignedUrl(path));
         const imageUrls = await Promise.all(signedUrlPromises);
+        console.log(`[App Project] Fetched ${imageUrls.length} signed URLs. Converting to File objects...`);
         const newHistoryFiles = await Promise.all(
             imageUrls.map((url, index) => blobToFile(url, `history-${project.id}-${index}.png`))
         );
+        console.log('[App Project] Converted all files. Updating editor state.');
 
         setHistory(newHistoryFiles);
         setHistoryIndex(project.history_index);
         setActiveProjectId(project.id);
 
-        // Reset editor state
         setCrop(undefined);
         setCompletedCrop(undefined);
         setActiveTool(null);
@@ -361,40 +425,45 @@ const App: React.FC = () => {
         setIsBrushMode(false);
         setPrompt('');
         setIsCompareMode(false);
+        console.log('[App Project] Editor state reset for loaded project.');
     } catch (e) {
+        console.error('[App Project] Failed to load project files:', e);
         setError("Failed to load project files from the cloud.");
-        console.error(e);
     } finally {
         setIsLoading(false);
+        console.log('[App Project] Load operation finished.');
     }
   }, []);
 
   const handleDeleteProject = useCallback(async (project: Project) => {
+    console.log(`[App Project] Deleting project: "${project.name}" (ID: ${project.id})`);
     setIsLoading(true);
     try {
       await supabaseService.deleteProject(project);
-      // Remove the project from the local state for an immediate UI update
       setProjects(prevProjects => prevProjects.filter(p => p.id !== project.id));
+      console.log('[App Project] Project deleted successfully.');
     } catch (e: any) {
+      console.error('[App Project] Failed to delete project:', e);
       setError(`Failed to delete project: ${e.message}`);
-      console.error(e);
     } finally {
       setIsLoading(false);
     }
   }, []);
   
   const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return;
+    if (!user) {
+      console.warn('[App Profile] Update aborted: no user.');
+      return;
+    }
+    console.log('[App Profile] Updating user profile with:', updates);
     try {
-      // Update the profile in the database
       await supabaseService.updateUserProfile(user.id, updates);
-      // After a successful update, re-fetch the entire profile to ensure local state is in sync
       const refreshedProfile = await supabaseService.getUserProfile(user.id);
       setUserProfile(refreshedProfile);
+      console.log('[App Profile] Profile updated and re-fetched successfully.');
     } catch (e: any) {
+      console.error('[App Profile] Failed to update profile:', e);
       setError(`Failed to update profile: ${e.message}`);
-      console.error(e);
-      // Re-throw so the component can handle its own error state
       throw e;
     }
   };
@@ -403,73 +472,71 @@ const App: React.FC = () => {
   // === AI & Editing Handlers ===
 
   const handleGenerate = useCallback(async () => {
-    if (!currentImage || !prompt.trim()) return;
+    if (!currentImage || !prompt.trim()) {
+      console.warn('[App AI] Generate aborted: no image or prompt.');
+      return;
+    }
+    console.log('[App AI] Starting image generation...');
     setIsLoading(true);
     setError(null);
     try {
         let imageToSend = currentImage;
         let finalPrompt = prompt;
 
-        // If a mask exists, prepare the image for inpainting
         if (maskDataUrl) {
+            console.log('[App AI] Mask detected. Preparing image for inpainting.');
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             if (!ctx) throw new Error("Could not get canvas context");
-
-            // Load original image to get its natural dimensions
+            
             const originalImg = new Image();
             originalImg.src = URL.createObjectURL(currentImage);
-            await new Promise((resolve, reject) => {
-                originalImg.onload = resolve;
-                originalImg.onerror = reject;
-            });
+            await new Promise((resolve, reject) => { originalImg.onload = resolve; originalImg.onerror = reject; });
             
             canvas.width = originalImg.naturalWidth;
             canvas.height = originalImg.naturalHeight;
             
-            // 1. Draw the original image onto the canvas
             ctx.drawImage(originalImg, 0, 0);
 
-            // Load the mask image (white drawing on transparent background)
             const maskImg = new Image();
             maskImg.src = maskDataUrl;
-            await new Promise((resolve, reject) => {
-                maskImg.onload = resolve;
-                maskImg.onerror = reject;
-            });
+            await new Promise((resolve, reject) => { maskImg.onload = resolve; maskImg.onerror = reject; });
             
-            // 2. Use 'destination-out' composite operation. This erases parts of the
-            //    original image (destination) where the mask (source) is drawn.
             ctx.globalCompositeOperation = 'destination-out';
-            ctx.drawImage(maskImg, 0, 0, canvas.width, canvas.height); // Scale mask to fit
+            ctx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
 
-            // 3. The canvas now holds the original image with transparent holes.
             const inpaintingImageDataUrl = canvas.toDataURL('image/png');
             imageToSend = dataURLtoFile(inpaintingImageDataUrl, `inpainting-${Date.now()}.png`);
             
-            // 4. Create a specific prompt for the inpainting task.
             finalPrompt = `The user has provided an image with a transparent area. Your task is to seamlessly and photorealistically fill in ONLY the transparent area based on the user's request: "${prompt}". The existing, non-transparent parts of the image MUST be perfectly preserved.`;
+            console.log('[App AI] Inpainting image and prompt prepared.');
         }
         
         const editedImageUrl = await generateEditedImage(imageToSend, finalPrompt);
         const newImageFile = dataURLtoFile(editedImageUrl, `edited-${Date.now()}.png`);
         addImageToHistory(newImageFile);
+        console.log('[App AI] Generation successful, new image added to history.');
     } catch (err) {
+        console.error('[App AI] Image generation failed:', err);
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
     } finally {
         setIsLoading(false);
+        console.log('[App AI] Generation operation finished.');
     }
   }, [currentImage, prompt, addImageToHistory, maskDataUrl]);
   
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) return;
+    console.log('[App AI] Enhancing prompt...');
     setIsEnhancingPrompt(true);
     setError(null);
     try {
         const enhanced = await enhancePrompt(prompt);
         setPrompt(enhanced);
+        console.log('[App AI] Prompt enhanced successfully.');
     } catch (err) {
+        console.error('[App AI] Prompt enhancement failed:', err);
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to enhance prompt. ${errorMessage}`);
     } finally {
@@ -478,18 +545,25 @@ const App: React.FC = () => {
   }
 
   const createApiHandler = (apiFn: (file: File, prompt?: string) => Promise<string>, actionName: string) => async (promptOrFile?: string | File) => {
-      if (!currentImage) return;
+      if (!currentImage) {
+        console.warn(`[App AI] ${actionName} aborted: no current image.`);
+        return;
+      }
+      console.log(`[App AI] Starting one-click action: ${actionName}`);
       setIsLoading(true);
       setError(null);
       try {
           const resultUrl = await (typeof promptOrFile === 'string' ? apiFn(currentImage, promptOrFile) : apiFn(currentImage));
           const newImageFile = dataURLtoFile(resultUrl, `${actionName}-${Date.now()}.png`);
           addImageToHistory(newImageFile);
+          console.log(`[App AI] Action ${actionName} successful.`);
       } catch (err) {
+          console.error(`[App AI] Action ${actionName} failed:`, err);
           const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
           setError(`Failed to ${actionName}. ${errorMessage}`);
       } finally {
           setIsLoading(false);
+          console.log(`[App AI] Action ${actionName} finished.`);
       }
   };
 
@@ -504,7 +578,11 @@ const App: React.FC = () => {
   const handleOutpaint = createApiHandler(generateOutpaintedImage, 'outpaint');
 
   const handleApplyCrop = useCallback(() => {
-    if (!completedCrop || !imgRef.current) return;
+    if (!completedCrop || !imgRef.current) {
+        console.warn('[App Crop] Apply crop aborted: no completed crop or image ref.');
+        return;
+    }
+    console.log('[App Crop] Applying crop.');
     const image = imgRef.current;
     const canvas = document.createElement('canvas');
     const scaleX = image.naturalWidth / image.width;
@@ -518,17 +596,18 @@ const App: React.FC = () => {
     const newImageFile = dataURLtoFile(croppedImageUrl, `cropped-${Date.now()}.png`);
     addImageToHistory(newImageFile);
     setActiveTool(null);
+    console.log('[App Crop] Crop applied and added to history.');
   }, [completedCrop, addImageToHistory]);
 
   // === Top Bar Action Handlers ===
   const handleUndo = useCallback(() => {
       if (canUndo) {
+          console.log('[App History] Performing Undo.');
           const newIndex = historyIndex - 1;
           setHistoryIndex(newIndex);
           brushCanvasRef.current?.clear();
           setMaskDataUrl(null);
           setIsBrushMode(false);
-          // If we undo back to the original image, disable compare mode as there's nothing to compare.
           if (newIndex === 0) {
               setIsCompareMode(false);
           }
@@ -537,6 +616,7 @@ const App: React.FC = () => {
 
   const handleRedo = useCallback(() => {
       if (canRedo) {
+          console.log('[App History] Performing Redo.');
           setHistoryIndex(historyIndex + 1);
           brushCanvasRef.current?.clear();
           setMaskDataUrl(null);
@@ -546,16 +626,18 @@ const App: React.FC = () => {
 
   const handleReset = useCallback(() => {
       if (history.length > 0) {
+          console.log('[App History] Resetting to original image.');
           setHistoryIndex(0);
           brushCanvasRef.current?.clear();
           setMaskDataUrl(null);
           setIsBrushMode(false);
-          setIsCompareMode(false); // Resetting removes edits, so turn off compare mode.
+          setIsCompareMode(false);
       }
   }, [history]);
 
   const handleDownload = useCallback(() => {
       if (currentImage) {
+          console.log('[App Event] Downloading current image.');
           const link = document.createElement('a');
           link.href = URL.createObjectURL(currentImage);
           link.download = `picslot-edited-${currentImage.name}`;
@@ -571,15 +653,18 @@ const App: React.FC = () => {
   };
   
   const handleNewImageClick = useCallback(() => {
+    console.log('[App Event] "New Image" button clicked, triggering file input.');
     fileInputRef.current?.click();
   }, []);
 
   const handleLogout = useCallback(async () => {
+    console.log('[App Auth] User logging out.');
     await supabaseService.signOut();
-    // The onAuthStateChange listener will handle setting user to null and resetting state.
+    console.log('[App Auth] Sign out successful. onAuthStateChange will handle state reset.');
   }, []);
 
   const handleClearMask = useCallback(() => {
+      console.log('[App Brush] Clearing mask.');
       brushCanvasRef.current?.clear();
       setMaskDataUrl(null);
   }, []);
@@ -606,7 +691,6 @@ const App: React.FC = () => {
     }
 
     const snapshotId = `snap_${Date.now()}`;
-    // The snapshot thumbnail IS the current full-res image.
     const thumbnailPath = await supabaseService.uploadProjectFile(user.id, activeProjectId, currentImage, `snapshots/${snapshotId}.png`);
 
     const newSnapshot: Snapshot = {
@@ -618,19 +702,17 @@ const App: React.FC = () => {
     };
 
     const updatedSnapshots = [...(project.snapshots || []), newSnapshot];
-    // FIX: Add user_id, which is required by the saveProject function.
     const updatedProjectData = { ...project, user_id: user.id, snapshots: updatedSnapshots };
 
     const savedProject = await supabaseService.saveProject(updatedProjectData);
 
-    // Update local state to reflect the change immediately
     setProjects(prev => prev.map(p => p.id === savedProject.id ? savedProject : p));
   };
   
   const handleRestoreSnapshot = (snapshot: Snapshot) => {
+    console.log(`[App Snapshot] Restoring snapshot: "${snapshot.name}"`);
     setHistoryIndex(snapshot.history_index);
-    setIsSnapshotsModalOpen(false); // Close modal on restore
-    // Reset transient states
+    setIsSnapshotsModalOpen(false);
     brushCanvasRef.current?.clear();
     setMaskDataUrl(null);
     setIsBrushMode(false);
@@ -644,28 +726,27 @@ const App: React.FC = () => {
       if (!project) {
         throw new Error("Active project not found.");
       }
+      console.log(`[App Snapshot] Deleting snapshot: "${snapshot.name}"`);
 
-      // 1. Delete thumbnail from storage
       try {
         await supabaseService.supabase.storage.from('project-images').remove([snapshot.thumbnail_path]);
       } catch (storageError) {
           console.error("Failed to delete snapshot thumbnail from storage, but proceeding:", storageError);
       }
 
-      // 2. Update project document in DB
       const updatedSnapshots = project.snapshots.filter(s => s.id !== snapshot.id);
-      // FIX: Add user_id, which is required by the saveProject function.
       const updatedProjectData = { ...project, user_id: user.id, snapshots: updatedSnapshots };
       const savedProject = await supabaseService.saveProject(updatedProjectData);
 
-      // 3. Update local state
       setProjects(prev => prev.map(p => p.id === savedProject.id ? savedProject : p));
+      console.log(`[App Snapshot] Snapshot deleted.`);
   };
 
 
   // === RENDER LOGIC ===
 
   if (error) {
+     console.log('[App Render] Rendering ERROR screen.');
      return (
         <div className="min-h-screen w-full flex items-center justify-center p-4">
             <div className="text-center animate-fade-in bg-red-500/10 border border-red-500/20 p-8 rounded-lg max-w-2xl mx-auto flex flex-col items-center gap-4">
@@ -677,7 +758,8 @@ const App: React.FC = () => {
       );
   }
   
-  if (!authChecked) {
+  if (user === undefined) {
+    console.log('[App Render] Auth state is UNDEFINED. Rendering full-page spinner.');
     return (
         <div className="min-h-screen w-full flex items-center justify-center">
             <Spinner size="lg" />
@@ -685,7 +767,8 @@ const App: React.FC = () => {
     );
   }
 
-  if (!user) {
+  if (user === null) {
+    console.log('[App Render] User is NULL. Rendering AuthScreen.');
     return <AuthScreen />;
   }
   
@@ -693,12 +776,15 @@ const App: React.FC = () => {
   const sidebarToolButtonClass = `flex items-center justify-start text-left bg-gray-700/50 border border-transparent text-gray-200 font-semibold py-3 px-4 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-700 hover:border-gray-600 active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-700/50`;
 
   const renderPageContent = () => {
+    console.log(`[App Render] Determining page content for page: '${page}'.`);
     if (page !== 'editor' && (!projectsLoaded || isLoading)) {
+        console.log('[App Render] Page is not editor and data is loading. Rendering spinner.');
         return <Spinner size="lg" />;
     }
 
     switch (page) {
         case 'dashboard':
+            console.log('[App Render] Rendering Dashboard page.');
             return <Dashboard 
                         user={user}
                         userProfile={userProfile}
@@ -710,6 +796,7 @@ const App: React.FC = () => {
                         onSelectTemplate={handleSelectTemplate}
                     />;
         case 'projects':
+            console.log('[App Render] Rendering ProjectsDashboard page.');
             return <ProjectsDashboard 
                       projects={projects} 
                       onSelectProject={handleLoadProject} 
@@ -717,8 +804,10 @@ const App: React.FC = () => {
                       onNavigate={handleNavigate}
                     />;
         case 'upload':
+            console.log('[App Render] Rendering StartScreen (upload) page.');
             return <StartScreen onFileSelect={handleFileSelect} />;
         case 'settings':
+            console.log('[App Render] Rendering SettingsPage.');
             return <SettingsPage 
                       user={user} 
                       userProfile={userProfile} 
@@ -726,8 +815,10 @@ const App: React.FC = () => {
                    />;
         case 'editor':
             if (!currentImageUrl) {
-                return <StartScreen onFileSelect={handleFileSelect} />; // Fallback to upload if editor is active but no image
+                console.log('[App Render] Editor page is active but no image. Falling back to StartScreen.');
+                return <StartScreen onFileSelect={handleFileSelect} />;
             }
+            console.log('[App Render] Rendering Editor page with image.');
             return (
                 <div className="flex-grow w-full max-w-[1800px] mx-auto flex flex-col md:flex-row gap-8">
                   <div className="flex-grow flex flex-col gap-4 items-center md:w-[65%] lg:w-[70%]">
@@ -855,6 +946,7 @@ const App: React.FC = () => {
                 </div>
             );
         default:
+            console.log(`[App Render] Switch case default hit. This should not happen. Page: ${page}`);
             return null;
     }
   };
