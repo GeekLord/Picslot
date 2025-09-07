@@ -111,7 +111,7 @@ const defaultPrompts: { title: string; prompt: string }[] = [
   },
   {
     title: "Restore Simple",
-    prompt: "Restore and enhance an old low-resolution photo taken with a low-end mobile phone camera in poor lighting. Remove heavy noise, grain, and pixelation while keeping the subject's identity, race, ethnicity, and facial features exactly the same. Improve skin tones to look natural and balanced without over-smoothing. Correct lighting to achieve a clear, well-lit appearance, adjusting contrast and shadows realistically. Sharpen facial details while preserving authenticity. Maintain the original hairstyle, clothing, and background but render them with improved clarity and natural colors. Output should look like a clean, high-quality modern digital photo, not artificially stylized."
+    prompt: "Restore and enhance an old low-resolution photo taken with a low-end mobile phone camera in poor lighting. Remove heavy noise, grain, and pixelation while keeping the subject''s identity, race, ethnicity, and facial features exactly the same. Improve skin tones to look natural and balanced without over-smoothing. Correct lighting to achieve a clear, well-lit appearance, adjusting contrast and shadows realistically. Sharpen facial details while preserving authenticity. Maintain the original hairstyle, clothing, and background but render them with improved clarity and natural colors. Output should look like a clean, high-quality modern digital photo, not artificially stylized."
   }
 ];
 
@@ -492,7 +492,6 @@ const App: React.FC = () => {
     console.log(`[App Project] Loading project: "${project.name}" (ID: ${project.id})`);
     setIsLoading(true);
     setError(null);
-    setPage('editor');
     try {
         console.log('[App Project] Creating signed URLs for history files...');
         const signedUrlPromises = project.history.map(path => supabaseService.createSignedUrl(path));
@@ -503,10 +502,13 @@ const App: React.FC = () => {
         );
         console.log('[App Project] Converted all files. Updating editor state.');
 
+        // Batch state updates together before setting the page
         setHistory(newHistoryFiles);
         setHistoryIndex(project.history_index);
         setActiveProjectId(project.id);
+        setPage('editor'); // Navigate only after data is ready
 
+        // Reset editor-specific UI state
         setCrop(undefined);
         setCompletedCrop(undefined);
         setActiveTool(null);
@@ -905,10 +907,21 @@ const App: React.FC = () => {
                       onProfileUpdate={handleUpdateProfile}
                    />;
         case 'editor':
+            // If we're on the editor page but there's no image URL yet, we determine what to show.
             if (!currentImageUrl) {
+                // If a `currentImage` file exists, it means the history is loaded but the
+                // `useEffect` to create the object URL hasn't completed yet. This is a transient
+                // state, so we show a spinner to prevent flashing the upload screen.
+                if (currentImage) {
+                    console.log('[App Render] Editor page active, image file present but URL not yet created. Showing spinner.');
+                    return <Spinner size="lg" />;
+                }
+                
+                // If there's no `currentImage` file at all, then it's correct to show the upload screen.
                 console.log('[App Render] Editor page is active but no image. Falling back to StartScreen.');
                 return <StartScreen onFileSelect={handleFileSelect} />;
             }
+
             console.log('[App Render] Rendering Editor page with image.');
             return (
                 <div className="flex-grow w-full max-w-[1800px] mx-auto flex flex-col md:flex-row gap-8">
