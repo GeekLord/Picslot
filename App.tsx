@@ -49,9 +49,31 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 
 // Helper to convert a fetched Blob to a File object
 const blobToFile = async (url: string, filename: string): Promise<File> => {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new File([blob], filename, { type: blob.type });
+    // Use a CORS proxy to fetch template images from Google Cloud Storage
+    // This is necessary because the storage bucket may not have CORS headers configured
+    // for this origin, which would cause a "Failed to fetch" error.
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    try {
+        const response = await fetch(proxyUrl);
+        if (!response.ok) {
+            throw new Error(`CORS proxy fetch failed with status ${response.status}`);
+        }
+        const blob = await response.blob();
+        return new File([blob], filename, { type: blob.type });
+    } catch (proxyError) {
+        console.warn(`CORS proxy fetch failed: ${proxyError}. Trying direct fetch as a fallback...`);
+        // As a fallback, try a direct fetch. It might work in some environments.
+        try {
+            const directResponse = await fetch(url);
+             if (!directResponse.ok) {
+                throw new Error(`Direct fetch also failed with status ${directResponse.status}`);
+            }
+            const blob = await directResponse.blob();
+            return new File([blob], filename, { type: blob.type });
+        } catch (directError) {
+             throw new Error(`Failed to fetch image from both proxy and direct URL: ${directError}`);
+        }
+    }
 };
 
 
