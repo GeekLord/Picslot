@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Picslot</title>
+    <title>Picslot - Professional Photo Magic with Simple Words.</title>
     <base href="." />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -65,6 +65,54 @@ body {
 .ReactCrop__crop-selection {
   border: 2px dashed rgba(255, 255, 255, 0.7);
 }
+
+/* Animation for the tagline */
+.animated-tagline span {
+  display: inline-block; /* Needed for transform to work correctly */
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+  animation: fadeIn-up 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.animated-tagline span:nth-child(1) { animation-delay: 0.1s; }
+.animated-tagline span:nth-child(2) { animation-delay: 0.2s; }
+.animated-tagline span:nth-child(3) { animation-delay: 0.3s; }
+/* nth-child(4) is the <br> tag */
+.animated-tagline span:nth-child(5) { animation-delay: 0.4s; }
+.animated-tagline span:nth-child(6) { animation-delay: 0.5s; }
+.animated-tagline span:nth-child(7) { animation-delay: 0.6s; }
+
+
+@keyframes fadeIn-up {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* New continuous glow animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    text-shadow: 0 0 5px rgba(59, 130, 246, 0.5), 0 0 10px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 15px rgba(96, 165, 250, 0.8), 0 0 30px rgba(96, 165, 250, 0.6);
+  }
+}
+
+/* Apply the glow animation to the highlighted words after the initial animation */
+.animated-glow {
+  /* This combines the initial fade-in with the continuous glow */
+  animation-name: fadeIn-up, pulse-glow;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94), ease-in-out;
+  animation-duration: 0.6s, 3s;
+  animation-fill-mode: forwards, normal;
+  animation-iteration-count: 1, infinite;
+  /* Use 'inherit' to keep the staggered delay for fadeIn-up from the base span rule */
+  /* Delay the start of the pulse-glow animation until after all words have appeared */
+  animation-delay: inherit, 1.2s;
+}
+
 </style>
 </head>
   <body>

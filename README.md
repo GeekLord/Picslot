@@ -1,4 +1,4 @@
-# Picslot - AI-Powered Photo Editor
+# Picslot - Professional Photo Magic with Simple Words.
 
 Picslot is a powerful, web-based AI photo editor that simplifies professional image editing. Retouch photos, apply creative filters, and make complex adjustments using simple text prompts, powered by the Google Gemini API.
 
