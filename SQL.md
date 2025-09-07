@@ -124,11 +124,12 @@ BEGIN
 END$$;
 
 -- Policy: Users can fully manage their own profile.
+-- The WITH CHECK clause is modified to also allow the 'postgres' user (which runs the SECURITY DEFINER trigger) to insert new rows.
 CREATE POLICY "Users can manage their own profile"
     ON public.user_profiles
     FOR ALL
     USING (auth.uid() = id)
-    WITH CHECK (auth.uid() = id);
+    WITH CHECK ((auth.uid() = id) OR (current_user = 'postgres'));
 
 DO $$
 BEGIN

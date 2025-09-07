@@ -122,41 +122,82 @@ const App: React.FC = () => {
 
   // === Effects ===
 
-  // Use onAuthStateChange as the single source of truth for the user's session.
+  // Auth Effect: Minimal, only sets the user object from Supabase auth state.
   useEffect(() => {
     console.log('[App Auth Effect] Setting up onAuthStateChange listener.');
-    const { data: authListener } = supabaseService.supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabaseService.supabase.auth.onAuthStateChange((_event, session) => {
       console.log(`[App Auth Effect] onAuthStateChange triggered. Event: ${_event}, Session exists: ${!!session}`);
       const currentUser = session?.user ?? null;
-      setUser(currentUser); // Trigger re-render with user object or null
-      console.log(`[App Auth Effect] setUser state updated to: ${currentUser ? currentUser.id : 'null'}`);
-      if (currentUser) {
-        console.log('[App Auth Effect] User found, fetching profile...');
-        try {
-          const profile = await supabaseService.getUserProfile(currentUser.id);
-          setUserProfile(profile);
-          console.log('[App Auth Effect] User profile fetched and set.');
-        } catch (e) {
-          console.error("[App] Failed to fetch user profile:", e);
-          setError("Could not load your user profile.");
-        }
-      } else {
-        console.log('[App Auth Effect] No user session. Resetting state.');
-        // If user logs out, reset state and go to dashboard (which will then show AuthScreen)
-        setHistory([]);
-        setHistoryIndex(-1);
-        setUserProfile(null);
-        setPage('dashboard');
-        // Reset loading state to prevent it from persisting across sessions
-        setIsLoading(false);
-      }
+      setUser(currentUser);
     });
   
     return () => {
-      console.log('[App Auth Effect] Cleaning up: Unsubscribing from onAuthStateChange.');
+      console.log('[App Auth Effect] Cleaning up auth listener.');
       authListener?.subscription?.unsubscribe();
     };
   }, []);
+
+  // Data Loading Effect: Handles all data fetching when the user object changes.
+  // This is more robust than chaining effects and prevents race conditions on refresh.
+  useEffect(() => {
+    const loadAllUserData = async () => {
+      if (!user) return; // Should not happen if logic is correct, but a good guard.
+
+      console.log('[App Data Effect] User detected. Loading profile, projects, and prompts.');
+      setProjectsLoaded(false); // Use this as the main "data loading" flag.
+
+      try {
+        // Fetch all user-related data in parallel for efficiency
+        const [profile, loadedProjects, userPrompts] = await Promise.all([
+          supabaseService.getUserProfile(user.id),
+          supabaseService.getProjects(user.id),
+          supabaseService.getPrompts(user.id),
+        ]);
+
+        let finalProfile = profile;
+        if (!finalProfile) {
+          console.warn('[App Data Effect] No user profile found. Creating a default one.');
+          const defaultDisplayName = user.email?.split('@')[0] || `user_${user.id.substring(0, 8)}`;
+          finalProfile = await supabaseService.updateUserProfile(user.id, {
+              display_name: defaultDisplayName,
+          });
+          console.log('[App Data Effect] Default profile created successfully.');
+        }
+        
+        // Set state after all data is successfully fetched
+        setUserProfile(finalProfile);
+        setProjects(loadedProjects);
+        setPrompts(userPrompts);
+        setProjectsLoaded(true); // Signal that loading is complete
+        console.log(`[App Data Effect] Successfully loaded profile, ${loadedProjects.length} projects, and ${userPrompts.length} prompts.`);
+
+      } catch (e) {
+        console.error("Failed to load user data:", e);
+        setError("Could not load your saved data.");
+        // Ensure we don't get stuck in a loading state on error
+        setUserProfile(null);
+        setProjects([]);
+        setPrompts([]);
+        setProjectsLoaded(false); // This will keep the spinner until the error is displayed
+      }
+    };
+
+    if (user) {
+      loadAllUserData();
+    } else if (user === null) {
+      // User is explicitly logged out, not just in the initial undefined state.
+      console.log('[App Data Effect] User is null (logged out). Clearing user-specific state.');
+      setUserProfile(null);
+      setProjects([]);
+      setPrompts([]);
+      setProjectsLoaded(false); // Reset for the next login.
+      setHistory([]);
+      setHistoryIndex(-1);
+      setPage('dashboard');
+      setIsLoading(false); // Ensure any in-progress loaders are stopped
+    }
+  }, [user]); // This effect runs only when the user object itself changes.
+
 
   // Callback for child components (like PromptManager) to trigger a refresh of prompts
   const handleRefreshPrompts = useCallback(async () => {
@@ -175,43 +216,6 @@ const App: React.FC = () => {
     }
   }, [user]);
 
-  // Load all user data (projects, prompts) when the user logs in or a session is detected
-  useEffect(() => {
-    const loadUserData = async () => {
-        if (user) {
-            console.log('[App Data Effect] User detected, loading data.');
-            setProjectsLoaded(false);
-            try {
-                const [loadedProjects, userPrompts] = await Promise.all([
-                    supabaseService.getProjects(user.id),
-                    supabaseService.getPrompts(user.id)
-                ]);
-
-                setProjects(loadedProjects);
-                console.log(`[App Data Effect] Loaded ${loadedProjects.length} projects.`);
-                
-                setPrompts(userPrompts);
-                console.log(`[App Prompts] Successfully refreshed ${userPrompts.length} prompts.`);
-
-            } catch (e) {
-                console.error("Failed to load user data:", e);
-                setError("Could not load your saved data.");
-                setProjects([]);
-                setPrompts([]);
-            } finally {
-                setProjectsLoaded(true);
-                console.log('[App Data Effect] User data loading finished.');
-            }
-        } else {
-            console.log('[App Data Effect] No user detected. Clearing projects and prompts.');
-            setProjects([]);
-            setPrompts([]);
-            setProjectsLoaded(false);
-        }
-    };
-
-    loadUserData();
-  }, [user]);
 
   // Clean up compare mode when tool changes
   useEffect(() => {
@@ -752,7 +756,7 @@ const App: React.FC = () => {
             <div className="text-center animate-fade-in bg-red-500/10 border border-red-500/20 p-8 rounded-lg max-w-2xl mx-auto flex flex-col items-center gap-4">
                 <h2 className="text-2xl font-bold text-red-300">An Error Occurred</h2>
                 <p className="text-md text-red-400">{error}</p>
-                <button type="button" onClick={() => setError(null)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg text-md transition-colors">Try Again</button>
+                <button type="button" onClick={() => { setError(null); handleLogout(); }} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg text-md transition-colors">Logout and Try Again</button>
             </div>
         </div>
       );
@@ -777,8 +781,10 @@ const App: React.FC = () => {
 
   const renderPageContent = () => {
     console.log(`[App Render] Determining page content for page: '${page}'.`);
-    if (page !== 'editor' && (!projectsLoaded || isLoading)) {
-        console.log('[App Render] Page is not editor and data is loading. Rendering spinner.');
+    // Wait for both projects AND user profile to be loaded before rendering dashboard pages.
+    // This prevents showing incomplete UI (like a header with fallback names) and fixes getting stuck on refresh.
+    if (page !== 'editor' && (!projectsLoaded || !userProfile)) {
+        console.log(`[App Render] Page is not editor and data is loading. Rendering spinner. projectsLoaded: ${projectsLoaded}, userProfile: ${!!userProfile}`);
         return <Spinner size="lg" />;
     }
 
