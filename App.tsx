@@ -76,6 +76,45 @@ const blobToFile = async (url: string, filename: string): Promise<File> => {
     }
 };
 
+const defaultPrompts: { title: string; prompt: string }[] = [
+  {
+    title: "Black Suit Portrait, Blue Background",
+    prompt: "Change the figure in the picture to a professional photo with a blue background wearing a black suit and tie, and take a close-up of the upper body facing the camera. Except for the costumes and backgrounds, the characters remain consistent without any changes."
+  },
+  {
+    title: "Exact person, front-facing portrait",
+    prompt: "Keep the exact same person with identical facial features, skin texture, hairstyle, clothing, and overall appearance. Rotate the entire body and head so the subject is facing forward directly toward the camera, creating a true front-facing portrait instead of a side view. Preserve the original lighting, background, camera angle, and style so the edit feels seamless and natural."
+  },
+  {
+    title: "New Angle, Revealing Depth",
+    prompt: "Move the camera from its current position to a new angle or perspective, revealing fresh details and aspects of the scene that were previously hidden. The shift should feel natural and cinematic, maintaining the existing mood, lighting, and style, while highlighting new layers of the environment, characters, or objects. The change in perspective should create a sense of discovery and depth, drawing the viewer further into the scene."
+  },
+  {
+    title: "Portrait Restoration Advanced",
+    prompt: "An ultra-photorealistic, masterfully restored and colorized portrait of a beautiful young female. Her delicate, expressive features are illuminated by soft, diffused natural light, creating a flattering, golden hour glow. The image showcases incredibly fine details: perfect, radiant skin texture free of any imperfections or scratches, intricate hair strands, and sparkling catchlights in her eyes. The color palette is vibrant yet impeccably natural, with authentic skin tones and realistic color grading. Shot on a professional full-frame mirrorless camera with an 85mm f/1.4 prime lens, resulting in a very shallow depth of field, creamy bokeh, and pin-sharp focus on her eyes. The composition is a captivating, centered close-up, emphasizing her natural beauty and youthful serenity against a subtly blurred, complementary natural background. High resolution, hyper-detailed, fine-art quality."
+  },
+  {
+    title: "Portrait Restoration Simple",
+    prompt: "Restore and colorize this image of cute young female. Remove any scratches or imperfections. make it super high quality portrait, natural colors."
+  },
+  {
+    title: "Remove Watermarks, Restore Image",
+    prompt: "Remove all watermarks and unwanted overlays from the image while preserving the subject, background, and details exactly as they are. Ensure the person’s identity, race, ethnicity, and facial features remain unchanged. Maintain natural lighting, colors, and textures, producing a clean, restored version of the photo with no visible watermark or editing artifacts."
+  },
+  {
+    title: "Restore Advance",
+    prompt: "Transform the old, low-resolution mobile photo into a high-quality, photorealistic studio-style portrait while keeping the person's identity, race, ethnicity, and facial features exactly the same. Remove noise, grain, and pixelation, restoring natural skin tones and textures without distortion. Light the subject with soft, even studio lighting that enhances facial contours while maintaining authenticity. Sharpen facial details, eyes, and hair realistically, avoiding over-editing or artificial smoothing. Preserve the hairstyle, clothing, and jewelry, but render them with clarity and natural color. Replace the low-quality background with a subtle, softly blurred neutral studio backdrop that does not distract from the subject. The result should look like a professional portrait captured with a modern DSLR in perfect lighting conditions."
+  },
+  {
+    title: "Restore and make studio portrait",
+    prompt: "Transform the old, low-resolution mobile photo into a high-quality, photorealistic full-body portrait taken in a professional photo studio. Keep the person's identity, race, ethnicity, and facial features exactly the same. Remove noise, grain, and pixelation, restoring natural skin tones and realistic textures. Dress the subject in modern, elegant clothing suitable for a studio portrait, while keeping the style simple and timeless. Light the subject with soft, balanced studio lighting that enhances natural facial contours and details. Preserve the person's hairstyle and jewelry, but render them with clarity and sharpness. Place the subject against a neutral, softly blurred professional studio backdrop. The result should look like a contemporary full-body portrait captured with a modern DSLR in perfect lighting conditions."
+  },
+  {
+    title: "Restore Simple",
+    prompt: "Restore and enhance an old low-resolution photo taken with a low-end mobile phone camera in poor lighting. Remove heavy noise, grain, and pixelation while keeping the subject's identity, race, ethnicity, and facial features exactly the same. Improve skin tones to look natural and balanced without over-smoothing. Correct lighting to achieve a clear, well-lit appearance, adjusting contrast and shadows realistically. Sharpen facial details while preserving authenticity. Maintain the original hairstyle, clothing, and background but render them with improved clarity and natural colors. Output should look like a clean, high-quality modern digital photo, not artificially stylized."
+  }
+];
+
 
 type Tool = 'adjust' | 'filters' | 'crop';
 export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings';
@@ -186,12 +225,24 @@ const App: React.FC = () => {
           console.log('[App Data Effect] Default profile created successfully.');
         }
         
+        let finalPrompts = userPrompts;
+        // For existing users with no prompts, seed their account with the defaults.
+        // New users will get these from the SQL trigger, so this check will be false for them.
+        if (userPrompts.length === 0) {
+            console.log('[App Data Effect] User has no prompts. Seeding with default prompts.');
+            const createdPrompts = await Promise.all(
+                defaultPrompts.map(p => supabaseService.savePrompt({ ...p, user_id: user.id }))
+            );
+            finalPrompts = createdPrompts;
+            console.log(`[App Data Effect] Successfully seeded ${createdPrompts.length} prompts.`);
+        }
+
         // Set state after all data is successfully fetched
         setUserProfile(finalProfile);
         setProjects(loadedProjects);
-        setPrompts(userPrompts);
+        setPrompts(finalPrompts);
         setProjectsLoaded(true); // Signal that loading is complete
-        console.log(`[App Data Effect] Successfully loaded profile, ${loadedProjects.length} projects, and ${userPrompts.length} prompts.`);
+        console.log(`[App Data Effect] Successfully loaded profile, ${loadedProjects.length} projects, and ${finalPrompts.length} prompts.`);
 
       } catch (e) {
         console.error("Failed to load user data:", e);
@@ -364,6 +415,18 @@ const App: React.FC = () => {
         return targetPage;
     });
   }, []);
+  
+  const handleUsePrompt = useCallback((promptToUse: Prompt) => {
+      console.log(`[App Event] Using prompt: "${promptToUse.title}"`);
+      // Set the prompt content for the editor
+      setPrompt(promptToUse.prompt);
+      // Close the modal
+      setIsPromptManagerOpen(false);
+      // Navigate to the correct page
+      const targetPage = currentImage ? 'editor' : 'upload';
+      handleNavigate(targetPage);
+      console.log(`[App Event] Prompt set. Navigating to ${targetPage}.`);
+  }, [currentImage, handleNavigate]);
 
   // === Project Management ===
 
@@ -1045,6 +1108,7 @@ const App: React.FC = () => {
             user={user}
             onRefreshPrompts={handleRefreshPrompts}
             initialPrompts={prompts}
+            onUsePrompt={handleUsePrompt}
           />
       )}
     </div>

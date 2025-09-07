@@ -9,7 +9,7 @@ import * as supabaseService from '../services/supabaseService';
 import { enhancePrompt, generatePromptTitle } from '../services/geminiService';
 import type { User } from '@supabase/supabase-js';
 import ConfirmationModal from './ConfirmationModal';
-import { PlusIcon, TrashIcon, BookmarkIcon, MagicWandIcon, DuplicateIcon, ShareIcon } from './icons';
+import { PlusIcon, TrashIcon, BookmarkIcon, MagicWandIcon, DuplicateIcon, ShareIcon, PlayIcon } from './icons';
 import Spinner from './Spinner';
 import SharePromptModal from './SharePromptModal';
 
@@ -19,9 +19,10 @@ interface PromptManagerModalProps {
   user: User;
   onRefreshPrompts: () => void;
   initialPrompts: Prompt[];
+  onUsePrompt: (prompt: Prompt) => void;
 }
 
-const PromptManagerModal: React.FC<PromptManagerModalProps> = ({ isOpen, onClose, user, onRefreshPrompts, initialPrompts }) => {
+const PromptManagerModal: React.FC<PromptManagerModalProps> = ({ isOpen, onClose, user, onRefreshPrompts, initialPrompts, onUsePrompt }) => {
   const [prompts, setPrompts] = useState<Prompt[]>(initialPrompts);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -305,9 +306,21 @@ const PromptManagerModal: React.FC<PromptManagerModalProps> = ({ isOpen, onClose
                                 </div>
                             )}
                         </div>
-                        <button type="submit" className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 disabled:bg-gray-600 disabled:cursor-not-allowed" disabled={isLoading || !title.trim() || !promptContent.trim()}>
-                            {isLoading ? <Spinner size="sm" /> : (isCreating ? 'Create Prompt' : 'Save Changes')}
-                        </button>
+                         <div className="flex items-center gap-2">
+                            <button type="submit" className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 disabled:bg-gray-600 disabled:cursor-not-allowed" disabled={isLoading || !title.trim() || !promptContent.trim()}>
+                                {isLoading ? <Spinner size="sm" /> : (isCreating ? 'Create Prompt' : 'Save Changes')}
+                            </button>
+                            {!isCreating && selectedPrompt && (
+                                <button
+                                    type="button"
+                                    onClick={() => onUsePrompt(selectedPrompt)}
+                                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2"
+                                    title="Use this prompt in the editor"
+                                >
+                                    <PlayIcon className="w-5 h-5"/> Use Prompt
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </form>
             ) : (
