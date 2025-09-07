@@ -96,6 +96,22 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
         setIsLoading(false);
     }
   };
+  
+  const handleDemoLogin = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+        const { error: signInError } = await signIn('demo@picslot.com', 'Demo@Pics#444');
+        if (signInError) {
+            throw signInError;
+        }
+        // On success, the onAuthStateChange listener in App.tsx handles navigation.
+    } catch (err: any) {
+        setError(err.message || "Failed to log in as demo user.");
+    } finally {
+        setIsLoading(false);
+    }
+  };
 
   const switchView = (newView: AuthView) => {
     setView(newView);
@@ -161,6 +177,7 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
   const inputClass = "w-full bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-3 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition";
   const buttonClass = "w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center";
   const googleButtonClass = "w-full bg-gray-200 text-gray-800 font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out hover:-translate-y-px active:scale-95 flex items-center justify-center gap-3";
+  const demoButtonClass = "w-full bg-gray-700/50 border border-gray-600 text-gray-200 font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out hover:bg-gray-700 hover:-translate-y-px active:scale-95 flex items-center justify-center gap-3 mb-4";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
@@ -230,17 +247,34 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
           )}
 
 
-          {view !== 'forgotPassword' && (
+          {view === 'login' && (
             <>
               <div className="my-6 flex items-center gap-4">
                 <hr className="w-full border-gray-600" />
                 <span className="text-gray-500 font-semibold">OR</span>
                 <hr className="w-full border-gray-600" />
               </div>
+              <button type="button" onClick={handleDemoLogin} className={demoButtonClass} disabled={isLoading}>
+                {isLoading ? <Spinner size="sm" /> : 'Login as Demo User'}
+              </button>
               <button type="button" onClick={handleGoogleLogin} className={googleButtonClass}>
                 <GoogleIcon className="w-6 h-6" />
                 Sign in with Google
               </button>
+            </>
+          )}
+          
+          {view === 'register' && (
+             <>
+                <div className="my-6 flex items-center gap-4">
+                    <hr className="w-full border-gray-600" />
+                    <span className="text-gray-500 font-semibold">OR</span>
+                    <hr className="w-full border-gray-600" />
+                </div>
+                <button type="button" onClick={handleGoogleLogin} className={googleButtonClass}>
+                    <GoogleIcon className="w-6 h-6" />
+                    Sign up with Google
+                </button>
             </>
           )}
 
