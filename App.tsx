@@ -12,6 +12,7 @@ import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
+import ChangeViewPanel from './components/ChangeViewPanel';
 import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
@@ -116,7 +117,7 @@ const defaultPrompts: { title: string; prompt: string }[] = [
 ];
 
 
-type Tool = 'adjust' | 'filters' | 'crop';
+type Tool = 'adjust' | 'filters' | 'crop' | 'change-view';
 export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings';
 
 
@@ -725,35 +726,19 @@ const App: React.FC = () => {
   const handleGenerateThreeViewShot = createApiHandler(generateThreeViewShot, '3-view-shot');
   const handleOutpaint = createApiHandler(generateOutpaintedImage, 'outpaint');
 
-  const handleMoveCamera = async () => {
+  const handleApplyViewChange = async (shotType: string) => {
     if (!currentImage) {
-      console.warn('[App AI] Dynamic camera move aborted: no current image.');
+      console.warn('[App AI] Change view aborted: no current image.');
       return;
     }
-    console.log('[App AI] Starting dynamic camera move...');
+    console.log(`[App AI] Starting camera view change with type: "${shotType}"`);
     setIsLoading(true);
     setError(null);
     try {
-      // 1. Describe the image to get context for the new prompt
       console.log('[App AI] Describing image for context...');
       const description = await describeImage(currentImage);
       console.log(`[App AI] Image description for context: "${description}"`);
 
-      // 2. Choose a random, dynamic shot type
-      const shotTypes = [
-        'a dynamic low-angle shot', 
-        'an intimate close-up', 
-        'a cinematic wide shot revealing more of the environment', 
-        'an over-the-shoulder perspective', 
-        'a dramatic high-angle shot', 
-        'a drone shot', 
-        'a dutch angle for an unsettling feel', 
-        'a gritty handheld camera shot'
-      ];
-      const randomShot = shotTypes[Math.floor(Math.random() * shotTypes.length)];
-      console.log(`[App AI] Selected random shot type: "${randomShot}"`);
-      
-      // 3. Construct the intelligent, dynamic prompt
       const dynamicPrompt = `
         **CRITICAL IDENTITY PRESERVATION:**
         The person in the image must be the EXACT SAME person. Do not change their facial features, ethnicity, hair, or clothing. This is the most important rule.
@@ -762,22 +747,23 @@ const App: React.FC = () => {
         The original scene is: "${description}".
 
         **NEW CINEMATIC INSTRUCTION:**
-        Re-imagine the scene by changing the camera to ${randomShot}. The new composition should be visually interesting and different from the original, while maintaining the same subjects and general environment. The lighting and style must remain consistent with the original photo.
+        Re-imagine the scene by changing the camera to ${shotType}. The new composition should be visually interesting and different from the original, while maintaining the same subjects and general environment. The lighting and style must remain consistent with the original photo.
       `;
       
-      console.log('[App AI] Sending request for new dynamic camera view...');
+      console.log('[App AI] Sending request for new camera view...');
+      // Re-using generateMovedCameraImage as it's just a generic function that takes a prompt
       const resultUrl = await generateMovedCameraImage(currentImage, dynamicPrompt);
       
-      const newImageFile = dataURLtoFile(resultUrl, `move-camera-${Date.now()}.png`);
+      const newImageFile = dataURLtoFile(resultUrl, `change-view-${Date.now()}.png`);
       addImageToHistory(newImageFile);
-      console.log('[App AI] Dynamic camera move successful.');
+      console.log('[App AI] Camera view change successful.');
     } catch (err) {
-      console.error('[App AI] Dynamic camera move failed:', err);
+      console.error('[App AI] Camera view change failed:', err);
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
       setError(`Failed to change camera view. ${errorMessage}`);
     } finally {
       setIsLoading(false);
-      console.log('[App AI] Dynamic camera move operation finished.');
+      console.log('[App AI] Camera view change operation finished.');
     }
   };
 
@@ -1148,22 +1134,23 @@ const App: React.FC = () => {
                           <button type="button" onClick={() => handleStudioPortrait()} disabled={isLoading} className={sidebarToolButtonClass} title="Convert your photo into a professional headshot with a clean studio background."><PortraitIcon className="w-5 h-5 mr-3 text-cyan-400"/>Studio Portrait</button>
                           <button type="button" onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass} title="Generate a professional, multi-pose modeling composite card."><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Composite Card</button>
                           <button type="button" onClick={() => handleGenerateThreeViewShot()} disabled={isLoading} className={sidebarToolButtonClass} title="Create a 3-view (front, side, back) reference shot of a person."><ThreeViewIcon className="w-5 h-5 mr-3 text-sky-400"/>Character Turnaround</button>
-                          <button type="button" onClick={() => handleMoveCamera()} disabled={isLoading} className={sidebarToolButtonClass} title="Move the camera to reveal new aspects of the scene."><ChangeViewIcon className="w-5 h-5 mr-3 text-indigo-400"/>Change View</button>
                           <button type="button" onClick={() => handleOutpaint()} disabled={isLoading} className={sidebarToolButtonClass} title="Expand a cropped image to reveal the full body and a complete background."><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Magic Expand</button>
                         </div>
                       </div>
                       
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mt-4 mb-3 border-b border-gray-700 pb-2">Manual Edits</h3>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                             <button type="button" onClick={() => setActiveTool(activeTool === 'adjust' ? null : 'adjust')} className={mainToolButtonClass('adjust')}><AdjustmentsIcon className="w-6 h-6"/>Adjust</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'filters' ? null : 'filters')} className={mainToolButtonClass('filters')}><LayersIcon className="w-6 h-6"/>Filters</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'crop' ? null : 'crop')} className={mainToolButtonClass('crop')}><CropIcon className="w-6 h-6"/>Crop</button>
+                            <button type="button" onClick={() => setActiveTool(activeTool === 'change-view' ? null : 'change-view')} className={mainToolButtonClass('change-view')}><ChangeViewIcon className="w-6 h-6"/>Change View</button>
                         </div>
                         <div className="mt-4">
                             {activeTool === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />}
                             {activeTool === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />}
                             {activeTool === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
+                            {activeTool === 'change-view' && <ChangeViewPanel onApplyViewChange={handleApplyViewChange} isLoading={isLoading} />}
                         </div>
                       </div>
                   </aside>
