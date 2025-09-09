@@ -5,14 +5,14 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
-import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage, enhancePrompt } from './services/geminiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage, generateMovedCameraImage, enhancePrompt, describeImage } from './services/geminiService';
 import * as supabaseService from './services/supabaseService';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -148,6 +148,10 @@ const App: React.FC = () => {
   const [isSnapshotsModalOpen, setIsSnapshotsModalOpen] = useState<boolean>(false);
   const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
+  const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState<boolean>(false);
+  const [imageDescription, setImageDescription] = useState<string | null>(null);
+  const [isDescribingImage, setIsDescribingImage] = useState<boolean>(false);
+  const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
   // Brush / Mask State
   const [isBrushMode, setIsBrushMode] = useState<boolean>(false);
@@ -339,6 +343,22 @@ const App: React.FC = () => {
       setOriginalImageUrl(null);
     }
   }, [originalImage]);
+  
+  // Close description modal on Escape key press, and reset copy state
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsDescriptionModalOpen(false);
+      }
+    };
+    if (isDescriptionModalOpen) {
+      setCopySuccess(false);
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [isDescriptionModalOpen]);
 
   // === History Management ===
 
@@ -635,6 +655,43 @@ const App: React.FC = () => {
     }
   }
 
+  const handleDescribeImage = async () => {
+    if (!currentImage) {
+        console.warn('[App AI] Describe image aborted: no current image.');
+        return;
+    }
+    console.log('[App AI] Starting image description...');
+    setIsDescribingImage(true);
+    setImageDescription(null);
+    setIsDescriptionModalOpen(true);
+    setError(null);
+    try {
+        const description = await describeImage(currentImage);
+        setImageDescription(description);
+        console.log('[App AI] Image description successful.');
+    } catch (err) {
+        console.error('[App AI] Image description failed:', err);
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to describe the image. ${errorMessage}`);
+        // Close the modal on error so the user can see the main error message
+        setIsDescriptionModalOpen(false);
+    } finally {
+        setIsDescribingImage(false);
+        console.log('[App AI] Image description operation finished.');
+    }
+  };
+
+  const handleCopyDescription = () => {
+      if (imageDescription && !copySuccess) {
+          navigator.clipboard.writeText(imageDescription).then(() => {
+              setCopySuccess(true);
+              setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+          }).catch(err => {
+              console.error('Failed to copy prompt: ', err);
+          });
+      }
+  };
+
   const createApiHandler = (apiFn: (file: File, prompt?: string) => Promise<string>, actionName: string) => async (promptOrFile?: string | File) => {
       if (!currentImage) {
         console.warn(`[App AI] ${actionName} aborted: no current image.`);
@@ -667,6 +724,61 @@ const App: React.FC = () => {
   const handleGenerateCompCard = createApiHandler(generateCompCard, 'comp-card');
   const handleGenerateThreeViewShot = createApiHandler(generateThreeViewShot, '3-view-shot');
   const handleOutpaint = createApiHandler(generateOutpaintedImage, 'outpaint');
+
+  const handleMoveCamera = async () => {
+    if (!currentImage) {
+      console.warn('[App AI] Dynamic camera move aborted: no current image.');
+      return;
+    }
+    console.log('[App AI] Starting dynamic camera move...');
+    setIsLoading(true);
+    setError(null);
+    try {
+      // 1. Describe the image to get context for the new prompt
+      console.log('[App AI] Describing image for context...');
+      const description = await describeImage(currentImage);
+      console.log(`[App AI] Image description for context: "${description}"`);
+
+      // 2. Choose a random, dynamic shot type
+      const shotTypes = [
+        'a dynamic low-angle shot', 
+        'an intimate close-up', 
+        'a cinematic wide shot revealing more of the environment', 
+        'an over-the-shoulder perspective', 
+        'a dramatic high-angle shot', 
+        'a dutch angle for an unsettling feel', 
+        'a gritty handheld camera shot'
+      ];
+      const randomShot = shotTypes[Math.floor(Math.random() * shotTypes.length)];
+      console.log(`[App AI] Selected random shot type: "${randomShot}"`);
+      
+      // 3. Construct the intelligent, dynamic prompt
+      const dynamicPrompt = `
+        **CRITICAL IDENTITY PRESERVATION:**
+        The person in the image must be the EXACT SAME person. Do not change their facial features, ethnicity, hair, or clothing. This is the most important rule.
+
+        **SCENE CONTEXT:**
+        The original scene is: "${description}".
+
+        **NEW CINEMATIC INSTRUCTION:**
+        Re-imagine the scene by changing the camera to ${randomShot}. The new composition should be visually interesting and different from the original, while maintaining the same subjects and general environment. The lighting and style must remain consistent with the original photo.
+      `;
+      
+      console.log('[App AI] Sending request for new dynamic camera view...');
+      const resultUrl = await generateMovedCameraImage(currentImage, dynamicPrompt);
+      
+      const newImageFile = dataURLtoFile(resultUrl, `move-camera-${Date.now()}.png`);
+      addImageToHistory(newImageFile);
+      console.log('[App AI] Dynamic camera move successful.');
+    } catch (err) {
+      console.error('[App AI] Dynamic camera move failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setError(`Failed to change camera view. ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+      console.log('[App AI] Dynamic camera move operation finished.');
+    }
+  };
 
   const handleApplyCrop = useCallback(() => {
     if (!completedCrop || !imgRef.current) {
@@ -982,6 +1094,7 @@ const App: React.FC = () => {
                           )}
 
                           <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+                              <button type="button" onClick={handleDescribeImage} disabled={isLoading || isDescribingImage} className="flex items-center gap-2 bg-black/50 hover:bg-black/80 text-white font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm"><InfoIcon className="w-5 h-5"/>Describe</button>
                               <button type="button" onClick={() => setIsZoomModalOpen(true)} disabled={isLoading} className="flex items-center gap-2 bg-black/50 hover:bg-black/80 text-white font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm"><ZoomInIcon className="w-5 h-5"/>Zoom</button>
                               {canUndo && <button type="button" onClick={() => setIsCompareMode(!isCompareMode)} disabled={isLoading || activeTool !== null || isBrushMode} className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors backdrop-blur-sm ${isCompareMode ? 'bg-blue-500 text-white' : 'bg-black/50 hover:bg-black/80 text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}><EyeIcon className="w-5 h-5"/>Compare</button>}
                           </div>
@@ -1029,6 +1142,7 @@ const App: React.FC = () => {
                           <button type="button" onClick={() => handleStudioPortrait()} disabled={isLoading} className={sidebarToolButtonClass} title="Convert your photo into a professional headshot with a clean studio background."><PortraitIcon className="w-5 h-5 mr-3 text-cyan-400"/>Studio Portrait</button>
                           <button type="button" onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass} title="Generate a professional, multi-pose modeling composite card."><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Composite Card</button>
                           <button type="button" onClick={() => handleGenerateThreeViewShot()} disabled={isLoading} className={sidebarToolButtonClass} title="Create a 3-view (front, side, back) reference shot of a person."><ThreeViewIcon className="w-5 h-5 mr-3 text-sky-400"/>Character Turnaround</button>
+                          <button type="button" onClick={() => handleMoveCamera()} disabled={isLoading} className={sidebarToolButtonClass} title="Move the camera to reveal new aspects of the scene."><ChangeViewIcon className="w-5 h-5 mr-3 text-indigo-400"/>Change View</button>
                           <button type="button" onClick={() => handleOutpaint()} disabled={isLoading} className={sidebarToolButtonClass} title="Expand a cropped image to reveal the full body and a complete background."><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Magic Expand</button>
                         </div>
                       </div>
@@ -1098,6 +1212,52 @@ const App: React.FC = () => {
       </main>
       
       <ZoomModal isOpen={isZoomModalOpen} onClose={() => setIsZoomModalOpen(false)} imageUrl={currentImageUrl} />
+      {isDescriptionModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm"
+          onClick={() => setIsDescriptionModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="bg-gray-800/80 border border-gray-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl w-full max-w-2xl mx-auto flex flex-col gap-4 max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-white">Generated Prompt</h2>
+              <button
+                onClick={() => setIsDescriptionModalOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors z-10"
+                aria-label="Close prompt view"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-grow overflow-y-auto pr-2 bg-gray-900/50 rounded-lg p-4 border border-gray-700">
+              {isDescribingImage ? (
+                <div className="flex items-center justify-center h-full">
+                  <Spinner size="md" />
+                </div>
+              ) : (
+                <p className="text-gray-300 whitespace-pre-wrap leading-relaxed">
+                  {imageDescription}
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end mt-2">
+                <button
+                    type="button"
+                    onClick={handleCopyDescription}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                    disabled={!imageDescription || isDescribingImage || copySuccess}
+                >
+                    {copySuccess ? <CheckIcon className="w-5 h-5" /> : <ClipboardIcon className="w-5 h-5" />}
+                    {copySuccess ? 'Copied!' : 'Copy Prompt'}
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
       <SaveProjectModal 
         isOpen={isSaveModalOpen} 
         onSave={handleSaveProject}

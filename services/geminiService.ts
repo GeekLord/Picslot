@@ -751,6 +751,68 @@ export const generateRemovedBackgroundImage = async (
 };
 
 /**
+ * Generates an image from a different camera angle using a dynamic prompt.
+ * @param originalImage The original image file.
+ * @param prompt The dynamically generated prompt describing the new camera view and context.
+ * @returns A promise that resolves to the data URL of the new image.
+ */
+export const generateMovedCameraImage = async (
+    originalImage: File,
+    prompt: string,
+): Promise<string> => {
+    console.log(`[GeminiService] Called generateMovedCameraImage with dynamic prompt.`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const originalImagePart = await fileToPart(originalImage);
+
+    const textPart = { text: prompt };
+
+    console.log('[GeminiService] Sending image and dynamic change view prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: [originalImagePart, textPart] },
+        config: {
+            responseModalities: [Modality.IMAGE, Modality.TEXT],
+        },
+    });
+
+    console.log('[GeminiService] Received response from model for moved camera.', response);
+    return handleApiResponse(response, 'move-camera');
+};
+
+/**
+ * Generates a detailed description of an image using generative AI.
+ * @param imageToDescribe The image file to be described.
+ * @returns A promise that resolves to the text description of the image.
+ */
+export const describeImage = async (
+    imageToDescribe: File,
+): Promise<string> => {
+    console.log('[GeminiService] Called describeImage.');
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const imagePart = await fileToPart(imageToDescribe);
+
+    const prompt = "You are an expert prompt engineer for advanced text-to-image AI models. Analyze the provided image and generate a concise, yet visually descriptive prompt that could be used to recreate it. The prompt should be a single paragraph. Focus on capturing the key elements: subject, action, setting, composition, lighting, and overall artistic style (e.g., 'photorealistic,' 'cinematic,' 'oil painting'). Structure the prompt as a series of descriptive phrases, separated by commas. Do not include any analysis, preamble, or explanations. Only output the final prompt.";
+
+    const contents = { parts: [imagePart, { text: prompt }] };
+
+    console.log('[GeminiService] Sending image to the model for description...');
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: contents,
+    });
+
+    console.log('[GeminiService] Received description from model.', response);
+    const descriptionText = response.text;
+
+    if (!descriptionText || descriptionText.trim() === '') {
+        throw new Error('The AI model did not return a description.');
+    }
+
+    return descriptionText.trim();
+};
+
+
+/**
  * Enhances a user's prompt using generative AI.
  * @param promptToEnhance The user's prompt text.
  * @returns A promise that resolves to the enhanced prompt string.
