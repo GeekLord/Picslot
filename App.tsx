@@ -865,6 +865,11 @@ const App: React.FC = () => {
     await supabaseService.signOut();
     console.log('[App Auth] Sign out successful. onAuthStateChange will handle state reset.');
   }, []);
+  
+  const handleErrorDismiss = useCallback(() => {
+    setError(null);
+    setIsLoading(false);
+  }, []);
 
   const handleClearMask = useCallback(() => {
       console.log('[App Brush] Clearing mask.');
@@ -955,7 +960,7 @@ const App: React.FC = () => {
             <div className="text-center animate-fade-in bg-red-500/10 border border-red-500/20 p-8 rounded-lg max-w-2xl mx-auto flex flex-col items-center gap-4">
                 <h2 className="text-2xl font-bold text-red-300">An Error Occurred</h2>
                 <p className="text-md text-red-400">{error}</p>
-                <button type="button" onClick={() => { setError(null); handleLogout(); }} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg text-md transition-colors">Logout and Try Again</button>
+                <button type="button" onClick={handleErrorDismiss} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg text-md transition-colors">Go Back</button>
             </div>
         </div>
       );
