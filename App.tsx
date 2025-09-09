@@ -746,6 +746,7 @@ const App: React.FC = () => {
         'a cinematic wide shot revealing more of the environment', 
         'an over-the-shoulder perspective', 
         'a dramatic high-angle shot', 
+        'a drone shot', 
         'a dutch angle for an unsettling feel', 
         'a gritty handheld camera shot'
       ];
