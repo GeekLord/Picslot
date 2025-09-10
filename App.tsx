@@ -13,6 +13,7 @@ import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
 import ChangeViewPanel from './components/ChangeViewPanel';
+import OutpaintPanel from './components/OutpaintPanel';
 import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
@@ -117,7 +118,7 @@ const defaultPrompts: { title: string; prompt: string }[] = [
 ];
 
 
-type Tool = 'adjust' | 'filters' | 'crop' | 'change-view';
+type Tool = 'adjust' | 'filters' | 'crop' | 'change-view' | 'outpaint';
 export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings';
 
 
@@ -162,12 +163,20 @@ const App: React.FC = () => {
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
   const brushCanvasRef = useRef<{ clear: () => void }>(null);
 
-  // Crop State
+  // Crop & Outpaint State
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [aspect, setAspect] = useState<number | undefined>();
+  const [outpaintState, setOutpaintState] = useState({
+    x: 0,
+    y: 0,
+    zoom: 1,
+    isDragging: false,
+    dragStart: { mouseX: 0, mouseY: 0, imageX: 0, imageY: 0 },
+  });
 
   const imgRef = useRef<HTMLImageElement>(null);
+  const outpaintCanvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const currentImage = history[historyIndex] ?? null;
@@ -314,6 +323,20 @@ const App: React.FC = () => {
       }
     }
   }, [activeTool, isBrushMode]);
+
+  // Reset tool-specific state when active tool changes
+  useEffect(() => {
+    if (activeTool !== 'outpaint') {
+      // Reset outpaint state when tool is deactivated
+      setOutpaintState({
+        x: 0, y: 0, zoom: 1, isDragging: false, dragStart: { mouseX: 0, mouseY: 0, imageX: 0, imageY: 0 }
+      });
+    }
+    if (activeTool !== 'crop') {
+        setCrop(undefined);
+        setCompletedCrop(undefined);
+    }
+  }, [activeTool]);
   
 
   // Create Object URLs for images in history for performance
@@ -724,7 +747,7 @@ const App: React.FC = () => {
   const handleStudioPortrait = createApiHandler(generateStudioPortrait, 'studio-portrait');
   const handleGenerateCompCard = createApiHandler(generateCompCard, 'comp-card');
   const handleGenerateThreeViewShot = createApiHandler(generateThreeViewShot, '3-view-shot');
-  const handleOutpaint = createApiHandler(generateOutpaintedImage, 'outpaint');
+  const handleAutoOutpaint = createApiHandler(generateOutpaintedImage, 'outpaint');
 
   const handleApplyViewChange = async (shotType: string) => {
     if (!currentImage) {
@@ -788,6 +811,50 @@ const App: React.FC = () => {
     setActiveTool(null);
     console.log('[App Crop] Crop applied and added to history.');
   }, [completedCrop, addImageToHistory]);
+
+  const handleApplyOutpaint = useCallback(async () => {
+    if (!currentImage || !imgRef.current || !outpaintCanvasRef.current) {
+        console.warn('[App Outpaint] Apply outpaint aborted: no image, ref, or canvas ref.');
+        return;
+    }
+    console.log('[App Outpaint] Applying interactive outpaint with state:', outpaintState);
+    setIsLoading(true);
+    setError(null);
+    try {
+        const originalImg = imgRef.current;
+        const container = outpaintCanvasRef.current;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error("Could not get canvas context for outpainting.");
+        
+        const drawX = outpaintState.x;
+        const drawY = outpaintState.y;
+        const drawWidth = originalImg.naturalWidth * outpaintState.zoom;
+        const drawHeight = originalImg.naturalHeight * outpaintState.zoom;
+        
+        ctx.drawImage(originalImg, drawX, drawY, drawWidth, drawHeight);
+
+        const expandedImageFile = dataURLtoFile(canvas.toDataURL('image/png'), `expanded-${Date.now()}.png`);
+        
+        console.log('[App Outpaint] Calling Gemini for outpainting...');
+        const resultUrl = await generateOutpaintedImage(expandedImageFile);
+        const newImageFile = dataURLtoFile(resultUrl, `outpainted-${Date.now()}.png`);
+        
+        addImageToHistory(newImageFile);
+        setActiveTool(null); // Deactivate tool on success
+        console.log('[App Outpaint] Outpaint successful.');
+    } catch (err) {
+        console.error('[App Outpaint] Outpaint failed:', err);
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to outpaint image. ${errorMessage}`);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [currentImage, outpaintState, addImageToHistory]);
 
   // === Top Bar Action Handlers ===
   const handleUndo = useCallback(() => {
@@ -874,6 +941,56 @@ const App: React.FC = () => {
   const handleBrushContainerMouseLeave = () => {
     setCursorPosition(null);
   };
+  
+  // === Interactive Outpaint Handlers ===
+  const handleOutpaintMouseDown = (e: React.MouseEvent<HTMLImageElement>) => {
+    e.preventDefault();
+    setOutpaintState(prev => ({
+        ...prev,
+        isDragging: true,
+        dragStart: {
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            imageX: prev.x,
+            imageY: prev.y,
+        },
+    }));
+  };
+  
+  const handleOutpaintMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!outpaintState.isDragging) return;
+    e.preventDefault();
+    setOutpaintState(prev => ({
+        ...prev,
+        x: prev.dragStart.imageX + (e.clientX - prev.dragStart.mouseX),
+        y: prev.dragStart.imageY + (e.clientY - prev.dragStart.mouseY),
+    }));
+  };
+  
+  const handleOutpaintMouseUp = () => {
+    setOutpaintState(prev => ({ ...prev, isDragging: false }));
+  };
+  
+  const handleOutpaintZoom = (factor: number) => {
+    setOutpaintState(prev => ({ ...prev, zoom: Math.max(0.1, Math.min(3, prev.zoom * factor)) }));
+  };
+  
+  const handleOutpaintReset = () => {
+    if (!imgRef.current || !outpaintCanvasRef.current) return;
+    const img = imgRef.current;
+    const container = outpaintCanvasRef.current;
+    const zoomToFit = Math.min(
+        container.clientWidth / img.naturalWidth,
+        container.clientHeight / img.naturalHeight
+    ) * 0.8;
+    setOutpaintState(prev => ({
+      ...prev,
+      zoom: zoomToFit,
+      x: (container.clientWidth - img.naturalWidth * zoomToFit) / 2,
+      y: (container.clientHeight - img.naturalHeight * zoomToFit) / 2,
+    }));
+  };
+
 
   // === Snapshots Handlers ===
   const handleSaveSnapshot = async (snapshotName: string) => {
@@ -1041,6 +1158,54 @@ const App: React.FC = () => {
                             <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)} aspect={aspect} className="max-h-[70vh]">
                               <img ref={imgRef} src={currentImageUrl} alt="Crop this image" className="w-full h-auto object-contain max-h-[70vh] rounded-xl"/>
                             </ReactCrop>
+                          ) : activeTool === 'outpaint' && currentImageUrl ? (
+                              <div
+                                  ref={outpaintCanvasRef}
+                                  className="w-full h-full max-h-[70vh] bg-gray-900 overflow-hidden relative aspect-[4/3]"
+                                  style={{
+                                      backgroundImage: 'linear-gradient(45deg, #374151 25%, transparent 25%), linear-gradient(-45deg, #374151 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #374151 75%), linear-gradient(-45deg, transparent 75%, #374151 75%)',
+                                      backgroundSize: '20px 20px',
+                                      backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+                                      cursor: outpaintState.isDragging ? 'grabbing' : 'grab',
+                                  }}
+                                  onMouseMove={handleOutpaintMouseMove}
+                                  onMouseUp={handleOutpaintMouseUp}
+                                  onMouseLeave={handleOutpaintMouseUp}
+                              >
+                                  <img
+                                      ref={imgRef}
+                                      src={currentImageUrl}
+                                      alt="Position this image for outpainting"
+                                      className="absolute"
+                                      onLoad={(e) => {
+                                        const img = e.currentTarget;
+                                        const container = outpaintCanvasRef.current;
+                                        if (img.naturalWidth > 0 && container && container.clientWidth > 0) {
+                                            const zoomToFit = Math.min(
+                                                container.clientWidth / img.naturalWidth,
+                                                container.clientHeight / img.naturalHeight
+                                            ) * 0.8; // Start slightly zoomed out
+
+                                            setOutpaintState(prev => ({
+                                                ...prev,
+                                                zoom: zoomToFit,
+                                                x: (container.clientWidth - img.naturalWidth * zoomToFit) / 2,
+                                                y: (container.clientHeight - img.naturalHeight * zoomToFit) / 2,
+                                            }));
+                                        }
+                                      }}
+                                      style={{
+                                          left: 0,
+                                          top: 0,
+                                          transform: `translate(${outpaintState.x}px, ${outpaintState.y}px) scale(${outpaintState.zoom})`,
+                                          transformOrigin: '0 0',
+                                          willChange: 'transform',
+                                          cursor: 'inherit',
+                                      }}
+                                      onMouseDown={handleOutpaintMouseDown}
+                                      draggable={false}
+                                  />
+                              </div>
                           ) : isCompareMode && originalImageUrl ? (
                               <CompareSlider originalImageUrl={originalImageUrl} currentImageUrl={currentImageUrl} />
                           ) : (
@@ -1134,23 +1299,25 @@ const App: React.FC = () => {
                           <button type="button" onClick={() => handleStudioPortrait()} disabled={isLoading} className={sidebarToolButtonClass} title="Convert your photo into a professional headshot with a clean studio background."><PortraitIcon className="w-5 h-5 mr-3 text-cyan-400"/>Studio Portrait</button>
                           <button type="button" onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass} title="Generate a professional, multi-pose modeling composite card."><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Composite Card</button>
                           <button type="button" onClick={() => handleGenerateThreeViewShot()} disabled={isLoading} className={sidebarToolButtonClass} title="Create a 3-view (front, side, back) reference shot of a person."><ThreeViewIcon className="w-5 h-5 mr-3 text-sky-400"/>Character Turnaround</button>
-                          <button type="button" onClick={() => handleOutpaint()} disabled={isLoading} className={sidebarToolButtonClass} title="Expand a cropped image to reveal the full body and a complete background."><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Magic Expand</button>
+                          <button type="button" onClick={() => handleAutoOutpaint()} disabled={isLoading} className={sidebarToolButtonClass} title="Intelligently expand the image to a full scene with one click."><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Auto Expand</button>
                         </div>
                       </div>
                       
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mt-4 mb-3 border-b border-gray-700 pb-2">Manual Edits</h3>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                             <button type="button" onClick={() => setActiveTool(activeTool === 'adjust' ? null : 'adjust')} className={mainToolButtonClass('adjust')}><AdjustmentsIcon className="w-6 h-6"/>Adjust</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'filters' ? null : 'filters')} className={mainToolButtonClass('filters')}><LayersIcon className="w-6 h-6"/>Filters</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'crop' ? null : 'crop')} className={mainToolButtonClass('crop')}><CropIcon className="w-6 h-6"/>Crop</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'change-view' ? null : 'change-view')} className={mainToolButtonClass('change-view')}><ChangeViewIcon className="w-6 h-6"/>Change View</button>
+                            <button type="button" onClick={() => setActiveTool(activeTool === 'outpaint' ? null : 'outpaint')} className={mainToolButtonClass('outpaint')}><ExpandIcon className="w-6 h-6"/>Outpaint</button>
                         </div>
                         <div className="mt-4">
                             {activeTool === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />}
                             {activeTool === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />}
                             {activeTool === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
                             {activeTool === 'change-view' && <ChangeViewPanel onApplyViewChange={handleApplyViewChange} isLoading={isLoading} />}
+                            {activeTool === 'outpaint' && <OutpaintPanel onApplyOutpaint={handleApplyOutpaint} onZoom={handleOutpaintZoom} onReset={handleOutpaintReset} isLoading={isLoading} />}
                         </div>
                       </div>
                   </aside>

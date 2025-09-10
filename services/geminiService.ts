@@ -651,36 +651,30 @@ export const generateOutpaintedImage = async (
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are a master digital artist and photo compositor with a deep understanding of human anatomy, specializing in photorealistic outpainting. Your task is to extend the canvas of the provided image to reveal the subject's full body, ensuring perfect anatomical and proportional accuracy.
+    const prompt = `You are a master-level professional photo compositor specializing in photorealistic, seamless outpainting and scene extension.
 
-**OUTPAINTING DIRECTIVE: ANATOMICALLY PERFECT FULL BODY REVEAL**
+**YOUR TASK:**
+Intelligently expand the scene of the provided image.
 
-**CRITICAL CORE REQUIREMENTS:**
+**TWO SCENARIOS:**
 
-1.  **ABSOLUTE IDENTITY & APPEARANCE PRESERVATION (NON-NEGOTIABLE):**
-    -   **FACIAL & UPPER BODY INTEGRITY:** The subject's face, hair, clothing, and all visible parts in the original image MUST remain 100% unchanged and pixel-perfect. Do not re-render or alter the existing portion of the image.
-    -   **AUTHENTICITY:** Preserve original skin texture, ethnic characteristics, and unique identifying traits. The person must be perfectly recognizable.
+1.  **IF THE IMAGE HAS TRANSPARENT AREAS:**
+    -   Your only task is to photorealistically fill **ONLY** the transparent areas.
+    -   The existing, non-transparent part of the image **MUST NOT BE ALTERED**. Preserve every pixel of the original content.
+    -   The new content must be a seamless extension of the original, matching lighting, texture, and perspective.
 
-2.  **SCIENTIFIC ANATOMICAL ACCURACY (CRITICAL FAILURE POINT):**
-    -   **PROPORTIONAL REALISM:** The generated body parts (legs, arms, feet, torso) MUST be in perfect, realistic proportion to the visible upper body and head. Adhere strictly to the principles of human anatomical proportions.
-    -   **STRUCTURAL INTEGRITY:** All limbs must be structurally sound and physically plausible. Ensure correct joint placement, natural limb length, and realistic bone structure.
-    -   **AVOID COMMON ARTIFACTS:** Explicitly avoid generating distorted limbs, incorrect number of fingers/toes, impossible joint angles, or any other anatomical anomalies. The result must withstand scrutiny from a medical illustrator.
-    -   **FAILURE CONDITION:** Any output with anatomical or proportional inaccuracies is considered a complete failure of the task.
+2.  **IF THE IMAGE IS FULL-FRAME (NO TRANSPARENCY):**
+    -   Intelligently expand the image on all sides to create a wider, more complete scene.
+    -   The original image content should form the center of the new, larger image and must be perfectly preserved.
+    -   The aspect ratio of the final output should be a standard photographic ratio that best fits the expanded content (e.g., 4:3, 3:2, 16:9).
 
-3.  **SEAMLESS OUTFIT & POSE CONTINUATION:**
-    -   **CLOTHING COMPLETION:** Logically and realistically complete the subject's clothing, ensuring the style, fabric, and fit are consistent with the visible portion.
-    -   **POSE REALISM:** Continue the subject's pose in a natural and physically plausible way. If they are standing, generate their legs and feet in a stable, weight-bearing position.
+**UNIVERSAL RULES:**
+-   **Contextual Awareness:** The generated content must always be a logical extension of the original scene.
+-   **Photorealism:** The final image must look like a single, original, unedited photograph.
+-   **Identity Preservation:** If people are present, their identity and appearance must not be changed.
 
-4.  **PHOTOREALISTIC BACKGROUND EXTENSION:**
-    -   **SCENE CONTINUATION:** Seamlessly extend the existing background. Maintain consistent lighting, shadows, textures, and perspective. The transition between the original image and the generated area must be undetectable.
-    -   **ENVIRONMENTAL LOGIC:** The extended background should be a logical continuation of the original scene.
-
-5.  **TECHNICAL EXECUTION & COMPOSITION:**
-    -   **ASPECT RATIO:** Adjust the image's aspect ratio to accommodate the full body view. A standard portrait aspect ratio like 2:3 or 3:4 is preferred.
-    -   **CENTERING:** Ensure the final full-body subject is well-composed and centered within the new frame.
-    -   **QUALITY:** Maintain the highest photographic quality. The final image should look like a single, original, unedited photograph.
-
-**OUTPUT DIRECTIVE:** Return exclusively the final outpainted image showing the anatomically correct, full body of the subject. The original portion of the image must be perfectly preserved. No text or explanations.`;
+**OUTPUT DIRECTIVE:**
+Return only the final, complete image. Do not add any text.`;
 
     const textPart = { text: prompt };
 
