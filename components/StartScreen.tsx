@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UploadIcon, MagicWandIcon, PaletteIcon, SunIcon } from './icons';
 
 interface StartScreenProps {
@@ -16,6 +16,39 @@ const StartScreen: React.FC<StartScreenProps> = ({ onFileSelect }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onFileSelect(e.target.files);
   };
+
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      // Don't interfere if the user is pasting into a text field
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+        return;
+      }
+      
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) {
+            // onFileSelect expects a FileList, so we create one.
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            onFileSelect(dataTransfer.files);
+            break; // We only handle the first image found
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [onFileSelect]);
+
 
   return (
     <div 
@@ -48,7 +81,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onFileSelect }) => {
                 Upload an Image
             </label>
             <input id="image-upload-start" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-            <p className="text-sm text-gray-500">or drag and drop a file</p>
+            <p className="text-sm text-gray-500">or drag and drop, or paste from clipboard</p>
         </div>
 
         <div className="mt-16 w-full">

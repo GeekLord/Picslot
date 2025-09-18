@@ -30,6 +30,7 @@ import PromptSelector from './components/PromptSelector';
 import Dashboard from './components/Dashboard';
 import SettingsPage from './components/SettingsPage';
 import SnapshotsModal from './components/SnapshotsModal';
+import HomePage from './components/HomePage';
 
 
 // Helper to convert a data URL string to a File object
@@ -146,6 +147,8 @@ const App: React.FC = () => {
   // UI State
   const [activeTool, setActiveTool] = useState<Tool | null>(null);
   const [page, setPage] = useState<Page>('dashboard');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [initialAuthView, setInitialAuthView] = useState<'login' | 'register'>('login');
   const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
   const [isSnapshotsModalOpen, setIsSnapshotsModalOpen] = useState<boolean>(false);
   const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
@@ -196,6 +199,9 @@ const App: React.FC = () => {
       console.log(`[App Auth Effect] onAuthStateChange triggered. Event: ${_event}, Session exists: ${!!session}`);
       const currentUser = session?.user ?? null;
       setUser(currentUser);
+      if (currentUser) {
+        setIsAuthModalOpen(false); // Close auth modal on successful login/signup
+      }
     });
   
     return () => {
@@ -457,6 +463,11 @@ const App: React.FC = () => {
       handleNavigate(targetPage);
       console.log(`[App Event] Prompt set. Navigating to ${targetPage}.`);
   }, [currentImage, handleNavigate]);
+
+  const handleOpenAuthModal = (view: 'login' | 'register') => {
+    setInitialAuthView(view);
+    setIsAuthModalOpen(true);
+  };
 
   // === Project Management ===
 
@@ -972,8 +983,26 @@ const App: React.FC = () => {
   }
 
   if (user === null) {
-    console.log('[App Render] User is NULL. Rendering AuthScreen.');
-    return <AuthScreen />;
+    console.log('[App Render] User is NULL. Rendering HomePage.');
+    return (
+      <>
+        <HomePage onOpenAuthModal={handleOpenAuthModal} />
+        {isAuthModalOpen && (
+          <div 
+            className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm"
+            onClick={() => setIsAuthModalOpen(false)}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <AuthScreen 
+                initialView={initialAuthView} 
+                isModalMode={true}
+                onClose={() => setIsAuthModalOpen(false)}
+              />
+            </div>
+          </div>
+        )}
+      </>
+    );
   }
   
   const mainToolButtonClass = (tool: Tool) => `flex flex-col items-center justify-center gap-2 w-full font-semibold py-3 px-2 rounded-lg transition-all duration-200 text-sm ${activeTool === tool ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700/50 text-gray-300 hover:text-white hover:bg-gray-700'}`;

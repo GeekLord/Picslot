@@ -3,19 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState, FormEvent } from 'react';
-import { SparkleIcon, GoogleIcon } from './icons';
+import React, { useState, FormEvent, useEffect } from 'react';
+import { SparkleIcon, GoogleIcon, XMarkIcon } from './icons';
 import Spinner from './Spinner';
 import { signIn, signUp, signInWithGoogle, sendPasswordResetEmail } from '../services/supabaseService';
 
-interface AuthScreenProps {
-  // No props needed as auth state is now handled globally in App.tsx
-}
-
 type AuthView = 'login' | 'register' | 'forgotPassword';
 
-const AuthScreen: React.FC<AuthScreenProps> = () => {
-  const [view, setView] = useState<AuthView>('login');
+interface AuthScreenProps {
+  initialView?: AuthView;
+  isModalMode?: boolean;
+  onClose?: () => void;
+}
+
+const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalMode = false, onClose }) => {
+  const [view, setView] = useState<AuthView>(initialView);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,6 +26,10 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  
+  useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
 
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,7 +71,6 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
             }
         } 
         // On success, the onAuthStateChange listener in App.tsx handles navigation.
-        // No need to call a success callback here.
     } catch (err: any) {
         setError(err.message || "Invalid email or password.");
     } finally {
@@ -126,7 +131,6 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
 
   if (needsConfirmation) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md mx-auto text-center">
           <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in">
             <h2 className="text-2xl font-bold text-white mb-2">Check your inbox</h2>
@@ -145,13 +149,11 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
             </button>
           </div>
         </div>
-      </div>
     );
   }
 
   if (resetEmailSent) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md mx-auto text-center">
           <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in">
             <h2 className="text-2xl font-bold text-white mb-2">Check your inbox</h2>
@@ -170,7 +172,6 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
             </button>
           </div>
         </div>
-      </div>
     );
   }
 
@@ -180,14 +181,26 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
   const demoButtonClass = "w-full bg-gray-700/50 border border-gray-600 text-gray-200 font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out hover:bg-gray-700 hover:-translate-y-px active:scale-95 flex items-center justify-center gap-3 mb-4";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md mx-auto">
-        <div className="flex justify-center items-center gap-3 mb-6">
-            <SparkleIcon className="w-8 h-8 text-blue-400" />
-            <h1 className="text-3xl font-bold tracking-tight text-gray-100">Picslot</h1>
-        </div>
-        
-        <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in">
+    <div className={isModalMode ? "w-full max-w-md mx-auto" : "min-h-screen flex flex-col items-center justify-center p-4"}>
+      {!isModalMode && (
+          <div className="flex justify-center items-center gap-3 mb-6">
+              <SparkleIcon className="w-8 h-8 text-blue-400" />
+              <h1 className="text-3xl font-bold tracking-tight text-gray-100">Picslot</h1>
+          </div>
+      )}
+      
+      <div className="relative bg-gray-800/50 border border-gray-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in w-full">
+          {isModalMode && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute top-3 right-3 p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors"
+              aria-label="Close"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          )}
+
           {view === 'login' && (
             <>
               <h2 className="text-2xl font-bold text-white mb-1">Welcome Back</h2>
@@ -304,7 +317,6 @@ const AuthScreen: React.FC<AuthScreenProps> = () => {
                 </p>
             )}
           </div>
-        </div>
       </div>
     </div>
   );
