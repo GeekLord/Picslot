@@ -73,6 +73,7 @@ const Header: React.FC<HeaderProps> = ({ user, userProfile, onLogout, page, onNa
               <nav className="hidden lg:flex items-center gap-2 bg-gray-900/50 p-1 rounded-lg border border-gray-700/60">
                   <button type="button" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }} className={navLinkClass('dashboard')}>Dashboard</button>
                   <button type="button" onClick={(e) => { e.preventDefault(); onNavigate('projects'); }} className={navLinkClass('projects')}>Projects</button>
+                  <button type="button" onClick={(e) => { e.preventDefault(); onNavigate('batch'); }} className={navLinkClass('batch')}>Batch</button>
                   <button 
                     type="button"
                     onClick={(e) => { e.preventDefault(); onNavigate('editor'); }}
@@ -118,6 +119,7 @@ const Header: React.FC<HeaderProps> = ({ user, userProfile, onLogout, page, onNa
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                 <button type="button" onClick={(e) => handleMobileNavClick(e, 'dashboard')} className={navLinkClass('dashboard', true)}>Dashboard</button>
                 <button type="button" onClick={(e) => handleMobileNavClick(e, 'projects')} className={navLinkClass('projects', true)}>Projects</button>
+                <button type="button" onClick={(e) => handleMobileNavClick(e, 'batch')} className={navLinkClass('batch', true)}>Batch</button>
                 <button 
                 type="button"
                 onClick={(e) => handleMobileNavClick(e, 'editor')}

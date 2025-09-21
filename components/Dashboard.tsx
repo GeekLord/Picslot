@@ -6,7 +6,7 @@
 import React from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Project, UserProfile, Template } from '../types';
-import { LayoutGridIcon, BookmarkIcon, PlusIcon } from './icons';
+import { LayoutGridIcon, BookmarkIcon, PlusIcon, InboxStackIcon } from './icons';
 import ProjectCard from './ProjectCard';
 import TemplateGallery from './TemplateGallery';
 
@@ -16,12 +16,13 @@ interface DashboardProps {
   recentProjects: Project[];
   onNavigateToProjects: () => void;
   onStartNewProject: () => void;
+  onNavigateToBatch: () => void;
   onOpenPromptManager: () => void;
   onSelectProject: (project: Project) => void;
   onSelectTemplate: (template: Template) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects, onNavigateToProjects, onStartNewProject, onOpenPromptManager, onSelectProject, onSelectTemplate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects, onNavigateToProjects, onStartNewProject, onNavigateToBatch, onOpenPromptManager, onSelectProject, onSelectTemplate }) => {
   const cardClass = "group relative bg-gray-800/50 border border-gray-700/60 rounded-xl p-6 transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1 flex flex-col items-start text-left";
   const displayName = userProfile?.display_name || user.email?.split('@')[0];
 
@@ -41,13 +42,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects
         <div className="lg:col-span-2 flex flex-col gap-8">
           <div>
             <h2 className="text-2xl font-bold text-white mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button type="button" onClick={onStartNewProject} className={cardClass}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+               <button type="button" onClick={onStartNewProject} className={cardClass}>
                 <div className="flex items-center justify-center w-12 h-12 bg-blue-600/20 text-blue-400 rounded-lg mb-4">
                   <PlusIcon className="w-7 h-7" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1">New Project</h3>
                 <p className="text-gray-400">Start with a blank canvas.</p>
+              </button>
+              <button type="button" onClick={onNavigateToBatch} className={cardClass}>
+                <div className="flex items-center justify-center w-12 h-12 bg-purple-600/20 text-purple-400 rounded-lg mb-4">
+                  <InboxStackIcon className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-1">Batch Editor</h3>
+                <p className="text-gray-400">Process multiple images at once.</p>
               </button>
               <button type="button" onClick={onNavigateToProjects} className={cardClass}>
                 <div className="flex items-center justify-center w-12 h-12 bg-gray-700 rounded-lg mb-4">
@@ -56,7 +64,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects
                 <h3 className="text-xl font-bold text-white mb-1">All Projects</h3>
                 <p className="text-gray-400">View and manage all your work.</p>
               </button>
-              <button type="button" onClick={onOpenPromptManager} className={cardClass}>
+              <button type="button" onClick={onOpenPromptManager} className={`${cardClass} md:col-span-2 lg:col-span-3`}>
                 <div className="flex items-center justify-center w-12 h-12 bg-gray-700 rounded-lg mb-4">
                   <BookmarkIcon className="w-7 h-7 text-gray-300" />
                 </div>

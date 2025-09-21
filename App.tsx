@@ -31,6 +31,7 @@ import Dashboard from './components/Dashboard';
 import SettingsPage from './components/SettingsPage';
 import SnapshotsModal from './components/SnapshotsModal';
 import HomePage from './components/HomePage';
+import BatchEditorPage from './components/BatchEditorPage';
 
 
 // Helper to convert a data URL string to a File object
@@ -120,7 +121,7 @@ const defaultPrompts: { title: string; prompt: string }[] = [
 
 
 type Tool = 'adjust' | 'filters' | 'crop' | 'change-view';
-export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings';
+export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings' | 'batch';
 
 
 const App: React.FC = () => {
@@ -1012,7 +1013,7 @@ const App: React.FC = () => {
     console.log(`[App Render] Determining page content for page: '${page}'.`);
     // Wait for both projects AND user profile to be loaded before rendering dashboard pages.
     // This prevents showing incomplete UI (like a header with fallback names) and fixes getting stuck on refresh.
-    if (page !== 'editor' && (!projectsLoaded || !userProfile)) {
+    if (page !== 'editor' && page !== 'batch' && (!projectsLoaded || !userProfile)) {
         console.log(`[App Render] Page is not editor and data is loading. Rendering spinner. projectsLoaded: ${projectsLoaded}, userProfile: ${!!userProfile}`);
         return <Spinner size="lg" />;
     }
@@ -1026,6 +1027,7 @@ const App: React.FC = () => {
                         recentProjects={projects.slice(0, 5)}
                         onNavigateToProjects={() => handleNavigate('projects')}
                         onStartNewProject={() => handleNavigate('upload')}
+                        onNavigateToBatch={() => handleNavigate('batch')}
                         onOpenPromptManager={() => setIsPromptManagerOpen(true)}
                         onSelectProject={handleLoadProject}
                         onSelectTemplate={handleSelectTemplate}
@@ -1041,6 +1043,9 @@ const App: React.FC = () => {
         case 'upload':
             console.log('[App Render] Rendering StartScreen (upload) page.');
             return <StartScreen onFileSelect={handleFileSelect} />;
+        case 'batch':
+            console.log('[App Render] Rendering BatchEditorPage.');
+            return <BatchEditorPage prompts={prompts} />;
         case 'settings':
             console.log('[App Render] Rendering SettingsPage.');
             return <SettingsPage 

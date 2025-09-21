@@ -13,7 +13,9 @@
     "react-dom": "^18.2.0",
     "@google/genai": "0.10.0",
     "react-image-crop": "^11.0.6",
-    "@supabase/supabase-js": "^2.44.4"
+    "@supabase/supabase-js": "^2.44.4",
+    "jszip": "3.10.1",
+    "file-saver": "2.0.5"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
