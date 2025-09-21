@@ -878,3 +878,58 @@ Respond ONLY with the generated title text. Do not include any other words, prea
     // Clean up potential markdown or quotes
     return generatedTitle.trim().replace(/["']/g, "");
 };
+
+/**
+ * Generates a composited image from multiple source images and a master prompt.
+ * @param images An array of objects, each containing a File and its user-defined role.
+ * @param masterPrompt The main instruction for how to combine the images.
+ * @returns A promise that resolves to the data URL of the final composited image.
+ */
+export const generateCompositedImage = async (
+    images: { file: File; role: string }[],
+    masterPrompt: string
+): Promise<string> => {
+    console.log('[GeminiService] Called generateCompositedImage.');
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+
+    // 1. Prepare all image parts in parallel
+    const imageParts = await Promise.all(images.map(img => fileToPart(img.file)));
+
+    // 2. Construct the detailed text prompt
+    let textPrompt = `You are an expert AI photo compositor. Your task is to combine multiple image assets into a single, seamless, and photorealistic final image based on a master instruction.
+
+**CRITICAL RULE: IDENTITY PRESERVATION**
+If any of the image assets contain a person, you MUST preserve their exact facial features, ethnicity, and unique characteristics in the final output. Do not alter their identity.
+
+---
+
+**MASTER INSTRUCTION:**
+${masterPrompt}
+
+---
+
+**IMAGE ASSETS:**
+You are provided with the following image assets. The user has described the role for each one.
+`;
+
+    const allParts = [];
+    images.forEach((image, index) => {
+        textPrompt += `\n- [IMAGE ${index + 1}] Role: ${image.role}`;
+        allParts.push(imageParts[index]);
+    });
+
+    allParts.push({ text: textPrompt });
+
+    // 3. Send the request to the model
+    console.log('[GeminiService] Sending multiple images and composed prompt to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: allParts },
+        config: {
+            responseModalities: [Modality.IMAGE, Modality.TEXT],
+        },
+    });
+
+    console.log('[GeminiService] Received response from model for composition.', response);
+    return handleApiResponse(response, 'composition');
+};
