@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { UploadIcon, XMarkIcon, SparkleIcon, DownloadIcon, SwitchHorizontalIcon, ShoppingBagIcon, SwatchIcon, PhotoIcon } from './icons';
 import Spinner from './Spinner';
 import { generateGuidedTransform } from '../services/geminiService';
@@ -102,7 +102,7 @@ const GuidedTransformPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleFileSelect = (file: File, type: 'subject' | 'reference') => {
+    const handleFileSelect = useCallback((file: File, type: 'subject' | 'reference') => {
         const newImage = {
             id: `${file.name}-${Date.now()}`,
             file,
@@ -115,7 +115,39 @@ const GuidedTransformPage: React.FC = () => {
             if (reference) URL.revokeObjectURL(reference.url);
             setReference(newImage);
         }
-    };
+    }, [subject, reference]);
+    
+    useEffect(() => {
+        const handlePaste = (event: ClipboardEvent) => {
+            const activeElement = document.activeElement;
+            if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+                return;
+            }
+        
+            const items = event.clipboardData?.items;
+            if (!items) return;
+
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.startsWith('image/')) {
+                    const file = items[i].getAsFile();
+                    if (file) {
+                        if (!subject) {
+                            handleFileSelect(file, 'subject');
+                        } else if (!reference) {
+                            handleFileSelect(file, 'reference');
+                        }
+                        break; // We only handle the first image found
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('paste', handlePaste);
+
+        return () => {
+            window.removeEventListener('paste', handlePaste);
+        };
+    }, [subject, reference, handleFileSelect]);
 
     const handleClear = (type: 'subject' | 'reference') => {
         if (type === 'subject' && subject) {
@@ -156,7 +188,7 @@ const GuidedTransformPage: React.FC = () => {
         <div className="w-full max-w-7xl mx-auto p-4 md:p-8 animate-fade-in flex flex-col gap-8">
             <header>
                 <h1 className="text-4xl font-extrabold tracking-tight text-gray-100">Guided Transform</h1>
-                <p className="mt-2 text-lg text-gray-400">Combine two images to create something new. Select a mode to get started.</p>
+                <p className="mt-2 text-lg text-gray-400">Combine two images to create something new. Upload by clicking, dragging, or pasting from your clipboard.</p>
             </header>
 
             {/* Mode Selector */}
