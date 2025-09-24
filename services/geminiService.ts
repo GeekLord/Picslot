@@ -7,6 +7,8 @@ import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 
 console.log('[GeminiService] Module loaded.');
 
+export type TransformType = 'pose' | 'cloths' | 'style' | 'scene';
+
 const logGenerationCost = (response: GenerateContentResponse, context: string) => {
     const usage = response.usageMetadata;
     if (!usage) {
@@ -932,4 +934,132 @@ You are provided with the following image assets. The user has described the rol
 
     console.log('[GeminiService] Received response from model for composition.', response);
     return handleApiResponse(response, 'composition');
+};
+
+/**
+ * Generates an image by transforming a subject image based on a reference image and a specified transform type.
+ * @param subjectImage The primary image containing the subject or content.
+ * @param referenceImage The secondary image providing the pose, clothing, style, or scene.
+ * @param userPrompt Optional additional instructions.
+ * @param transformType The type of transformation to perform.
+ * @returns A promise that resolves to the data URL of the final image.
+ */
+export const generateGuidedTransform = async (
+    subjectImage: File,
+    referenceImage: File,
+    userPrompt: string,
+    transformType: TransformType
+): Promise<string> => {
+    console.log(`[GeminiService] Called generateGuidedTransform with type: ${transformType}.`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+
+    const subjectImagePart = await fileToPart(subjectImage);
+    const referenceImagePart = await fileToPart(referenceImage);
+
+    let fullPrompt = '';
+
+    switch (transformType) {
+        case 'pose':
+            fullPrompt = `You are a master AI digital artist specializing in photorealistic character recomposition. Your task is to extract a pose from a reference image and apply it to a subject from a source photograph, creating a new, seamless, and realistic photo.
+
+**CRITICAL DIRECTIVES (NON-NEGOTIABLE):**
+1.  **ABSOLUTE IDENTITY PRESERVATION:** The person in the final image MUST be the **exact same person** from the [SUBJECT IMAGE]. Do NOT alter their facial features, bone structure, ethnicity, unique characteristics, hairstyle, or clothing. The subject's entire appearance is the source of truth and must be perfectly replicated.
+2.  **PHOTOREALISTIC OUTPUT:** The final output MUST be a **high-quality, realistic photograph**. The style, lighting, and quality must match the [SUBJECT IMAGE].
+3.  **POSE REFERENCE ONLY:** The [REFERENCE IMAGE] is to be used **exclusively** as a reference for the body's pose. Completely ignore its artistic style, clothing, and subject identity.
+
+**IMAGE ROLES:**
+-   **[SUBJECT IMAGE]:** Provides the person's identity, face, clothing, hair, and the required **photorealistic style**.
+-   **[REFERENCE IMAGE]:** Provides the physical pose **only**.
+
+**INSTRUCTIONS:**
+1.  Recreate the subject from the [SUBJECT IMAGE] in the exact pose shown in the [REFERENCE IMAGE].
+2.  Maintain the original clothing, hair, and accessories from the [SUBJECT IMAGE].
+3.  ${userPrompt ? `Apply the following user instructions: "${userPrompt}"` : 'Generate a simple, neutral studio background that complements the subject.'}
+
+**OUTPUT DIRECTIVE:** Return only the final, composited, photorealistic image.`;
+            break;
+
+        case 'cloths':
+            fullPrompt = `You are a master AI digital stylist and photo compositor. Your task is to perform a virtual "try-on" by taking only the clothing from a reference image and putting it on the person from a subject image.
+
+**CRITICAL DIRECTIVES (NON-NEGOTIABLE):**
+
+1.  **ABSOLUTE IDENTITY PRESERVATION (FAILURE CONDITION):**
+    -   The final image MUST feature the **exact same person** from the **[SUBJECT IMAGE]**.
+    -   You are forbidden from using the person, face, body, or hair from the **[REFERENCE IMAGE]**. Using the person from the reference image is a complete failure of this task.
+    -   Preserve the facial features, bone structure, ethnicity, unique characteristics, and hairstyle from the **[SUBJECT IMAGE]** with 100% accuracy.
+
+2.  **CLOTHING EXTRACTION ONLY:**
+    -   The **[REFERENCE IMAGE]** is to be used **exclusively** as a source for the clothing/outfit.
+    -   You MUST completely **ignore** the person, face, body, hair, pose, and background of the **[REFERENCE IMAGE]**.
+
+**IMAGE ROLES:**
+-   **[SUBJECT IMAGE]:** The source of truth for the **PERSON**. You will use this person's face, hair, and body.
+-   **[REFERENCE IMAGE]:** The source of truth for the **CLOTHING**. You will only use the outfit from this image.
+
+**INSTRUCTIONS:**
+1.  Identify the person in the **[SUBJECT IMAGE]**.
+2.  Identify the complete outfit in the **[REFERENCE IMAGE]**.
+3.  Create a new, photorealistic image showing the person from the **[SUBJECT IMAGE]** wearing the outfit from the **[REFERENCE IMAGE]**.
+4.  The pose and background can be changed to best suit the new clothing, creating a natural and visually appealing composition. The new pose should be realistic and flattering.
+5.  ${userPrompt ? `Apply the following user instructions: "${userPrompt}"` : ''}
+
+**FINAL CHECK:** Does the output image contain the person from the [SUBJECT IMAGE]? If not, you have failed. The person from the [REFERENCE IMAGE] must not appear in the output.
+
+**OUTPUT DIRECTIVE:** Return only the final, photorealistic image of the subject wearing the new clothes.`;
+            break;
+
+        case 'style':
+            fullPrompt = `You are a master AI style transfer artist. Your task is to apply the complete artistic style from a reference image onto a content image, preserving the original content and composition.
+
+**CRITICAL DIRECTIVES (NON-NEGOTIABLE):**
+1.  **CONTENT PRESERVATION:** The final image must contain the **exact same subjects, objects, and composition** as the [CONTENT IMAGE]. Do not add, remove, or change the arrangement of elements. If a person is present, their identity, clothing, and pose must remain unchanged.
+2.  **STYLE TRANSFER ONLY:** You are only transferring the aesthetic (color palette, lighting, texture, brush strokes, etc.), not the content, from the [STYLE IMAGE].
+
+**IMAGE ROLES:**
+-   **[CONTENT IMAGE]:** This image provides the scene, subjects, and composition to be preserved.
+-   **[STYLE IMAGE]:** This image provides the complete artistic style to be applied.
+
+**INSTRUCTIONS:**
+1.  Re-render the [CONTENT IMAGE] with the exact artistic style of the [STYLE IMAGE].
+2.  This includes a faithful transfer of color grading, lighting, texture, and overall mood.
+3.  ${userPrompt ? `Apply the following user instructions to fine-tune the transfer: "${userPrompt}"` : ''}
+
+**OUTPUT DIRECTIVE:** Return only the final, style-transferred image.`;
+            break;
+
+        case 'scene':
+            fullPrompt = `You are a master AI photo compositor and environmental artist. Your task is to realistically place the subject from one image into the scene of another.
+
+**CRITICAL DIRECTIVES (NON-NEGOTIABLE):**
+1.  **FACIAL IDENTITY PRESERVATION:** The person in the final image MUST have the **exact same face** and identity as the person in the [SUBJECT IMAGE]. Do not alter their facial features, bone structure, or ethnicity.
+2.  **SEAMLESS INTEGRATION:** The final result must be a single, cohesive, and photorealistic image. The lighting, shadows, perspective, and scale of the subject must perfectly match the new environment.
+
+**IMAGE ROLES:**
+-   **[SUBJECT IMAGE]:** This image provides the person/object to be placed in the new scene.
+-   **[SCENE IMAGE]:** This image provides the new background and environment.
+
+**INSTRUCTIONS:**
+1.  Seamlessly and realistically composite the person from the [SUBJECT IMAGE] into the environment from the [SCENE IMAGE].
+2.  The subject's clothing and hairstyle **MAY BE MODIFIED** to logically fit the new scene (e.g., a winter coat in a snowy scene, a swimsuit at a beach).
+3.  The lighting on the subject MUST be re-rendered to match the lighting of the new scene.
+4.  ${userPrompt ? `Apply the following user instructions for the composition: "${userPrompt}"` : ''}
+
+**OUTPUT DIRECTIVE:** Return only the final, seamlessly composited, photorealistic image.`;
+            break;
+    }
+
+    const allParts = [subjectImagePart, referenceImagePart, { text: fullPrompt }];
+
+    console.log(`[GeminiService] Sending images and prompt to the model for guided transform (${transformType})...`);
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: { parts: allParts },
+        config: {
+            responseModalities: [Modality.IMAGE, Modality.TEXT],
+        },
+    });
+
+    console.log(`[GeminiService] Received response from model for guided transform (${transformType}).`, response);
+    return handleApiResponse(response, `guided-transform-${transformType}`);
 };

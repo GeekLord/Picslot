@@ -75,6 +75,7 @@ const Header: React.FC<HeaderProps> = ({ user, userProfile, onLogout, page, onNa
                   <button type="button" onClick={(e) => { e.preventDefault(); onNavigate('projects'); }} className={navLinkClass('projects')}>Projects</button>
                   <button type="button" onClick={(e) => { e.preventDefault(); onNavigate('batch'); }} className={navLinkClass('batch')}>Batch</button>
                   <button type="button" onClick={(e) => { e.preventDefault(); onNavigate('composer'); }} className={navLinkClass('composer')}>Composer</button>
+                  <button type="button" onClick={(e) => { e.preventDefault(); onNavigate('guidedTransform'); }} className={navLinkClass('guidedTransform')}>Transform</button>
                   <button 
                     type="button"
                     onClick={(e) => { e.preventDefault(); onNavigate('editor'); }}
@@ -122,6 +123,7 @@ const Header: React.FC<HeaderProps> = ({ user, userProfile, onLogout, page, onNa
                 <button type="button" onClick={(e) => handleMobileNavClick(e, 'projects')} className={navLinkClass('projects', true)}>Projects</button>
                 <button type="button" onClick={(e) => handleMobileNavClick(e, 'batch')} className={navLinkClass('batch', true)}>Batch</button>
                 <button type="button" onClick={(e) => handleMobileNavClick(e, 'composer')} className={navLinkClass('composer', true)}>Composer</button>
+                <button type="button" onClick={(e) => handleMobileNavClick(e, 'guidedTransform')} className={navLinkClass('guidedTransform', true)}>Transform</button>
                 <button 
                 type="button"
                 onClick={(e) => handleMobileNavClick(e, 'editor')}

@@ -33,6 +33,7 @@ import SnapshotsModal from './components/SnapshotsModal';
 import HomePage from './components/HomePage';
 import BatchEditorPage from './components/BatchEditorPage';
 import SceneComposerPage from './components/SceneComposerPage';
+import GuidedTransformPage from './components/GuidedTransformPage';
 
 
 // Helper to convert a data URL string to a File object
@@ -122,7 +123,7 @@ const defaultPrompts: { title: string; prompt: string }[] = [
 
 
 type Tool = 'adjust' | 'filters' | 'crop' | 'change-view';
-export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings' | 'batch' | 'composer';
+export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings' | 'batch' | 'composer' | 'guidedTransform';
 
 
 const App: React.FC = () => {
@@ -1014,7 +1015,7 @@ const App: React.FC = () => {
     console.log(`[App Render] Determining page content for page: '${page}'.`);
     // Wait for both projects AND user profile to be loaded before rendering dashboard pages.
     // This prevents showing incomplete UI (like a header with fallback names) and fixes getting stuck on refresh.
-    if (page !== 'editor' && page !== 'batch' && page !== 'composer' && (!projectsLoaded || !userProfile)) {
+    if (page !== 'editor' && page !== 'batch' && page !== 'composer' && page !== 'guidedTransform' && (!projectsLoaded || !userProfile)) {
         console.log(`[App Render] Page is not editor and data is loading. Rendering spinner. projectsLoaded: ${projectsLoaded}, userProfile: ${!!userProfile}`);
         return <Spinner size="lg" />;
     }
@@ -1030,6 +1031,7 @@ const App: React.FC = () => {
                         onStartNewProject={() => handleNavigate('upload')}
                         onNavigateToBatch={() => handleNavigate('batch')}
                         onNavigateToComposer={() => handleNavigate('composer')}
+                        onNavigateToGuidedTransform={() => handleNavigate('guidedTransform')}
                         onOpenPromptManager={() => setIsPromptManagerOpen(true)}
                         onSelectProject={handleLoadProject}
                         onSelectTemplate={handleSelectTemplate}
@@ -1051,6 +1053,9 @@ const App: React.FC = () => {
         case 'composer':
             console.log('[App Render] Rendering SceneComposerPage.');
             return <SceneComposerPage />;
+        case 'guidedTransform':
+            console.log('[App Render] Rendering GuidedTransformPage.');
+            return <GuidedTransformPage />;
         case 'settings':
             console.log('[App Render] Rendering SettingsPage.');
             return <SettingsPage 
@@ -1245,7 +1250,7 @@ const App: React.FC = () => {
       )}
 
       <main className={`flex-grow w-full mx-auto ${
-          (page === 'editor' && currentImageUrl) || page === 'composer'
+          (page === 'editor' && currentImageUrl) || page === 'composer' || page === 'guidedTransform'
           ? 'max-w-[1800px] p-4 md:p-8'
           : 'max-w-7xl p-4 md:p-8 flex justify-center items-center'
       }`}>
