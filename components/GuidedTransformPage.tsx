@@ -4,10 +4,11 @@
 */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { UploadIcon, XMarkIcon, SparkleIcon, DownloadIcon, SwitchHorizontalIcon, ShoppingBagIcon, SwatchIcon, PhotoIcon } from './icons';
+import { UploadIcon, XMarkIcon, SparkleIcon, DownloadIcon, SwitchHorizontalIcon, ShoppingBagIcon, SwatchIcon, PhotoIcon, ZoomInIcon } from './icons';
 import Spinner from './Spinner';
 import { generateGuidedTransform } from '../services/geminiService';
 import type { TransformType } from '../services/geminiService';
+import ZoomModal from './ZoomModal';
 
 interface ImageSlot {
     id: string;
@@ -101,6 +102,7 @@ const GuidedTransformPage: React.FC = () => {
     const [outputUrl, setOutputUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
 
     const handleFileSelect = useCallback((file: File, type: 'subject' | 'reference') => {
         const newImage = {
@@ -268,11 +270,18 @@ const GuidedTransformPage: React.FC = () => {
                         {isLoading ? (
                             <Spinner size="lg"/>
                         ) : outputUrl ? (
-                            <div className="relative w-full h-full">
-                                <img src={outputUrl} alt="Generated scene" className="w-full h-full object-contain rounded-lg" />
-                                <a href={outputUrl} download={`guided-transform-${Date.now()}.png`} className="absolute bottom-2 right-2 p-2 bg-blue-600 hover:bg-blue-500 rounded-full text-white" title="Download Image">
-                                    <DownloadIcon className="w-5 h-5"/>
-                                </a>
+                            <div className="group relative w-full h-full">
+                                <button type="button" onClick={() => setIsZoomModalOpen(true)} className="w-full h-full block">
+                                    <img src={outputUrl} alt="Generated scene" className="w-full h-full object-contain rounded-lg" />
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <ZoomInIcon className="w-12 h-12 text-white" />
+                                    </div>
+                                </button>
+                                <div className="absolute bottom-2 right-2">
+                                    <a href={outputUrl} download={`guided-transform-${Date.now()}.png`} className="p-2 bg-blue-600 hover:bg-blue-500 rounded-full text-white inline-block" title="Download Image">
+                                        <DownloadIcon className="w-5 h-5"/>
+                                    </a>
+                                </div>
                             </div>
                         ) : (
                             <p className="text-gray-500 text-sm p-4 text-center">Output will appear here</p>
@@ -280,6 +289,7 @@ const GuidedTransformPage: React.FC = () => {
                      </div>
                 </div>
             </div>
+            <ZoomModal isOpen={isZoomModalOpen} onClose={() => setIsZoomModalOpen(false)} imageUrl={outputUrl} />
         </div>
     );
 };
