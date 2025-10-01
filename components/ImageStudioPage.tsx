@@ -4,7 +4,7 @@
 */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { PhotoIcon, DownloadIcon, MagicWandIcon, BookmarkIcon, ArrowPathIcon, XMarkIcon, SparkleIcon } from './icons';
+import { PhotoIcon, DownloadIcon, MagicWandIcon, BookmarkIcon, ArrowPathIcon, XMarkIcon, SparkleIcon, ZoomInIcon } from './icons';
 import JSZip from 'jszip';
 import saveAs from 'file-saver';
 import Spinner from './Spinner';
@@ -13,6 +13,7 @@ import type { AspectRatio } from '../services/geminiService';
 import { generateEditedImage } from '../services/geminiService';
 import PromptSelector from './PromptSelector';
 import type { Prompt } from '../types';
+import ImageStudioZoomModal from './ImageStudioZoomModal';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -31,7 +32,7 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
     return new File([u8arr], filename, {type:mime});
 }
 
-interface HistoryImage {
+export interface HistoryImage {
     id: string;
     file: File;
     url: string;
@@ -57,6 +58,8 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
     const [isEnhancing, setIsEnhancing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isZipping, setIsZipping] = useState(false);
+    const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+
 
     const [lastAction, setLastAction] = useState<{
         prompt: string;
@@ -75,6 +78,13 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
     }, []);
     
     const selectedImage = useMemo(() => history.find(h => h.id === selectedImageId) || null, [history, selectedImageId]);
+    const selectedImageIndex = useMemo(() => history.findIndex(h => h.id === selectedImageId), [history, selectedImageId]);
+
+    const handleOpenZoom = () => {
+        if (selectedImage) {
+            setIsZoomModalOpen(true);
+        }
+    };
 
     const handleGenerate = async (isRegeneration = false) => {
         let actionToRun = isRegeneration ? lastAction : { prompt, aspectRatio, mode, sourceImageId: mode === 'edit' ? selectedImageId : undefined };
@@ -150,11 +160,13 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
             objectUrlsRef.current.delete(itemToRemove.url);
         }
 
-        setHistory(prev => prev.filter(h => h.id !== idToRemove));
-
-        if(selectedImageId === idToRemove) {
-            setSelectedImageId(history.length > 1 ? history.find(h => h.id !== idToRemove)!.id : null);
-        }
+        setHistory(prev => {
+            const newHistory = prev.filter(h => h.id !== idToRemove);
+            if(selectedImageId === idToRemove) {
+                setSelectedImageId(newHistory.length > 0 ? newHistory[0].id : null);
+            }
+            return newHistory;
+        });
     };
 
     const handleDownloadAll = async () => {
@@ -202,11 +214,16 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                         </div>
                     ) : selectedImage ? (
                         <div className="relative w-full h-full group">
-                             <img src={selectedImage.url} alt={selectedImage.prompt} className="w-full h-full object-contain" />
-                             <a 
+                            <button type="button" onClick={handleOpenZoom} className="w-full h-full block">
+                                <img src={selectedImage.url} alt={selectedImage.prompt} className="w-full h-full object-contain" />
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <ZoomInIcon className="w-12 h-12 text-white" />
+                                </div>
+                            </button>
+                            <a 
                                 href={selectedImage.url}
                                 download={`picslot-studio-${selectedImage.id}.png`}
-                                className="absolute top-3 right-3 flex items-center gap-2 bg-black/50 hover:bg-black/80 text-white font-semibold py-2 px-4 rounded-full transition-all backdrop-blur-sm opacity-0 group-hover:opacity-100"
+                                className="absolute top-3 right-3 flex items-center gap-2 bg-black/50 hover:bg-black/80 text-white font-semibold py-2 px-4 rounded-full transition-all backdrop-blur-sm opacity-0 group-hover:opacity-100 z-10"
                             >
                                 <DownloadIcon className="w-5 h-5"/> Download
                             </a>
@@ -226,7 +243,7 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                 <div className="p-4 flex flex-col gap-4 border-b border-gray-700">
                     <h2 className="text-xl font-bold text-white">Controls</h2>
 
-                    <div className="flex flex-col gap-0">
+                    <div className="relative flex flex-col gap-0">
                         <PromptSelector prompts={prompts} onSelect={setPrompt} />
                         <textarea
                             value={prompt}
@@ -235,7 +252,7 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                             rows={3}
                             className="w-full bg-gray-800 border border-t-0 border-gray-700 text-gray-200 rounded-b-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none pr-12"
                         />
-                         <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-2">
+                         <div className="absolute top-[calc(50%-28px)] right-3 flex items-center gap-2">
                             <button type="button" onClick={handleEnhancePrompt} title="Enhance Prompt with AI" className="p-2 text-gray-400 hover:text-purple-400 disabled:opacity-50 disabled:cursor-wait" disabled={isEnhancing || !prompt.trim()}>
                                 {isEnhancing ? <Spinner size="sm" /> : <MagicWandIcon className="w-5 h-5"/>}
                             </button>
@@ -319,6 +336,18 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                     </div>
                 </div>
             </aside>
+
+            <ImageStudioZoomModal
+                isOpen={isZoomModalOpen}
+                onClose={() => setIsZoomModalOpen(false)}
+                images={history}
+                currentIndex={selectedImageIndex}
+                onNavigate={(newIndex) => {
+                    if (history[newIndex]) {
+                        setSelectedImageId(history[newIndex].id);
+                    }
+                }}
+            />
         </div>
     );
 };
