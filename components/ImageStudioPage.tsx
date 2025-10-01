@@ -5,6 +5,8 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { PhotoIcon, DownloadIcon, MagicWandIcon, BookmarkIcon, ArrowPathIcon, XMarkIcon, SparkleIcon } from './icons';
+import JSZip from 'jszip';
+import saveAs from 'file-saver';
 import Spinner from './Spinner';
 import * as geminiService from '../services/geminiService';
 import type { AspectRatio } from '../services/geminiService';
@@ -54,6 +56,7 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isEnhancing, setIsEnhancing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isZipping, setIsZipping] = useState(false);
 
     const [lastAction, setLastAction] = useState<{
         prompt: string;
@@ -154,6 +157,31 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
         }
     };
 
+    const handleDownloadAll = async () => {
+        if (history.length === 0) return;
+
+        setIsZipping(true);
+        setError(null);
+        const zip = new JSZip();
+
+        history.forEach((item, index) => {
+            // Use a consistent naming scheme for downloaded files
+            const fileName = `picslot-studio-${history.length - index}.png`;
+            zip.file(fileName, item.file);
+        });
+
+        try {
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            saveAs(zipBlob, `picslot-studio-collection-${new Date().toISOString().split('T')[0]}.zip`);
+        } catch (err) {
+            console.error("Failed to create zip file", err);
+            setError("Could not create the zip file. Please try again.");
+        } finally {
+            setIsZipping(false);
+        }
+    };
+
+
     const canEdit = !!selectedImage;
     useEffect(() => {
         if (!canEdit) {
@@ -253,7 +281,24 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                 </div>
 
                 <div className="flex-grow p-4 flex flex-col min-h-0">
-                    <h2 className="text-xl font-bold text-white mb-2">History</h2>
+                    <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-xl font-bold text-white">History</h2>
+                        <button
+                            onClick={handleDownloadAll}
+                            disabled={history.length === 0 || isZipping}
+                            className="flex items-center gap-2 bg-gray-700/80 hover:bg-gray-700 text-gray-200 font-semibold py-1 px-3 rounded-md transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isZipping ? (
+                                <>
+                                    <Spinner size="sm"/> Zipping...
+                                </>
+                            ) : (
+                                <>
+                                    <DownloadIcon className="w-4 h-4" /> Download All
+                                </>
+                            )}
+                        </button>
+                    </div>
                     <div className="flex-grow overflow-y-auto -mr-2 pr-2">
                         {history.length > 0 ? (
                              <div className="grid grid-cols-3 gap-2">
