@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 interface ChangeViewPanelProps {
-  onApplyViewChange: (prompt: string) => void;
+  onApplyViewChange: (prompt: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -107,11 +107,17 @@ const ChangeViewPanel: React.FC<ChangeViewPanelProps> = ({ onApplyViewChange, is
     setFinalPrompt(`${distanceDesc}, ${heightDesc}, ${angleDesc}`);
   }, [rotation, distance]);
   
-  const handleApply = () => {
+  const handleApply = async () => {
     if (finalPrompt) {
-      onApplyViewChange(finalPrompt);
+      try {
+        await onApplyViewChange(finalPrompt);
+        // On success, App.tsx will show the main Regenerate button.
+      } catch (e) {
+        console.error("View change failed", e);
+      }
     }
   };
+
 
   return (
     <div className="w-full flex flex-col gap-4 animate-fade-in">
@@ -176,7 +182,7 @@ const ChangeViewPanel: React.FC<ChangeViewPanelProps> = ({ onApplyViewChange, is
         </div>
 
         {/* Apply Button */}
-        <div className="animate-fade-in flex flex-col gap-4 pt-2">
+        <div className="animate-fade-in flex flex-col gap-2 pt-2">
             <button
                 type="button"
                 onClick={handleApply}

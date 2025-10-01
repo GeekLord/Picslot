@@ -4,7 +4,7 @@
 */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { UploadIcon, XMarkIcon, SparkleIcon, DownloadIcon, SwitchHorizontalIcon, ShoppingBagIcon, SwatchIcon, PhotoIcon, ZoomInIcon } from './icons';
+import { UploadIcon, XMarkIcon, SparkleIcon, DownloadIcon, SwitchHorizontalIcon, ShoppingBagIcon, SwatchIcon, PhotoIcon, ZoomInIcon, ArrowPathIcon } from './icons';
 import Spinner from './Spinner';
 import { generateGuidedTransform } from '../services/geminiService';
 import type { TransformType } from '../services/geminiService';
@@ -103,6 +103,7 @@ const GuidedTransformPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+    const [showRegenerate, setShowRegenerate] = useState(false);
 
     const handleFileSelect = useCallback((file: File, type: 'subject' | 'reference') => {
         const newImage = {
@@ -110,6 +111,7 @@ const GuidedTransformPage: React.FC = () => {
             file,
             url: URL.createObjectURL(file),
         };
+        setShowRegenerate(false);
         if (type === 'subject') {
             if (subject) URL.revokeObjectURL(subject.url);
             setSubject(newImage);
@@ -152,6 +154,7 @@ const GuidedTransformPage: React.FC = () => {
     }, [subject, reference, handleFileSelect]);
 
     const handleClear = (type: 'subject' | 'reference') => {
+        setShowRegenerate(false);
         if (type === 'subject' && subject) {
             URL.revokeObjectURL(subject.url);
             setSubject(null);
@@ -168,6 +171,7 @@ const GuidedTransformPage: React.FC = () => {
         }
         setIsLoading(true);
         setError(null);
+        setShowRegenerate(false);
         if (outputUrl && outputUrl.startsWith('blob:')) {
             URL.revokeObjectURL(outputUrl);
         }
@@ -176,6 +180,7 @@ const GuidedTransformPage: React.FC = () => {
         try {
             const resultUrl = await generateGuidedTransform(subject.file, reference.file, prompt, transformType);
             setOutputUrl(resultUrl);
+            setShowRegenerate(true);
         } catch (err: any) {
             setError(err.message || 'An unknown error occurred.');
         } finally {
@@ -198,7 +203,7 @@ const GuidedTransformPage: React.FC = () => {
                 {(Object.keys(transformConfigs) as TransformType[]).map(type => (
                     <button
                         key={type}
-                        onClick={() => setTransformType(type)}
+                        onClick={() => { setTransformType(type); setShowRegenerate(false); }}
                         className={`flex items-center justify-center gap-3 font-semibold py-3 px-4 rounded-lg transition-all duration-200 ease-in-out text-base ${
                             transformType === type ? 'bg-blue-600 text-white shadow-md' : 'bg-transparent text-gray-300 hover:bg-gray-700/50'
                         }`}
@@ -252,20 +257,32 @@ const GuidedTransformPage: React.FC = () => {
                         <textarea
                             id="prompt"
                             value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
+                            onChange={(e) => { setPrompt(e.target.value); setShowRegenerate(false); }}
                             placeholder={config.promptPlaceholder}
                             rows={4}
                             className="w-full bg-gray-900/50 border border-gray-600 text-gray-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none"
                         />
                      </div>
                      {error && <div className="bg-red-500/10 border border-red-500/20 text-red-300 p-3 rounded-lg text-center text-sm">{error}</div>}
-                     <button
-                        onClick={handleGenerate}
-                        disabled={!canGenerate}
-                        className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center"
-                     >
-                        {isLoading ? <Spinner /> : <><SparkleIcon className="w-5 h-5 mr-2" /> Generate</>}
-                     </button>
+                     <div className="flex flex-col gap-2">
+                        <button
+                            onClick={handleGenerate}
+                            disabled={!canGenerate}
+                            className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                            {isLoading ? <Spinner /> : <><SparkleIcon className="w-5 h-5 mr-2" /> Generate</>}
+                        </button>
+                        {showRegenerate && !isLoading && (
+                             <button
+                                onClick={handleGenerate}
+                                className="w-full bg-gray-700/60 hover:bg-gray-700 border border-gray-600 text-gray-200 font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 text-base active:scale-95 animate-fade-in"
+                                title="Try generating this transform again"
+                            >
+                                <ArrowPathIcon className="w-5 h-5" />
+                                Regenerate
+                            </button>
+                        )}
+                     </div>
                      <div className="flex-grow w-full bg-black/20 rounded-lg flex items-center justify-center aspect-square mt-2">
                         {isLoading ? (
                             <Spinner size="lg"/>

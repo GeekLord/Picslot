@@ -7,7 +7,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import JSZip from 'jszip';
 import saveAs from 'file-saver';
 import * as geminiService from '../services/geminiService';
-import { UploadIcon, DownloadIcon, CheckIcon, XMarkIcon } from './icons';
+import { UploadIcon, DownloadIcon, CheckIcon, XMarkIcon, ArrowPathIcon } from './icons';
 import Spinner from './Spinner';
 import PromptSelector from './PromptSelector';
 import type { Prompt } from '../types';
@@ -129,6 +129,27 @@ const BatchEditorPage: React.FC<BatchEditorPageProps> = ({ prompts }) => {
         }
     };
 
+    const processSingleJob = useCallback(async (job: ImageJob, apiFn: (file: File) => Promise<string>) => {
+        setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'processing', error: null } : j));
+        try {
+            const resultUrl = await apiFn(job.originalFile);
+            const newImageFile = dataURLtoFile(resultUrl, `processed-${job.originalFile.name}`);
+            const newImageUrl = URL.createObjectURL(newImageFile);
+
+            setJobs(prev => prev.map(j => j.id === job.id ? {
+                ...j,
+                status: 'completed',
+                processedFile: newImageFile,
+                processedUrl: newImageUrl,
+                error: null,
+            } : j));
+            return true;
+        } catch (err: any) {
+            setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'error', error: err.message || 'Unknown error' } : j));
+            return false;
+        }
+    }, []);
+
     const startProcessing = async () => {
         setIsProcessing(true);
         setProcessingProgress(0);
@@ -144,27 +165,31 @@ const BatchEditorPage: React.FC<BatchEditorPageProps> = ({ prompts }) => {
         const totalJobsToProcess = jobsToProcess.length;
 
         for (const job of jobsToProcess) {
-            setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'processing' } : j));
-            try {
-                const resultUrl = await apiFn(job.originalFile);
-                const newImageFile = dataURLtoFile(resultUrl, `processed-${job.originalFile.name}`);
-                const newImageUrl = URL.createObjectURL(newImageFile);
-
-                setJobs(prev => prev.map(j => j.id === job.id ? {
-                    ...j,
-                    status: 'completed',
-                    processedFile: newImageFile,
-                    processedUrl: newImageUrl,
-                    error: null,
-                } : j));
-            } catch (err: any) {
-                setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'error', error: err.message || 'Unknown error' } : j));
-            }
+            await processSingleJob(job, apiFn);
             processedCount++;
             setProcessingProgress((processedCount / totalJobsToProcess) * 100);
         }
         setIsProcessing(false);
     };
+
+    const handleRegenerateJob = useCallback(async (jobId: string) => {
+        const jobToRegen = jobs.find(j => j.id === jobId);
+        if (!jobToRegen || isProcessing) return;
+
+        const apiFn = getApiFunction(action);
+        if (!apiFn) {
+            console.error("Cannot regenerate: no action selected.");
+            return;
+        }
+        
+        // Revoke old processed URL if it exists
+        if(jobToRegen.processedUrl) {
+            URL.revokeObjectURL(jobToRegen.processedUrl);
+        }
+
+        await processSingleJob(jobToRegen, apiFn);
+
+    }, [jobs, action, prompt, isProcessing, processSingleJob]);
     
     const downloadAllAsZip = async () => {
         setIsZipping(true);
@@ -187,7 +212,7 @@ const BatchEditorPage: React.FC<BatchEditorPageProps> = ({ prompts }) => {
 
     const completedJobsCount = completedJobs.length;
     const isPromptRequired = action === 'filter' || action === 'adjustment';
-    const canStartProcessing = jobs.length > 0 && action !== 'none' && !isProcessing && (!isPromptRequired || prompt.trim() !== '');
+    const canStartProcessing = jobs.some(j => j.status === 'pending') && action !== 'none' && !isProcessing && (!isPromptRequired || prompt.trim() !== '');
 
     if (jobs.length === 0) {
         return (
@@ -293,7 +318,7 @@ const BatchEditorPage: React.FC<BatchEditorPageProps> = ({ prompts }) => {
             <input type="file" multiple ref={fileInputRef} onChange={(e) => handleFileSelect(e.target.files)} className="hidden" accept="image/*" />
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {jobs.map(job => <ImageJobCard key={job.id} job={job} onRemove={handleRemoveJob} onZoom={handleOpenZoom} />)}
+                {jobs.map(job => <ImageJobCard key={job.id} job={job} onRemove={handleRemoveJob} onZoom={handleOpenZoom} onRegenerate={handleRegenerateJob} />)}
             </div>
             
             <BatchZoomModal 
@@ -307,8 +332,11 @@ const BatchEditorPage: React.FC<BatchEditorPageProps> = ({ prompts }) => {
 };
 
 
-const ImageJobCard: React.FC<{ job: ImageJob; onRemove: (id: string) => void; onZoom: (job: ImageJob) => void; }> = ({ job, onRemove, onZoom }) => {
+const ImageJobCard: React.FC<{ job: ImageJob; onRemove: (id: string) => void; onZoom: (job: ImageJob) => void; onRegenerate: (id: string) => void; }> = ({ job, onRemove, onZoom, onRegenerate }) => {
     const canZoom = job.status === 'completed';
+    // FIX: Removed redundant `job.status !== 'processing'` check.
+    // If a job status is 'completed' or 'error', it can't be 'processing'.
+    const canRegenerate = job.status === 'completed' || job.status === 'error';
 
     const getStatusBadge = () => {
         switch (job.status) {
@@ -324,6 +352,11 @@ const ImageJobCard: React.FC<{ job: ImageJob; onRemove: (id: string) => void; on
         if(job.processedFile) {
             saveAs(job.processedFile, job.processedFile.name);
         }
+    }
+    
+    const handleRegenerateClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onRegenerate(job.id);
     }
 
     return (
@@ -374,11 +407,18 @@ const ImageJobCard: React.FC<{ job: ImageJob; onRemove: (id: string) => void; on
                 <p className="font-semibold text-white truncate">{job.originalFile.name}</p>
                 <div className="flex items-center justify-between mt-1">
                     {getStatusBadge()}
-                    {job.status === 'completed' && 
-                        <button onClick={handleDownload} className="p-1 text-gray-300 hover:text-white" title="Download this image">
-                            <DownloadIcon className="w-5 h-5"/>
-                        </button>
-                    }
+                    <div className="flex items-center gap-1">
+                        {canRegenerate && 
+                            <button onClick={handleRegenerateClick} className="p-1 text-gray-300 hover:text-blue-400" title="Regenerate this image">
+                                <ArrowPathIcon className="w-5 h-5"/>
+                            </button>
+                        }
+                        {job.status === 'completed' && 
+                            <button onClick={handleDownload} className="p-1 text-gray-300 hover:text-white" title="Download this image">
+                                <DownloadIcon className="w-5 h-5"/>
+                            </button>
+                        }
+                    </div>
                 </div>
                 {job.status === 'error' && (
                      <p className="text-xs text-red-400 mt-1 truncate" title={job.error ?? 'Unknown error'}>Error: {job.error}</p>

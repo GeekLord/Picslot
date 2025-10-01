@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 
 interface FilterPanelProps {
-  onApplyFilter: (prompt: string) => void;
+  onApplyFilter: (prompt: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -33,12 +33,17 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onApplyFilter, isLoading }) =
     setSelectedPresetPrompt(null);
   };
 
-  const handleApply = () => {
+  const handleApply = async () => {
     if (activePrompt) {
-      onApplyFilter(activePrompt);
+      try {
+        await onApplyFilter(activePrompt);
+        // On success, App.tsx will show the main Regenerate button.
+      } catch (e) {
+        console.error("Filter failed, not showing regenerate button.", e);
+      }
     }
   };
-
+  
   return (
     <div className="w-full flex flex-col gap-4 animate-fade-in">
       <div className="grid grid-cols-2 gap-2">
@@ -65,7 +70,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onApplyFilter, isLoading }) =
       />
       
       {activePrompt && (
-        <div className="animate-fade-in flex flex-col gap-4 pt-2">
+        <div className="animate-fade-in flex flex-col gap-2 pt-2">
           <button
             type="button"
             onClick={handleApply}

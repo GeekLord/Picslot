@@ -14,7 +14,7 @@ import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
 import ChangeViewPanel from './components/ChangeViewPanel';
 // FIX: Removed unused import for OutpaintPanel. The component is not used and its corresponding file is not a module, causing an error.
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon, ArrowPathIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -34,6 +34,7 @@ import HomePage from './components/HomePage';
 import BatchEditorPage from './components/BatchEditorPage';
 import SceneComposerPage from './components/SceneComposerPage';
 import GuidedTransformPage from './components/GuidedTransformPage';
+import ImageStudioPage from './components/ImageStudioPage';
 
 
 // Helper to convert a data URL string to a File object
@@ -74,6 +75,7 @@ const blobToFile = async (url: string, filename: string): Promise<File> => {
              if (!directResponse.ok) {
                 throw new Error(`Direct fetch also failed with status ${directResponse.status}`);
             }
+            // FIX: Use `directResponse` from the fallback fetch, not `response` from the outer scope.
             const blob = await directResponse.blob();
             return new File([blob], filename, { type: blob.type });
         } catch (directError) {
@@ -123,7 +125,7 @@ const defaultPrompts: { title: string; prompt: string }[] = [
 
 
 type Tool = 'adjust' | 'filters' | 'crop' | 'change-view';
-export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings' | 'batch' | 'composer' | 'guidedTransform';
+export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings' | 'batch' | 'composer' | 'guidedTransform' | 'imageStudio';
 
 
 const App: React.FC = () => {
@@ -142,6 +144,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isEnhancingPrompt, setIsEnhancingPrompt] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastAction, setLastAction] = useState<{ name: string; handler: () => void } | null>(null);
   
   // Prompt Manager State
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -415,6 +418,7 @@ const App: React.FC = () => {
     setIsCompareMode(false);
     setPrompt(initialPrompt);
     setPage('editor');
+    setLastAction(null);
     console.log('[App Event] Image upload complete, state reset for editor.');
   }, []);
 
@@ -449,6 +453,7 @@ const App: React.FC = () => {
             setIsBrushMode(false);
             setMaskDataUrl(null);
             setPrompt('');
+            setLastAction(null);
             console.log('[App Navigation] Editor state has been reset.');
         }
         return targetPage;
@@ -459,6 +464,8 @@ const App: React.FC = () => {
       console.log(`[App Event] Using prompt: "${promptToUse.title}"`);
       // Set the prompt content for the editor
       setPrompt(promptToUse.prompt);
+      // Clear last action since prompt has changed
+      setLastAction(null);
       // Close the modal
       setIsPromptManagerOpen(false);
       // Navigate to the correct page
@@ -560,6 +567,7 @@ const App: React.FC = () => {
         setIsBrushMode(false);
         setPrompt('');
         setIsCompareMode(false);
+        setLastAction(null);
         console.log('[App Project] Editor state reset for loaded project.');
     } catch (e) {
         console.error('[App Project] Failed to load project files:', e);
@@ -608,25 +616,33 @@ const App: React.FC = () => {
 
   const handleGenerate = useCallback(async () => {
     if (!currentImage || !prompt.trim()) {
-      console.warn('[App AI] Generate aborted: no image or prompt.');
       return;
     }
-    console.log('[App AI] Starting image generation...');
-    setIsLoading(true);
-    setError(null);
-    try {
-        let imageToSend = currentImage;
-        let finalPrompt = prompt;
 
-        if (maskDataUrl) {
+    // CAPTURE state for the closure
+    const imageForGeneration = currentImage;
+    const promptForGeneration = prompt;
+    const maskForGeneration = maskDataUrl;
+
+    const regenerate = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        let imageToSend = imageForGeneration;
+        let finalPrompt = promptForGeneration;
+
+        if (maskForGeneration) {
             console.log('[App AI] Mask detected. Preparing image for inpainting.');
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             if (!ctx) throw new Error("Could not get canvas context");
             
             const originalImg = new Image();
-            originalImg.src = URL.createObjectURL(currentImage);
+            // Use createObjectURL on the captured file to avoid re-reading
+            const tempUrl = URL.createObjectURL(imageForGeneration);
+            originalImg.src = tempUrl;
             await new Promise((resolve, reject) => { originalImg.onload = resolve; originalImg.onerror = reject; });
+            URL.revokeObjectURL(tempUrl);
             
             canvas.width = originalImg.naturalWidth;
             canvas.height = originalImg.naturalHeight;
@@ -634,7 +650,7 @@ const App: React.FC = () => {
             ctx.drawImage(originalImg, 0, 0);
 
             const maskImg = new Image();
-            maskImg.src = maskDataUrl;
+            maskImg.src = maskForGeneration;
             await new Promise((resolve, reject) => { maskImg.onload = resolve; maskImg.onerror = reject; });
             
             ctx.globalCompositeOperation = 'destination-out';
@@ -643,7 +659,7 @@ const App: React.FC = () => {
             const inpaintingImageDataUrl = canvas.toDataURL('image/png');
             imageToSend = dataURLtoFile(inpaintingImageDataUrl, `inpainting-${Date.now()}.png`);
             
-            finalPrompt = `The user has provided an image with a transparent area. Your task is to seamlessly and photorealistically fill in ONLY the transparent area based on the user's request: "${prompt}". The existing, non-transparent parts of the image MUST be perfectly preserved.`;
+            finalPrompt = `The user has provided an image with a transparent area. Your task is to seamlessly and photorealistically fill in ONLY the transparent area based on the user's request: "${promptForGeneration}". The existing, non-transparent parts of the image MUST be perfectly preserved.`;
             console.log('[App AI] Inpainting image and prompt prepared.');
         }
         
@@ -651,14 +667,23 @@ const App: React.FC = () => {
         const newImageFile = dataURLtoFile(editedImageUrl, `edited-${Date.now()}.png`);
         addImageToHistory(newImageFile);
         console.log('[App AI] Generation successful, new image added to history.');
-    } catch (err) {
+        
+        setLastAction({ name: 'Generate', handler: regenerate });
+
+      } catch (err) {
         console.error('[App AI] Image generation failed:', err);
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
-    } finally {
+        setLastAction(null); // Clear on failure
+      } finally {
         setIsLoading(false);
         console.log('[App AI] Generation operation finished.');
-    }
+      }
+    };
+
+    // Initial execution
+    setLastAction(null);
+    await regenerate();
   }, [currentImage, prompt, addImageToHistory, maskDataUrl]);
   
   const handleEnhancePrompt = async () => {
@@ -716,78 +741,124 @@ const App: React.FC = () => {
       }
   };
 
-  const createApiHandler = (apiFn: (file: File, prompt?: string) => Promise<string>, actionName: string) => async (promptOrFile?: string | File) => {
-      if (!currentImage) {
-        console.warn(`[App AI] ${actionName} aborted: no current image.`);
-        return;
-      }
-      console.log(`[App AI] Starting one-click action: ${actionName}`);
-      setIsLoading(true);
-      setError(null);
-      try {
-          const resultUrl = await (typeof promptOrFile === 'string' ? apiFn(currentImage, promptOrFile) : apiFn(currentImage));
-          const newImageFile = dataURLtoFile(resultUrl, `${actionName}-${Date.now()}.png`);
+  const createOneClickApiHandler = (apiFn: (file: File) => Promise<string>, actionName: string) => {
+    return async () => {
+      if (!currentImage) return;
+
+      const imageToProcess = currentImage; // CAPTURE current image
+
+      const regenerate = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const resultUrl = await apiFn(imageToProcess);
+          const newImageFile = dataURLtoFile(resultUrl, `${actionName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.png`);
           addImageToHistory(newImageFile);
-          console.log(`[App AI] Action ${actionName} successful.`);
-      } catch (err) {
+          setLastAction({ name: actionName, handler: regenerate });
+        } catch (err) {
           console.error(`[App AI] Action ${actionName} failed:`, err);
           const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
           setError(`Failed to ${actionName}. ${errorMessage}`);
-      } finally {
+          setLastAction(null);
+        } finally {
           setIsLoading(false);
-          console.log(`[App AI] Action ${actionName} finished.`);
-      }
+        }
+      };
+
+      setLastAction(null); // Clear previous action before starting a new one.
+      await regenerate();
+    };
   };
 
-  const handleApplyFilter = createApiHandler(generateFilteredImage, 'filter');
-  const handleApplyAdjustment = createApiHandler(generateAdjustedImage, 'adjustment');
-  const handleAutoEnhance = createApiHandler(generateAutoEnhancedImage, 'auto-enhance');
-  const handleRestoreImage = createApiHandler(generateRestoredImage, 'restore');
-  const handleRemoveBackground = createApiHandler(generateRemovedBackgroundImage, 'remove-background');
-  const handleStudioPortrait = createApiHandler(generateStudioPortrait, 'studio-portrait');
-  const handleGenerateCompCard = createApiHandler(generateCompCard, 'comp-card');
-  const handleGenerateThreeViewShot = createApiHandler(generateThreeViewShot, '3-view-shot');
-  const handleAutoOutpaint = createApiHandler(generateOutpaintedImage, 'outpaint');
+  const createPanelApiHandler = (apiFn: (file: File, prompt: string) => Promise<string>, actionName: string) => {
+    return async (prompt: string) => {
+      if (!currentImage) {
+        throw new Error("No image available to process.");
+      }
+      
+      const imageToProcess = currentImage; // CAPTURE current image
+      const promptToProcess = prompt;     // CAPTURE current prompt
 
+      const regenerate = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const resultUrl = await apiFn(imageToProcess, promptToProcess);
+          const newImageFile = dataURLtoFile(resultUrl, `${actionName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.png`);
+          addImageToHistory(newImageFile);
+          setLastAction({ name: actionName, handler: regenerate });
+        } catch (err) {
+          console.error(`[App AI] Action ${actionName} failed:`, err);
+          const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+          setError(`Failed to perform ${actionName}. ${errorMessage}`);
+          setLastAction(null);
+          throw err; // Re-throw for the panel to catch and handle its UI state
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      setLastAction(null); // Clear previous action before starting a new one.
+      await regenerate();
+    };
+  };
+
+  const handleApplyFilter = createPanelApiHandler(generateFilteredImage, 'Filter');
+  const handleApplyAdjustment = createPanelApiHandler(generateAdjustedImage, 'Adjustment');
+  const handleAutoEnhance = createOneClickApiHandler(generateAutoEnhancedImage, 'Auto Enhance');
+  const handleRestoreImage = createOneClickApiHandler(generateRestoredImage, 'Photo Restore');
+  const handleRemoveBackground = createOneClickApiHandler(generateRemovedBackgroundImage, 'Remove Background');
+  const handleStudioPortrait = createOneClickApiHandler(generateStudioPortrait, 'Studio Portrait');
+  const handleGenerateCompCard = createOneClickApiHandler(generateCompCard, 'Composite Card');
+  const handleGenerateThreeViewShot = createOneClickApiHandler(generateThreeViewShot, 'Character Turnaround');
+  const handleAutoOutpaint = createOneClickApiHandler(generateOutpaintedImage, 'Auto Expand');
+  
   const handleApplyViewChange = async (shotType: string) => {
-    if (!currentImage) {
-      console.warn('[App AI] Change view aborted: no current image.');
-      return;
-    }
-    console.log(`[App AI] Starting camera view change with type: "${shotType}"`);
-    setIsLoading(true);
-    setError(null);
-    try {
-      console.log('[App AI] Describing image for context...');
-      const description = await describeImage(currentImage);
-      console.log(`[App AI] Image description for context: "${description}"`);
+    if (!currentImage) return;
 
-      const dynamicPrompt = `
-        **CRITICAL IDENTITY PRESERVATION:**
-        The person in the image must be the EXACT SAME person. Do not change their facial features, ethnicity, hair, or clothing. This is the most important rule.
+    const imageToProcess = currentImage; // CAPTURE
+    const shotTypeToProcess = shotType;   // CAPTURE
 
-        **SCENE CONTEXT:**
-        The original scene is: "${description}".
+    const regenerate = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        console.log('[App AI] Describing image for context...');
+        const description = await describeImage(imageToProcess);
+        console.log(`[App AI] Image description for context: "${description}"`);
 
-        **NEW CINEMATIC INSTRUCTION:**
-        Re-imagine the scene by changing the camera to ${shotType}. The new composition should be visually interesting and different from the original, while maintaining the same subjects and general environment. The lighting and style must remain consistent with the original photo.
-      `;
-      
-      console.log('[App AI] Sending request for new camera view...');
-      // Re-using generateMovedCameraImage as it's just a generic function that takes a prompt
-      const resultUrl = await generateMovedCameraImage(currentImage, dynamicPrompt);
-      
-      const newImageFile = dataURLtoFile(resultUrl, `change-view-${Date.now()}.png`);
-      addImageToHistory(newImageFile);
-      console.log('[App AI] Camera view change successful.');
-    } catch (err) {
-      console.error('[App AI] Camera view change failed:', err);
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-      setError(`Failed to change camera view. ${errorMessage}`);
-    } finally {
-      setIsLoading(false);
-      console.log('[App AI] Camera view change operation finished.');
-    }
+        const dynamicPrompt = `
+          **CRITICAL IDENTITY PRESERVATION:**
+          The person in the image must be the EXACT SAME person. Do not change their facial features, ethnicity, hair, or clothing. This is the most important rule.
+
+          **SCENE CONTEXT:**
+          The original scene is: "${description}".
+
+          **NEW CINEMATIC INSTRUCTION:**
+          Re-imagine the scene by changing the camera to ${shotTypeToProcess}. The new composition should be visually interesting and different from the original, while maintaining the same subjects and general environment. The lighting and style must remain consistent with the original photo.
+        `;
+        
+        console.log('[App AI] Sending request for new camera view...');
+        const resultUrl = await generateMovedCameraImage(imageToProcess, dynamicPrompt);
+        
+        const newImageFile = dataURLtoFile(resultUrl, `change-view-${Date.now()}.png`);
+        addImageToHistory(newImageFile);
+        console.log('[App AI] Camera view change successful.');
+        setLastAction({ name: 'Change View', handler: regenerate });
+      } catch (err) {
+        console.error('[App AI] Camera view change failed:', err);
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        setError(`Failed to change camera view. ${errorMessage}`);
+        setLastAction(null);
+        throw err; // Re-throw for panel UI
+      } finally {
+        setIsLoading(false);
+        console.log('[App AI] Camera view change operation finished.');
+      }
+    };
+    
+    setLastAction(null);
+    await regenerate();
   };
 
   const handleApplyCrop = useCallback(() => {
@@ -809,6 +880,7 @@ const App: React.FC = () => {
     const newImageFile = dataURLtoFile(croppedImageUrl, `cropped-${Date.now()}.png`);
     addImageToHistory(newImageFile);
     setActiveTool(null);
+    setLastAction(null); // Crop is not a generative action
     console.log('[App Crop] Crop applied and added to history.');
   }, [completedCrop, addImageToHistory]);
 
@@ -821,6 +893,7 @@ const App: React.FC = () => {
           brushCanvasRef.current?.clear();
           setMaskDataUrl(null);
           setIsBrushMode(false);
+          setLastAction(null);
           if (newIndex === 0) {
               setIsCompareMode(false);
           }
@@ -834,6 +907,7 @@ const App: React.FC = () => {
           brushCanvasRef.current?.clear();
           setMaskDataUrl(null);
           setIsBrushMode(false);
+          setLastAction(null);
       }
   }, [canRedo, historyIndex]);
 
@@ -845,6 +919,7 @@ const App: React.FC = () => {
           setMaskDataUrl(null);
           setIsBrushMode(false);
           setIsCompareMode(false);
+          setLastAction(null);
       }
   }, [history]);
 
@@ -934,6 +1009,7 @@ const App: React.FC = () => {
     brushCanvasRef.current?.clear();
     setMaskDataUrl(null);
     setIsBrushMode(false);
+    setLastAction(null);
   };
 
   const handleDeleteSnapshot = async (snapshot: Snapshot) => {
@@ -1015,7 +1091,7 @@ const App: React.FC = () => {
     console.log(`[App Render] Determining page content for page: '${page}'.`);
     // Wait for both projects AND user profile to be loaded before rendering dashboard pages.
     // This prevents showing incomplete UI (like a header with fallback names) and fixes getting stuck on refresh.
-    if (page !== 'editor' && page !== 'batch' && page !== 'composer' && page !== 'guidedTransform' && (!projectsLoaded || !userProfile)) {
+    if (page !== 'editor' && page !== 'batch' && page !== 'composer' && page !== 'guidedTransform' && page !== 'imageStudio' && (!projectsLoaded || !userProfile)) {
         console.log(`[App Render] Page is not editor and data is loading. Rendering spinner. projectsLoaded: ${projectsLoaded}, userProfile: ${!!userProfile}`);
         return <Spinner size="lg" />;
     }
@@ -1032,6 +1108,7 @@ const App: React.FC = () => {
                         onNavigateToBatch={() => handleNavigate('batch')}
                         onNavigateToComposer={() => handleNavigate('composer')}
                         onNavigateToGuidedTransform={() => handleNavigate('guidedTransform')}
+                        onNavigateToImageStudio={() => handleNavigate('imageStudio')}
                         onOpenPromptManager={() => setIsPromptManagerOpen(true)}
                         onSelectProject={handleLoadProject}
                         onSelectTemplate={handleSelectTemplate}
@@ -1056,6 +1133,9 @@ const App: React.FC = () => {
         case 'guidedTransform':
             console.log('[App Render] Rendering GuidedTransformPage.');
             return <GuidedTransformPage />;
+        case 'imageStudio':
+            console.log('[App Render] Rendering ImageStudioPage.');
+            return <ImageStudioPage prompts={prompts} />;
         case 'settings':
             console.log('[App Render] Rendering SettingsPage.');
             return <SettingsPage 
@@ -1146,10 +1226,10 @@ const App: React.FC = () => {
                       </div>
 
                       <div className={`w-full flex flex-col items-center gap-0 transition-opacity duration-300 ${(activeTool !== null || isCompareMode) ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                          <PromptSelector prompts={prompts} onSelect={setPrompt} />
-                          <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-center gap-2">
+                          <PromptSelector prompts={prompts} onSelect={(p) => { setPrompt(p); setLastAction(null); }} />
+                          <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="w-full flex items-stretch gap-2">
                               <div className="relative flex-grow">
-                                  <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="e.g., 'change shirt color to blue' or 'make the sky dramatic'" rows={2} className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-b-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 resize-none pr-28" disabled={isLoading || (isBrushMode && !maskDataUrl)}/>
+                                  <textarea value={prompt} onChange={(e) => { setPrompt(e.target.value); setLastAction(null); }} placeholder="e.g., 'change shirt color to blue' or 'make the sky dramatic'" rows={2} className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-b-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 resize-none pr-28" disabled={isLoading || (isBrushMode && !maskDataUrl)}/>
                                   <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-2">
                                       <button type="button" onClick={handleEnhancePrompt} title="Enhance Prompt with AI" className="p-2 text-gray-400 hover:text-purple-400 disabled:opacity-50 disabled:cursor-wait" disabled={isEnhancingPrompt || !prompt.trim()}>
                                         {isEnhancingPrompt ? <Spinner size="sm" /> : <MagicWandIcon className="w-5 h-5"/>}
@@ -1161,6 +1241,20 @@ const App: React.FC = () => {
                               </div>
                               <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed self-stretch" disabled={isLoading || !prompt.trim() || (isBrushMode && !maskDataUrl)}>Generate</button>
                           </form>
+                          {!isLoading && lastAction && (
+                            <div className="w-full mt-2 animate-fade-in">
+                               <button
+                                  type="button"
+                                  onClick={lastAction.handler}
+                                  className="w-full bg-gray-700/60 hover:bg-gray-700 border border-gray-600 text-gray-200 font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 text-base active:scale-95"
+                                  disabled={isLoading}
+                                  title={`Try generating '${lastAction.name}' again`}
+                               >
+                                  <ArrowPathIcon className="w-5 h-5" />
+                                  Regenerate {lastAction.name}
+                               </button>
+                            </div>
+                          )}
                       </div>
                   </div>
                   
@@ -1250,7 +1344,7 @@ const App: React.FC = () => {
       )}
 
       <main className={`flex-grow w-full mx-auto ${
-          (page === 'editor' && currentImageUrl) || page === 'composer' || page === 'guidedTransform'
+          (page === 'editor' && currentImageUrl) || page === 'composer' || page === 'guidedTransform' || page === 'imageStudio'
           ? 'max-w-[1800px] p-4 md:p-8'
           : 'max-w-7xl p-4 md:p-8 flex justify-center items-center'
       }`}>

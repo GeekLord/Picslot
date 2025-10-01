@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 
 interface AdjustmentPanelProps {
-  onApplyAdjustment: (prompt: string) => void;
+  onApplyAdjustment: (prompt: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -33,11 +33,17 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
     setSelectedPresetPrompt(null);
   };
 
-  const handleApply = () => {
+  const handleApply = async () => {
     if (activePrompt) {
-      onApplyAdjustment(activePrompt);
+      try {
+        await onApplyAdjustment(activePrompt);
+        // On success, App.tsx will show the main Regenerate button.
+      } catch (e) {
+        console.error("Adjustment failed, not showing regenerate button.", e);
+      }
     }
   };
+
 
   return (
     <div className="w-full flex flex-col gap-4 animate-fade-in">
@@ -65,7 +71,7 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
       />
 
       {activePrompt && (
-        <div className="animate-fade-in flex flex-col gap-4 pt-2">
+        <div className="animate-fade-in flex flex-col gap-2 pt-2">
             <button
                 type="button"
                 onClick={handleApply}

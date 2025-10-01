@@ -4,7 +4,7 @@
 */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UploadIcon, XMarkIcon, PlusIcon, ArrowUturnLeftIcon } from './icons';
+import { UploadIcon, XMarkIcon, PlusIcon, ArrowUturnLeftIcon, ArrowPathIcon } from './icons';
 import Spinner from './Spinner';
 import { generateCompositedImage } from '../services/geminiService';
 
@@ -44,6 +44,7 @@ const SceneComposerPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
+    const [showRegenerate, setShowRegenerate] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const objectUrlsRef = useRef(new Set<string>());
 
@@ -89,15 +90,18 @@ const SceneComposerPage: React.FC = () => {
     const handleAddToStage = (file: UploadedFile) => {
         setStagedImages(prev => [...prev, { ...file, role: '' }]);
         setUploadedFiles(prev => prev.filter(f => f.id !== file.id));
+        setShowRegenerate(false);
     };
     
     const handleReturnToTray = (image: StagedImage) => {
         setUploadedFiles(prev => [...prev, { id: image.id, file: image.file, url: image.url }]);
         setStagedImages(prev => prev.filter(img => img.id !== image.id));
+        setShowRegenerate(false);
     };
 
     const handleRoleChange = (id: string, newRole: string) => {
         setStagedImages(prev => prev.map(img => img.id === id ? { ...img, role: newRole } : img));
+        setShowRegenerate(false);
     };
     
     const handleGenerate = async () => {
@@ -108,6 +112,7 @@ const SceneComposerPage: React.FC = () => {
         
         setIsLoading(true);
         setError(null);
+        setShowRegenerate(false);
         if (outputImageUrl) {
             removeUrlFromTracking(outputImageUrl);
         }
@@ -123,6 +128,7 @@ const SceneComposerPage: React.FC = () => {
             const newUrl = URL.createObjectURL(resultFile);
             objectUrlsRef.current.add(newUrl); // Track new URL
             setOutputImageUrl(newUrl);
+            setShowRegenerate(true);
         } catch (err: any) {
             setError(err.message || "An unknown error occurred during scene generation.");
         } finally {
@@ -214,7 +220,7 @@ const SceneComposerPage: React.FC = () => {
                         <textarea
                             id="masterPrompt"
                             value={masterPrompt}
-                            onChange={(e) => setMasterPrompt(e.target.value)}
+                            onChange={(e) => { setMasterPrompt(e.target.value); setShowRegenerate(false); }}
                             placeholder="e.g., Place the man in the forest scene. Use the style from the painting."
                             rows={5}
                             className="w-full bg-gray-900/50 border border-gray-600 text-gray-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none"
@@ -225,13 +231,25 @@ const SceneComposerPage: React.FC = () => {
                             {error}
                         </div>
                       )}
-                     <button
-                        onClick={handleGenerate}
-                        disabled={!canGenerate}
-                        className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center"
-                     >
-                        {isLoading ? <Spinner /> : 'Generate Scene'}
-                     </button>
+                     <div className="flex flex-col gap-2">
+                        <button
+                            onClick={handleGenerate}
+                            disabled={!canGenerate}
+                            className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                            {isLoading ? <Spinner /> : 'Generate Scene'}
+                        </button>
+                        {showRegenerate && !isLoading && (
+                            <button
+                                onClick={handleGenerate}
+                                className="w-full bg-gray-700/60 hover:bg-gray-700 border border-gray-600 text-gray-200 font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 text-base active:scale-95 animate-fade-in"
+                                title="Try generating this scene again"
+                            >
+                                <ArrowPathIcon className="w-5 h-5" />
+                                Regenerate
+                            </button>
+                        )}
+                     </div>
                  </div>
                  <div className="p-4 border-t border-gray-700 flex-grow-[2] flex flex-col">
                      <h3 className="text-md font-semibold mb-2">Result</h3>

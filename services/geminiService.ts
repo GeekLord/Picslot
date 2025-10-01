@@ -8,6 +8,8 @@ import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 console.log('[GeminiService] Module loaded.');
 
 export type TransformType = 'pose' | 'cloths' | 'style' | 'scene';
+export type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16';
+
 
 const logGenerationCost = (response: GenerateContentResponse, context: string) => {
     const usage = response.usageMetadata;
@@ -108,6 +110,46 @@ const handleApiResponse = (
 
     console.error(`Model response did not contain an image part for ${context}.`, { response });
     throw new Error(errorMessage);
+};
+
+
+/**
+ * Generates an image from a text prompt.
+ * @param userPrompt The text prompt describing the desired image.
+ * @param aspectRatio The desired aspect ratio for the output image.
+ * @returns A promise that resolves to the data URL of the generated image.
+ */
+export const generateImageFromText = async (
+    userPrompt: string,
+    aspectRatio: AspectRatio = '1:1'
+): Promise<string> => {
+    console.log(`[GeminiService] Called generateImageFromText with prompt: "${userPrompt}"`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+
+    const fullPrompt = `Generate a high-quality, photorealistic image based on the following description.
+    
+    **CRITICAL INSTRUCTIONS:**
+    - The image must be visually appealing and well-composed.
+    - The final output aspect ratio must be exactly ${aspectRatio}.
+
+    **USER REQUEST:**
+    "${userPrompt}"
+
+    **OUTPUT DIRECTIVE:** Return only the final generated image. Do not include any text, explanations, or additional content.`;
+
+    const contents = { parts: [{ text: fullPrompt }] };
+
+    console.log('[GeminiService] Sending text prompt to the model for generation...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image-preview',
+        contents: contents,
+        config: {
+            responseModalities: [Modality.IMAGE, Modality.TEXT],
+        },
+    });
+
+    console.log('[GeminiService] Received response from model for text-to-image.', response);
+    return handleApiResponse(response, 'text-to-image');
 };
 
 /**
