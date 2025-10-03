@@ -43,7 +43,7 @@ Picslot leverages advanced generative AI for complex tasks that traditionally re
 
 - **Frontend**: React, TypeScript, Tailwind CSS
 - **Backend-as-a-Service**: Supabase (Authentication, PostgreSQL Database, Storage)
-- **AI Engine**: Google Gemini API (`gemini-2.5-flash-image-preview` model for vision, `gemini-2.5-flash` for text tasks)
+- **AI Engine**: Google Gemini API (`gemini-2.5-flash-image` model for vision, `gemini-2.5-flash` for text tasks)
 - **Core Libraries**:
   - `react-image-crop` for the interactive cropping UI.
 - **Bundling**: The project is set up to run directly in the browser using ES Modules and an `importmap`, requiring no local bundling or installation.

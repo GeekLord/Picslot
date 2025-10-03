@@ -21,7 +21,7 @@ const logGenerationCost = (response: GenerateContentResponse, context: string) =
     const { promptTokenCount = 0, candidatesTokenCount = 0, totalTokenCount = 0 } = usage;
     
     // NOTE: These prices are for demonstration purposes and may not reflect the actual
-    // pricing for the 'gemini-2.5-flash-image-preview' model.
+    // pricing for the 'gemini-2.5-flash-image' model.
     // Please refer to the official Google Cloud/AI Studio pricing page for accurate costs.
     // Pricing is assumed based on similar multimodal models.
     const PRICE_PER_1M_INPUT_TOKENS_USD = 0.35; // Example: $0.35 per 1 million tokens
@@ -141,7 +141,7 @@ export const generateImageFromText = async (
 
     console.log('[GeminiService] Sending text prompt to the model for generation...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: contents,
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -190,7 +190,7 @@ export const generateEditedImage = async (
 
     console.log('[GeminiService] Sending image and prompt to the model for editing...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: contents,
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -258,7 +258,7 @@ Requested Style: "${filterPrompt}"
 
     console.log('[GeminiService] Sending image and filter prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -325,7 +325,7 @@ User Request: "${adjustmentPrompt}"
 
     console.log('[GeminiService] Sending image and adjustment prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -393,7 +393,7 @@ export const generateAutoEnhancedImage = async (
 
     console.log('[GeminiService] Sending image and auto-enhance prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -466,7 +466,7 @@ export const generateRestoredImage = async (
 
     console.log('[GeminiService] Sending image and restoration prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -520,7 +520,7 @@ export const generateStudioPortrait = async (
 
     console.log('[GeminiService] Sending image and studio portrait prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -598,7 +598,7 @@ export const generateCompCard = async (
 
     console.log('[GeminiService] Sending image and Comp Card prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -672,7 +672,7 @@ export const generateThreeViewShot = async (
 
     console.log('[GeminiService] Sending image and 3-View Shot prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -724,7 +724,7 @@ Return only the final, complete image. Do not add any text.`;
 
     console.log('[GeminiService] Sending image and outpainting prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -777,7 +777,7 @@ export const generateRemovedBackgroundImage = async (
 
     console.log('[GeminiService] Sending image and background removal prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -806,7 +806,7 @@ export const generateMovedCameraImage = async (
 
     console.log('[GeminiService] Sending image and dynamic change view prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -967,7 +967,7 @@ You are provided with the following image assets. The user has described the rol
     // 3. Send the request to the model
     console.log('[GeminiService] Sending multiple images and composed prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: allParts },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],
@@ -1095,7 +1095,7 @@ export const generateGuidedTransform = async (
 
     console.log(`[GeminiService] Sending images and prompt to the model for guided transform (${transformType})...`);
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: allParts },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT],

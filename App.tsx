@@ -1170,7 +1170,7 @@ const App: React.FC = () => {
                                   <p className="text-gray-300">AI is working its magic...</p>
                               </div>
                           )}
-                          {activeTool === 'crop' ? (
+                          {activeTool === 'crop' && crop ? (
                             <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)} aspect={aspect} className="max-h-[70vh]">
                               <img ref={imgRef} src={currentImageUrl} alt="Crop this image" className="w-full h-auto object-contain max-h-[70vh] rounded-xl"/>
                             </ReactCrop>
@@ -1290,7 +1290,14 @@ const App: React.FC = () => {
                         <div className="grid grid-cols-2 gap-2">
                             <button type="button" onClick={() => setActiveTool(activeTool === 'adjust' ? null : 'adjust')} className={mainToolButtonClass('adjust')}><AdjustmentsIcon className="w-6 h-6"/>Adjust</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'filters' ? null : 'filters')} className={mainToolButtonClass('filters')}><LayersIcon className="w-6 h-6"/>Filters</button>
-                            <button type="button" onClick={() => setActiveTool(activeTool === 'crop' ? null : 'crop')} className={mainToolButtonClass('crop')}><CropIcon className="w-6 h-6"/>Crop</button>
+                            <button type="button" onClick={() => {
+                                if (activeTool === 'crop') {
+                                    setActiveTool(null);
+                                } else {
+                                    setActiveTool('crop');
+                                    setCrop({ unit: '%', x: 25, y: 25, width: 50, height: 50 });
+                                }
+                            }} className={mainToolButtonClass('crop')}><CropIcon className="w-6 h-6"/>Crop</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'change-view' ? null : 'change-view')} className={mainToolButtonClass('change-view')}><ChangeViewIcon className="w-6 h-6"/>Change View</button>
                         </div>
                         <div className="mt-4">

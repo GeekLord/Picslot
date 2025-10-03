@@ -4,7 +4,7 @@
 */
 
 import React from 'react';
-import { SparkleIcon, BrushIcon, MagicWandIcon, PortraitIcon, ExpandIcon, ThreeViewIcon, SaveIcon, LayoutGridIcon, BookmarkIcon, CheckIcon } from './icons';
+import { SparkleIcon, BrushIcon, MagicWandIcon, PortraitIcon, ExpandIcon, ThreeViewIcon, LayoutGridIcon, BookmarkIcon, CheckIcon, CompCardIcon } from './icons';
 
 interface HomePageProps {
   onOpenAuthModal: (view: 'login' | 'register') => void;
@@ -102,7 +102,7 @@ const HomePage: React.FC<HomePageProps> = ({ onOpenAuthModal }) => {
               <FeatureCard icon={<ThreeViewIcon className="w-6 h-6" />} title="Character Turnarounds">
                 Create a technical three-view (front, side, back) reference sheet, perfect for character design or fashion.
               </FeatureCard>
-              <FeatureCard icon={<SaveIcon className="w-6 h-6" />} title="Modeling Comp Cards">
+              <FeatureCard icon={<CompCardIcon className="w-6 h-6" />} title="Modeling Comp Cards">
                  Generate a professional, multi-pose modeling composite card, complete with estimated stats.
               </FeatureCard>
             </div>
