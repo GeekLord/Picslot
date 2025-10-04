@@ -4,7 +4,7 @@
  */
 
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
-import type { Project, Prompt, UserProfile } from '../types';
+import type { Project, Prompt, UserProfile, UserAsset } from '../types';
 
 // --- IMPORTANT ---
 // This file assumes that you have created a script tag in your index.html
@@ -98,7 +98,10 @@ export const uploadAvatar = async (userId: string, file: File): Promise<string> 
 
     if (uploadError) {
         console.error("Error uploading avatar:", uploadError);
-        throw uploadError;
+        if (uploadError.message === 'Bucket not found') {
+            throw new Error(`Avatar upload failed: The '${AVATAR_BUCKET_NAME}' storage bucket was not found. Please follow the setup instructions in README.md.`);
+        }
+        throw new Error(uploadError.message);
     }
 
     // Get the public URL for the newly uploaded file.
@@ -128,7 +131,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
     // PGRST116: Supabase code for "exact one row not found"
     if (error && error.code !== 'PGRST116') {
         console.error("Error fetching user profile:", error);
-        throw error;
+        throw new Error(error.message);
     }
     
     return data;
@@ -156,7 +159,7 @@ export const updateUserProfile = async (userId: string, updates: Partial<Omit<Us
     
     if (error) {
         console.error("Error upserting user profile:", error);
-        throw error;
+        throw new Error(error.message);
     }
 
     if (!data) {
@@ -172,7 +175,7 @@ export const updateUserProfile = async (userId: string, updates: Partial<Omit<Us
 //        Project Storage (Supabase)
 // ==================================
 
-const STORAGE_BUCKET_NAME = 'project-images';
+const PROJECT_IMAGES_BUCKET_NAME = 'project-images';
 
 /**
  * Uploads a file to Supabase Storage within a project folder.
@@ -188,11 +191,14 @@ export const uploadProjectFile = async (userId: string, projectId: string, file:
         : `${userId}/${projectId}/${Date.now()}.${file.name.split('.').pop() || 'png'}`;
     
     const { error } = await supabase.storage
-        .from(STORAGE_BUCKET_NAME)
+        .from(PROJECT_IMAGES_BUCKET_NAME)
         .upload(finalPath, file);
 
     if (error) {
         console.error('Error uploading file to Supabase Storage:', error);
+        if (error.message === 'Bucket not found') {
+            throw new Error(`Project file upload failed: The '${PROJECT_IMAGES_BUCKET_NAME}' storage bucket was not found. Please follow the setup instructions in README.md.`);
+        }
         throw new Error(`Failed to upload file: ${error.message}`);
     }
 
@@ -206,13 +212,16 @@ export const uploadProjectFile = async (userId: string, projectId: string, file:
  * @param path - The path of the file in the bucket.
  * @returns A promise that resolves to the signed URL string.
  */
-export const createSignedUrl = async (path: string): Promise<string> => {
+export const createSignedUrl = async (path: string, bucket: string = PROJECT_IMAGES_BUCKET_NAME): Promise<string> => {
     const { data, error } = await supabase.storage
-        .from(STORAGE_BUCKET_NAME)
+        .from(bucket)
         .createSignedUrl(path, 60); // URL is valid for 60 seconds
 
     if (error) {
-        console.error(`Error creating signed URL for path: ${path}`, error);
+        console.error(`Error creating signed URL for path: ${path} in bucket ${bucket}`, error);
+        if (error.message === 'Bucket not found') {
+            throw new Error(`Could not create URL: The '${bucket}' storage bucket was not found. Please follow the setup instructions in README.md.`);
+        }
         throw new Error(`Could not get signed URL: ${error.message}`);
     }
     
@@ -303,13 +312,18 @@ export const deleteProject = async (project: Project): Promise<void> => {
     
     if (filePaths.length > 0) {
         const { error: storageError } = await supabase.storage
-            .from(STORAGE_BUCKET_NAME)
+            .from(PROJECT_IMAGES_BUCKET_NAME)
             .remove(filePaths);
         
         if (storageError) {
-            console.error('Error deleting project files from storage:', storageError);
-            // We'll still try to delete the DB record, but we throw an error at the end.
-            throw new Error(`Failed to delete project files: ${storageError.message}`);
+             // If the bucket doesn't exist, we can't delete files from it, but the project
+            // can still be deleted from the DB. Log a warning instead of throwing an error.
+            if (storageError.message === 'Bucket not found') {
+                 console.warn(`Could not delete project files because the '${PROJECT_IMAGES_BUCKET_NAME}' bucket was not found. Proceeding to delete database record.`);
+            } else {
+                console.error('Error deleting project files from storage:', storageError);
+                throw new Error(`Failed to delete project files: ${storageError.message}`);
+            }
         }
     }
 
@@ -404,5 +418,102 @@ export const sharePrompt = async (promptId: string, recipientEmail: string): Pro
             throw new Error('No user found with that email address. Please check the email and try again.');
         }
         throw new Error(`Failed to share prompt: ${error.message}`);
+    }
+};
+
+// ==================================
+//        User Asset Library
+// ==================================
+
+const USER_ASSETS_BUCKET_NAME = 'user-assets';
+
+/**
+ * Fetches all assets for a given user ID, sorted by creation date.
+ */
+export const getUserAssets = async (userId: string): Promise<UserAsset[]> => {
+    const { data, error } = await supabase
+        .from('user_assets')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching user assets:', error);
+        if (error.message.includes("relation \"public.user_assets\" does not exist")) {
+             throw new Error("Could not fetch assets: The 'user_assets' table was not found. Please run the setup script from SQL.md in your Supabase project.");
+        }
+        throw new Error(error.message);
+    }
+    return data;
+};
+
+/**
+ * Uploads a file to the user's asset library.
+ */
+export const uploadUserAsset = async (userId: string, file: File): Promise<UserAsset> => {
+    const fileId = `asset_${Date.now()}.${file.name.split('.').pop() || 'png'}`;
+    const storagePath = `${userId}/${fileId}`;
+
+    // 1. Upload the file to storage
+    const { error: uploadError } = await supabase.storage
+        .from(USER_ASSETS_BUCKET_NAME)
+        .upload(storagePath, file);
+
+    if (uploadError) {
+        console.error('Error uploading asset to storage:', uploadError);
+        if (uploadError.message === 'Bucket not found') {
+            throw new Error(`Upload failed: The '${USER_ASSETS_BUCKET_NAME}' storage bucket was not found. Please ensure you have created it in your Supabase project as per the README.md instructions.`);
+        }
+        throw new Error(uploadError.message);
+    }
+
+    // 2. Insert the record into the database
+    const { data, error: dbError } = await supabase
+        .from('user_assets')
+        .insert({
+            user_id: userId,
+            storage_path: storagePath,
+            filename: file.name,
+            asset_type: 'image',
+        })
+        .select()
+        .single();
+
+    if (dbError) {
+        console.error('Error saving asset metadata to DB:', dbError);
+        // Attempt to clean up the orphaned file in storage
+        await supabase.storage.from(USER_ASSETS_BUCKET_NAME).remove([storagePath]);
+        throw new Error(dbError.message);
+    }
+    return data;
+};
+
+/**
+ * Deletes an asset from the user's library (storage and database).
+ */
+export const deleteUserAsset = async (asset: UserAsset): Promise<void> => {
+    // 1. Delete from storage
+    const { error: storageError } = await supabase.storage
+        .from(USER_ASSETS_BUCKET_NAME)
+        .remove([asset.storage_path]);
+
+    if (storageError) {
+        if (storageError.message === 'Bucket not found') {
+            console.warn(`Could not delete asset from storage because the '${USER_ASSETS_BUCKET_NAME}' bucket was not found. Proceeding to delete database record.`);
+        } else {
+            console.error('Error deleting asset from storage:', storageError);
+            throw new Error(storageError.message);
+        }
+    }
+
+    // 2. Delete from database
+    const { error: dbError } = await supabase
+        .from('user_assets')
+        .delete()
+        .eq('id', asset.id);
+
+    if (dbError) {
+        console.error('Error deleting asset from database:', dbError);
+        throw new Error(dbError.message);
     }
 };

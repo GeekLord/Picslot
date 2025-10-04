@@ -46,9 +46,10 @@ export interface ImageJob {
 
 interface BatchEditorPageProps {
   prompts: Prompt[];
+  onOpenAssetLibrary: (onSelect: (files: File[]) => void, config: { multiSelect: boolean, selectButtonText: string }) => void;
 }
 
-const BatchEditorPage: React.FC<BatchEditorPageProps> = ({ prompts }) => {
+const BatchEditorPage: React.FC<BatchEditorPageProps> = ({ prompts, onOpenAssetLibrary }) => {
     const [jobs, setJobs] = useState<ImageJob[]>([]);
     const [action, setAction] = useState<BatchAction>('none');
     const [prompt, setPrompt] = useState('');
@@ -61,9 +62,10 @@ const BatchEditorPage: React.FC<BatchEditorPageProps> = ({ prompts }) => {
     const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
     const [zoomedJobIndex, setZoomedJobIndex] = useState(0);
 
-    const handleFileSelect = useCallback((files: FileList | null) => {
+    const handleFileSelect = useCallback((files: FileList | null | File[]) => {
         if (!files) return;
-        const newJobs: ImageJob[] = Array.from(files)
+        const fileArray = Array.isArray(files) ? files : Array.from(files);
+        const newJobs: ImageJob[] = fileArray
             .filter(file => file.type.startsWith('image/'))
             .map(file => ({
                 id: `${file.name}-${file.lastModified}-${Math.random()}`,
@@ -234,11 +236,17 @@ const BatchEditorPage: React.FC<BatchEditorPageProps> = ({ prompts }) => {
                     </div>
                     <h1 className="text-5xl font-extrabold tracking-tight text-gray-100">Batch Editor</h1>
                     <p className="max-w-2xl mt-4 text-lg text-gray-400">Process multiple images at once. Drag and drop your files here or click to upload.</p>
-                    <div className="mt-8">
+                    <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
                         <input type="file" multiple ref={fileInputRef} onChange={(e) => handleFileSelect(e.target.files)} className="hidden" accept="image/*" />
                         <button onClick={() => fileInputRef.current?.click()} className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white bg-blue-600 rounded-full cursor-pointer group hover:bg-blue-500 transition-colors">
                             <UploadIcon className="w-6 h-6 mr-3" />
                             Select Images
+                        </button>
+                         <button onClick={() => onOpenAssetLibrary(
+                            (files) => handleFileSelect(files),
+                            { multiSelect: true, selectButtonText: 'Add to Batch' }
+                         )} className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-gray-200 bg-gray-700/60 rounded-full cursor-pointer hover:bg-gray-700 transition-colors">
+                            From Library
                         </button>
                     </div>
                 </div>

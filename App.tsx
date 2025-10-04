@@ -14,7 +14,7 @@ import AdjustmentPanel from './components/AdjustmentPanel';
 import CropPanel from './components/CropPanel';
 import ChangeViewPanel from './components/ChangeViewPanel';
 // FIX: Removed unused import for OutpaintPanel. The component is not used and its corresponding file is not a module, causing an error.
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon, ArrowPathIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon, ArrowPathIcon, InboxStackIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -24,7 +24,7 @@ import SaveProjectModal from './components/SaveProjectModal';
 import type { User } from '@supabase/supabase-js';
 import BrushCanvas from './components/BrushCanvas';
 import BrushControls from './components/BrushControls';
-import type { Project, Prompt, UserProfile, Snapshot, Template } from './types';
+import type { Project, Prompt, UserProfile, Snapshot } from './types';
 import PromptManagerModal from './components/PromptManagerModal';
 import PromptSelector from './components/PromptSelector';
 import Dashboard from './components/Dashboard';
@@ -35,6 +35,7 @@ import BatchEditorPage from './components/BatchEditorPage';
 import SceneComposerPage from './components/SceneComposerPage';
 import GuidedTransformPage from './components/GuidedTransformPage';
 import ImageStudioPage from './components/ImageStudioPage';
+import AssetLibraryModal from './components/AssetLibraryModal';
 
 
 // Helper to convert a data URL string to a File object
@@ -149,6 +150,14 @@ const App: React.FC = () => {
   // Prompt Manager State
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [isPromptManagerOpen, setIsPromptManagerOpen] = useState(false);
+
+  // Asset Library State
+  const [isAssetLibraryOpen, setIsAssetLibraryOpen] = useState(false);
+  const [assetLibraryConfig, setAssetLibraryConfig] = useState<{
+    onSelect: (files: File[]) => void;
+    multiSelect: boolean;
+    selectButtonText: string;
+  } | null>(null);
 
   // UI State
   const [activeTool, setActiveTool] = useState<Tool | null>(null);
@@ -421,22 +430,6 @@ const App: React.FC = () => {
     setLastAction(null);
     console.log('[App Event] Image upload complete, state reset for editor.');
   }, []);
-
-  const handleSelectTemplate = useCallback(async (template: Template) => {
-    console.log(`[App Event] Template selected: "${template.title}"`);
-    setIsLoading(true);
-    setError(null);
-    try {
-        const imageFile = await blobToFile(template.imageUrl, `template-${template.title.replace(/\s+/g, '-')}.png`);
-        handleImageUpload(imageFile, template.prompt);
-    } catch (e) {
-        console.error('[App Event] Error loading template:', e);
-        setError("Failed to load the template image. Please try again.");
-    } finally {
-        setIsLoading(false);
-        console.log('[App Event] Template loading finished.');
-    }
-  }, [handleImageUpload]);
   
   // === Navigation ===
   const handleNavigate = useCallback((targetPage: Page) => {
@@ -478,6 +471,34 @@ const App: React.FC = () => {
     setInitialAuthView(view);
     setIsAuthModalOpen(true);
   };
+  
+  // === Asset Library ===
+  const handleOpenAssetLibrary = (
+    onSelect: (files: File[]) => void,
+    { multiSelect = false, selectButtonText = 'Use Image' } = {}
+  ) => {
+    setAssetLibraryConfig({ onSelect, multiSelect, selectButtonText });
+    setIsAssetLibraryOpen(true);
+  };
+  
+  const handleSaveToLibrary = async () => {
+    if (!currentImage || !user) {
+        setError("You must be logged in and have an image selected to save to the library.");
+        return;
+    }
+    // Use a different loading state if you want, but this is fine for now
+    setIsLoading(true);
+    setError(null);
+    try {
+        await supabaseService.uploadUserAsset(user.id, currentImage);
+        alert('Image saved to your Asset Library!'); // Simple feedback
+    } catch (e: any) {
+        setError(`Failed to save to library: ${e.message}`);
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
 
   // === Project Management ===
 
@@ -1110,8 +1131,11 @@ const App: React.FC = () => {
                         onNavigateToGuidedTransform={() => handleNavigate('guidedTransform')}
                         onNavigateToImageStudio={() => handleNavigate('imageStudio')}
                         onOpenPromptManager={() => setIsPromptManagerOpen(true)}
+                        onOpenAssetLibrary={() => handleOpenAssetLibrary(
+                            (files) => { if (files[0]) handleImageUpload(files[0]) },
+                            { multiSelect: false, selectButtonText: 'Start Project' }
+                        )}
                         onSelectProject={handleLoadProject}
-                        onSelectTemplate={handleSelectTemplate}
                     />;
         case 'projects':
             console.log('[App Render] Rendering ProjectsDashboard page.');
@@ -1123,16 +1147,28 @@ const App: React.FC = () => {
                     />;
         case 'upload':
             console.log('[App Render] Rendering StartScreen (upload) page.');
-            return <StartScreen onFileSelect={handleFileSelect} />;
+            return <StartScreen 
+                        onFileSelect={handleFileSelect} 
+                        onOpenAssetLibrary={() => handleOpenAssetLibrary(
+                            (files) => { if (files[0]) handleImageUpload(files[0]) },
+                            { multiSelect: false, selectButtonText: 'Use Image' }
+                        )}
+                   />;
         case 'batch':
             console.log('[App Render] Rendering BatchEditorPage.');
-            return <BatchEditorPage prompts={prompts} />;
+            // FIX: Pass onOpenAssetLibrary prop to BatchEditorPage.
+            return <BatchEditorPage 
+                        prompts={prompts}
+                        onOpenAssetLibrary={handleOpenAssetLibrary}
+                   />;
         case 'composer':
             console.log('[App Render] Rendering SceneComposerPage.');
-            return <SceneComposerPage />;
+            // FIX: Pass onOpenAssetLibrary prop to SceneComposerPage.
+            return <SceneComposerPage onOpenAssetLibrary={handleOpenAssetLibrary} />;
         case 'guidedTransform':
             console.log('[App Render] Rendering GuidedTransformPage.');
-            return <GuidedTransformPage />;
+            // FIX: Pass onOpenAssetLibrary prop to GuidedTransformPage.
+            return <GuidedTransformPage onOpenAssetLibrary={handleOpenAssetLibrary} />;
         case 'imageStudio':
             console.log('[App Render] Rendering ImageStudioPage.');
             return <ImageStudioPage prompts={prompts} />;
@@ -1156,7 +1192,13 @@ const App: React.FC = () => {
                 
                 // If there's no `currentImage` file at all, then it's correct to show the upload screen.
                 console.log('[App Render] Editor page is active but no image. Falling back to StartScreen.');
-                return <StartScreen onFileSelect={handleFileSelect} />;
+                return <StartScreen 
+                            onFileSelect={handleFileSelect} 
+                            onOpenAssetLibrary={() => handleOpenAssetLibrary(
+                                (files) => { if (files[0]) handleImageUpload(files[0]) },
+                                { multiSelect: false, selectButtonText: 'Use Image' }
+                            )}
+                       />;
             }
 
             console.log('[App Render] Rendering Editor page with image.');
@@ -1170,10 +1212,25 @@ const App: React.FC = () => {
                                   <p className="text-gray-300">AI is working its magic...</p>
                               </div>
                           )}
-                          {activeTool === 'crop' && crop ? (
-                            <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)} aspect={aspect} className="max-h-[70vh]">
-                              <img ref={imgRef} src={currentImageUrl} alt="Crop this image" className="w-full h-auto object-contain max-h-[70vh] rounded-xl"/>
-                            </ReactCrop>
+                          {activeTool === 'crop' && crop ? (<>
+                            {console.log('[DEBUG] Rendering ReactCrop with crop state:', crop)}
+                            <ReactCrop 
+                              crop={crop} 
+                              onChange={(pixelCrop, percentCrop) => {
+                                console.log('[DEBUG] onChange - pixelCrop:', pixelCrop, 'percentCrop:', percentCrop);
+                                // FIX: The issue was using the pixelCrop (first argument) to update the state,
+                                // which was initialized with a percentage-based crop. This mismatch can cause
+                                // the component to crash. Always using the percentage-based crop from the second
+                                // argument for the controlled component state ensures consistency.
+                                setCrop(percentCrop);
+                              }} 
+                              onComplete={c => {
+                                console.log('[DEBUG] onComplete - completedCrop:', c);
+                                setCompletedCrop(c);
+                              }} 
+                              aspect={aspect} className="max-h-[70vh]">
+                                <img ref={imgRef} src={currentImageUrl} alt="Crop this image" className="w-full h-auto object-contain max-h-[70vh] rounded-xl"/>
+                            </ReactCrop></>
                           ) : isCompareMode && originalImageUrl ? (
                               <CompareSlider originalImageUrl={originalImageUrl} currentImageUrl={currentImageUrl} />
                           ) : (
@@ -1291,11 +1348,16 @@ const App: React.FC = () => {
                             <button type="button" onClick={() => setActiveTool(activeTool === 'adjust' ? null : 'adjust')} className={mainToolButtonClass('adjust')}><AdjustmentsIcon className="w-6 h-6"/>Adjust</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'filters' ? null : 'filters')} className={mainToolButtonClass('filters')}><LayersIcon className="w-6 h-6"/>Filters</button>
                             <button type="button" onClick={() => {
+                                console.log('[DEBUG] Crop button clicked. Current activeTool:', activeTool);
                                 if (activeTool === 'crop') {
                                     setActiveTool(null);
+                                    console.log('[DEBUG] Deactivating crop tool.');
                                 } else {
+                                    // FIX: Explicitly type `initialCrop` as `Crop` to ensure the `unit` property is correctly typed as '%' instead of the wider `string` type. This resolves the TypeScript error where the object was not assignable to the `Crop` state.
+                                    const initialCrop: Crop = { unit: '%', x: 25, y: 25, width: 50, height: 50 };
                                     setActiveTool('crop');
-                                    setCrop({ unit: '%', x: 25, y: 25, width: 50, height: 50 });
+                                    setCrop(initialCrop);
+                                    console.log('[DEBUG] Activating crop tool. Initial crop state set to:', initialCrop);
                                 }
                             }} className={mainToolButtonClass('crop')}><CropIcon className="w-6 h-6"/>Crop</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'change-view' ? null : 'change-view')} className={mainToolButtonClass('change-view')}><ChangeViewIcon className="w-6 h-6"/>Change View</button>
@@ -1342,6 +1404,7 @@ const App: React.FC = () => {
                 <button type="button" onClick={handleReset} disabled={!canUndo || isLoading} className="bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Reset</button>
             </div>
             <div className="flex items-center gap-2">
+                <button type="button" onClick={handleSaveToLibrary} disabled={isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><InboxStackIcon className="w-5 h-5"/>Save to Library</button>
                 <button type="button" onClick={() => setIsSaveModalOpen(true)} disabled={isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><SaveIcon className="w-5 h-5"/>Save</button>
                 <button type="button" onClick={() => setIsSnapshotsModalOpen(true)} disabled={!activeProjectId || isLoading} title={!activeProjectId ? "Save the project first to enable snapshots" : "Manage Snapshots"} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><HistoryIcon className="w-5 h-5"/>Snapshots</button>
                 <button type="button" onClick={() => handleNavigate('upload')} disabled={isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><UploadIconSVG className="w-5 h-5"/>New Image</button>
@@ -1431,6 +1494,19 @@ const App: React.FC = () => {
             onUsePrompt={handleUsePrompt}
           />
       )}
+       {user && isAssetLibraryOpen && assetLibraryConfig && (
+            <AssetLibraryModal
+                isOpen={isAssetLibraryOpen}
+                onClose={() => setIsAssetLibraryOpen(false)}
+                user={user}
+                onSelectAssets={(files) => {
+                    assetLibraryConfig.onSelect(files);
+                    setIsAssetLibraryOpen(false);
+                }}
+                multiSelect={assetLibraryConfig.multiSelect}
+                selectButtonText={assetLibraryConfig.selectButtonText}
+            />
+        )}
     </div>
   );
 };

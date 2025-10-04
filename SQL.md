@@ -146,6 +146,37 @@ CREATE POLICY "Users can view public profiles"
     FOR SELECT
     USING (true);
 
+-- User Assets table
+-- Stores user-uploaded images for reuse across the app.
+CREATE TABLE IF NOT EXISTS public.user_assets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    storage_path TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    asset_type TEXT NOT NULL DEFAULT 'image',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for user_assets.
+ALTER TABLE public.user_assets ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policy to apply updates.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_assets' AND policyname = 'Users can manage their own assets'
+    ) THEN
+        EXECUTE 'DROP POLICY "Users can manage their own assets" ON public.user_assets';
+    END IF;
+END$$;
+
+-- Policy: Users can manage their own assets.
+CREATE POLICY "Users can manage their own assets"
+    ON public.user_assets
+    FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
 -- Function to automatically create a user profile when a new user signs up.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$

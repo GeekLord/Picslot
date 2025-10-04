@@ -4,13 +4,14 @@
 */
 
 import React, { useState, useEffect } from 'react';
-import { UploadIcon, MagicWandIcon, PaletteIcon, SunIcon } from './icons';
+import { UploadIcon, MagicWandIcon, PaletteIcon, SunIcon, LayoutGridIcon } from './icons';
 
 interface StartScreenProps {
   onFileSelect: (files: FileList | null) => void;
+  onOpenAssetLibrary: () => void;
 }
 
-const StartScreen: React.FC<StartScreenProps> = ({ onFileSelect }) => {
+const StartScreen: React.FC<StartScreenProps> = ({ onFileSelect, onOpenAssetLibrary }) => {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,14 +76,22 @@ const StartScreen: React.FC<StartScreenProps> = ({ onFileSelect }) => {
           Retouch photos, apply creative filters, or make professional adjustments using simple text prompts. No complex tools needed.
         </p>
 
-        <div className="mt-6 flex flex-col items-center gap-4">
-            <label htmlFor="image-upload-start" className="relative inline-flex items-center justify-center px-10 py-5 text-xl font-bold text-white bg-blue-600 rounded-full cursor-pointer group hover:bg-blue-500 transition-colors">
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <label htmlFor="image-upload-start" className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white bg-blue-600 rounded-full cursor-pointer group hover:bg-blue-500 transition-colors">
                 <UploadIcon className="w-6 h-6 mr-3 transition-transform duration-500 ease-in-out group-hover:rotate-[360deg] group-hover:scale-110" />
-                Upload an Image
+                Upload Image
             </label>
             <input id="image-upload-start" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-            <p className="text-sm text-gray-500">or drag and drop, or paste from clipboard</p>
+             <button
+                type="button"
+                onClick={onOpenAssetLibrary}
+                className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-gray-200 bg-gray-700/60 border border-gray-600 rounded-full cursor-pointer hover:bg-gray-700 hover:text-white transition-colors"
+            >
+                <LayoutGridIcon className="w-6 h-6 mr-3" />
+                Choose from Library
+            </button>
         </div>
+        <p className="text-sm text-gray-500 -mt-2">or drag & drop, or paste from clipboard</p>
 
         <div className="mt-16 w-full">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

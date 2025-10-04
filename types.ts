@@ -38,6 +38,16 @@ export interface UserProfile {
   updated_at: string;
 }
 
+export interface UserAsset {
+  id: string;
+  user_id: string;
+  storage_path: string;
+  filename: string;
+  asset_type: string;
+  created_at: string;
+}
+
+// FIX: Add and export the 'Template' interface used by TemplateGallery.tsx.
 export interface Template {
   title: string;
   description: string;

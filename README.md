@@ -18,6 +18,7 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 - **AI Prompt Enhancer**: A one-click tool that uses AI to rewrite your prompts, adding professional details to help you achieve better results.
 - **Share Prompts**: Share your creations with other Picslot users directly via their email address.
 - **Start with Templates**: Kickstart your creativity with a gallery of pre-configured templates. Select a style to load a sample image and a professionally crafted prompt directly into the editor.
+- **Asset Library**: Save your uploaded or generated images to a personal, cloud-based library. Reuse your assets across all tools—from the Scene Composer to the Batch Editor—without needing to re-upload.
 
 ### Core AI Editing Suite
 - **Generative Mask**: Use the brush tool to paint over any part of an image and replace, add, or remove elements with pinpoint accuracy based on your text prompt.
@@ -99,6 +100,14 @@ Follow these instructions to set up and run the project locally.
             -   **Allowed operations**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`
             -   **Target roles**: `authenticated`
             -   **USING expression (the policy itself)**: `bucket_id = 'project-images' AND auth.uid()::text = (storage.foldername(name))[1]`
+    -   **Create a private bucket for user assets:**
+        -   Create a new bucket named `user-assets`. **This name must be exact.**
+        -   Make sure the bucket is **private** (the "Public bucket" toggle should be off).
+        -   Go to the policies for the `user-assets` bucket and create a new policy:
+            -   **Policy Name**: `User can manage their own assets`
+            -   **Allowed operations**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`
+            -   **Target roles**: `authenticated`
+            -   **USING expression**: `bucket_id = 'user-assets' AND auth.uid()::text = (storage.foldername(name))[1]`
     -   **Create a public bucket for avatars:**
         -   Create a new bucket named `avatars`. **This name must be exact.**
         -   Make sure the bucket is **public** (the "Public bucket" toggle should be on).
@@ -160,6 +169,7 @@ Follow these instructions to set up and run the project locally.
 │   ├── Dashboard.tsx       # Main user dashboard
 │   ├── ProjectsDashboard.tsx # UI to display user's cloud projects
 │   ├── PromptManagerModal.tsx# UI for managing saved prompts
+│   ├── AssetLibraryModal.tsx # UI for managing saved user images
 │   ├── SettingsPage.tsx    # User settings and profile management
 │   ├── SnapshotsModal.tsx  # UI for managing project version history
 │   └── ...and many other UI components

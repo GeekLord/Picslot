@@ -18,6 +18,11 @@ interface StagedImage extends UploadedFile {
     role: string;
 }
 
+interface SceneComposerPageProps {
+  onOpenAssetLibrary: (onSelect: (files: File[]) => void, config: { multiSelect: boolean, selectButtonText: string }) => void;
+}
+
+
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
     const arr = dataurl.split(',');
@@ -36,7 +41,7 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 }
 
 
-const SceneComposerPage: React.FC = () => {
+const SceneComposerPage: React.FC<SceneComposerPageProps> = ({ onOpenAssetLibrary }) => {
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
     const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
     const [masterPrompt, setMasterPrompt] = useState('');
@@ -58,9 +63,10 @@ const SceneComposerPage: React.FC = () => {
         };
     }, []);
 
-    const handleFileSelect = useCallback((files: FileList | null) => {
+    const handleFileSelect = useCallback((files: FileList | null | File[]) => {
         if (!files) return;
-        const newFiles: UploadedFile[] = Array.from(files)
+        const fileArray = Array.isArray(files) ? files : Array.from(files);
+        const newFiles: UploadedFile[] = fileArray
             .filter(file => file.type.startsWith('image/'))
             .map(file => {
                 const url = URL.createObjectURL(file);
@@ -152,14 +158,19 @@ const SceneComposerPage: React.FC = () => {
                             setIsDraggingOver(false);
                             handleFileSelect(e.dataTransfer.files);
                         }}
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`mb-4 p-6 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${isDraggingOver ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600 hover:border-gray-500'}`}
+                        className={`mb-4 p-4 border-2 border-dashed rounded-lg text-center transition-colors flex flex-col gap-2 ${isDraggingOver ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600'}`}
                     >
-                         <UploadIcon className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                         <p className="font-semibold text-gray-300">Upload Images</p>
-                         <p className="text-xs text-gray-500">or drag & drop</p>
+                         <input type="file" multiple ref={fileInputRef} onChange={(e) => handleFileSelect(e.target.files)} className="hidden" accept="image/*" />
+                         <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-2 font-semibold text-gray-300 hover:text-white py-2 rounded-md hover:bg-gray-700/50">
+                            <UploadIcon className="w-5 h-5"/> Upload (or drag)
+                         </button>
+                         <button onClick={() => onOpenAssetLibrary(
+                            (files) => handleFileSelect(files),
+                            { multiSelect: true, selectButtonText: 'Add to Tray' }
+                         )} className="w-full flex items-center justify-center gap-2 font-semibold text-gray-300 hover:text-white py-2 rounded-md hover:bg-gray-700/50">
+                            From Library
+                         </button>
                     </div>
-                     <input type="file" multiple ref={fileInputRef} onChange={(e) => handleFileSelect(e.target.files)} className="hidden" accept="image/*" />
 
                     <div className="grid grid-cols-2 gap-3">
                          {uploadedFiles.map(file => (

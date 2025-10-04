@@ -16,6 +16,11 @@ interface ImageSlot {
     url: string;
 }
 
+interface GuidedTransformPageProps {
+  onOpenAssetLibrary: (onSelect: (files: File[]) => void, config: { multiSelect: boolean, selectButtonText: string }) => void;
+}
+
+
 // New interface for mode configuration
 interface TransformConfig {
     title: string;
@@ -68,7 +73,12 @@ const transformConfigs: Record<TransformType, TransformConfig> = {
 };
 
 
-const ImageUploader: React.FC<{ onFileSelect: (file: File) => void, title: string, description: string }> = ({ onFileSelect, title, description }) => {
+const ImageUploader: React.FC<{ 
+    onFileSelect: (file: File) => void,
+    onOpenLibrary: () => void,
+    title: string, 
+    description: string 
+}> = ({ onFileSelect, onOpenLibrary, title, description }) => {
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -83,18 +93,25 @@ const ImageUploader: React.FC<{ onFileSelect: (file: File) => void, title: strin
             onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
             onDragLeave={() => setIsDraggingOver(false)}
             onDrop={(e) => { e.preventDefault(); setIsDraggingOver(false); handleFile(e.dataTransfer.files); }}
-            onClick={() => inputRef.current?.click()}
-            className={`w-full h-full flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${isDraggingOver ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600 hover:border-gray-500'}`}
+            className={`w-full h-full flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg text-center transition-colors ${isDraggingOver ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600'}`}
         >
-            <UploadIcon className="w-10 h-10 mx-auto text-gray-400 mb-2" />
-            <p className="font-semibold text-gray-200">{title}</p>
-            <p className="text-sm text-gray-500">{description}</p>
+            <div className="flex flex-col items-center justify-center gap-4">
+                 <UploadIcon className="w-10 h-10 mx-auto text-gray-400" />
+                 <div>
+                    <p className="font-semibold text-gray-200">{title}</p>
+                    <p className="text-sm text-gray-500">{description}</p>
+                 </div>
+                 <div className="flex flex-col sm:flex-row gap-2">
+                    <button type="button" onClick={() => inputRef.current?.click()} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md text-sm">Upload</button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); onOpenLibrary(); }} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md text-sm">From Library</button>
+                 </div>
+            </div>
             <input type="file" ref={inputRef} onChange={(e) => handleFile(e.target.files)} className="hidden" accept="image/*" />
         </div>
     );
 };
 
-const GuidedTransformPage: React.FC = () => {
+const GuidedTransformPage: React.FC<GuidedTransformPageProps> = ({ onOpenAssetLibrary }) => {
     const [transformType, setTransformType] = useState<TransformType>('pose');
     const [subject, setSubject] = useState<ImageSlot | null>(null);
     const [reference, setReference] = useState<ImageSlot | null>(null);
@@ -228,7 +245,15 @@ const GuidedTransformPage: React.FC = () => {
                                     </button>
                                 </div>
                             ) : (
-                                <ImageUploader onFileSelect={(file) => handleFileSelect(file, 'subject')} title={config.subjectTitle} description={config.subjectDesc}/>
+                                <ImageUploader 
+                                    onFileSelect={(file) => handleFileSelect(file, 'subject')} 
+                                    onOpenLibrary={() => onOpenAssetLibrary(
+                                        (files) => { if(files[0]) handleFileSelect(files[0], 'subject')},
+                                        { multiSelect: false, selectButtonText: 'Use as Subject' }
+                                    )}
+                                    title={config.subjectTitle} 
+                                    description={config.subjectDesc}
+                                />
                             )}
                         </div>
                     </div>
@@ -243,7 +268,15 @@ const GuidedTransformPage: React.FC = () => {
                                     </button>
                                 </div>
                             ) : (
-                                <ImageUploader onFileSelect={(file) => handleFileSelect(file, 'reference')} title={config.referenceTitle} description={config.referenceDesc} />
+                                <ImageUploader 
+                                    onFileSelect={(file) => handleFileSelect(file, 'reference')} 
+                                    onOpenLibrary={() => onOpenAssetLibrary(
+                                        (files) => { if(files[0]) handleFileSelect(files[0], 'reference')},
+                                        { multiSelect: false, selectButtonText: 'Use as Reference' }
+                                    )}
+                                    title={config.referenceTitle} 
+                                    description={config.referenceDesc} 
+                                />
                             )}
                         </div>
                     </div>
