@@ -646,6 +646,7 @@ const App: React.FC = () => {
     const maskForGeneration = maskDataUrl;
 
     const regenerate = async () => {
+      setLastAction(null);
       setIsLoading(true);
       setError(null);
       try {
@@ -695,15 +696,12 @@ const App: React.FC = () => {
         console.error('[App AI] Image generation failed:', err);
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate the image. ${errorMessage}`);
-        setLastAction(null); // Clear on failure
       } finally {
         setIsLoading(false);
         console.log('[App AI] Generation operation finished.');
       }
     };
 
-    // Initial execution
-    setLastAction(null);
     await regenerate();
   }, [currentImage, prompt, addImageToHistory, maskDataUrl]);
   
@@ -769,6 +767,7 @@ const App: React.FC = () => {
       const imageToProcess = currentImage; // CAPTURE current image
 
       const regenerate = async () => {
+        setLastAction(null);
         setIsLoading(true);
         setError(null);
         try {
@@ -780,13 +779,11 @@ const App: React.FC = () => {
           console.error(`[App AI] Action ${actionName} failed:`, err);
           const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
           setError(`Failed to ${actionName}. ${errorMessage}`);
-          setLastAction(null);
         } finally {
           setIsLoading(false);
         }
       };
 
-      setLastAction(null); // Clear previous action before starting a new one.
       await regenerate();
     };
   };
@@ -801,6 +798,7 @@ const App: React.FC = () => {
       const promptToProcess = prompt;     // CAPTURE current prompt
 
       const regenerate = async () => {
+        setLastAction(null);
         setIsLoading(true);
         setError(null);
         try {
@@ -812,14 +810,12 @@ const App: React.FC = () => {
           console.error(`[App AI] Action ${actionName} failed:`, err);
           const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
           setError(`Failed to perform ${actionName}. ${errorMessage}`);
-          setLastAction(null);
           throw err; // Re-throw for the panel to catch and handle its UI state
         } finally {
           setIsLoading(false);
         }
       };
       
-      setLastAction(null); // Clear previous action before starting a new one.
       await regenerate();
     };
   };
@@ -841,6 +837,7 @@ const App: React.FC = () => {
     const shotTypeToProcess = shotType;   // CAPTURE
 
     const regenerate = async () => {
+      setLastAction(null);
       setIsLoading(true);
       setError(null);
       try {
@@ -870,7 +867,6 @@ const App: React.FC = () => {
         console.error('[App AI] Camera view change failed:', err);
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to change camera view. ${errorMessage}`);
-        setLastAction(null);
         throw err; // Re-throw for panel UI
       } finally {
         setIsLoading(false);
@@ -878,7 +874,6 @@ const App: React.FC = () => {
       }
     };
     
-    setLastAction(null);
     await regenerate();
   };
 
