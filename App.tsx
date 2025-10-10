@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
-import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage, generateMovedCameraImage, enhancePrompt, describeImage } from './services/geminiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage, generateMovedCameraImage, enhancePrompt, describeImage, type OutputAspectRatio } from './services/geminiService';
 import * as supabaseService from './services/supabaseService';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
@@ -36,6 +36,7 @@ import SceneComposerPage from './components/SceneComposerPage';
 import GuidedTransformPage from './components/GuidedTransformPage';
 import ImageStudioPage from './components/ImageStudioPage';
 import AssetLibraryModal from './components/AssetLibraryModal';
+import OutputSettingsPanel from './components/OutputSettingsPanel';
 
 
 // Helper to convert a data URL string to a File object
@@ -185,6 +186,9 @@ const App: React.FC = () => {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [aspect, setAspect] = useState<number | undefined>();
+  
+  // Output Settings State
+  const [outputAspectRatio, setOutputAspectRatio] = useState<OutputAspectRatio>('auto');
 
   const imgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -428,6 +432,7 @@ const App: React.FC = () => {
     setPrompt(initialPrompt);
     setPage('editor');
     setLastAction(null);
+    setOutputAspectRatio('auto');
     console.log('[App Event] Image upload complete, state reset for editor.');
   }, []);
   
@@ -447,6 +452,7 @@ const App: React.FC = () => {
             setMaskDataUrl(null);
             setPrompt('');
             setLastAction(null);
+            setOutputAspectRatio('auto');
             console.log('[App Navigation] Editor state has been reset.');
         }
         return targetPage;
@@ -589,6 +595,7 @@ const App: React.FC = () => {
         setPrompt('');
         setIsCompareMode(false);
         setLastAction(null);
+        setOutputAspectRatio('auto');
         console.log('[App Project] Editor state reset for loaded project.');
     } catch (e) {
         console.error('[App Project] Failed to load project files:', e);
@@ -644,6 +651,7 @@ const App: React.FC = () => {
     const imageForGeneration = currentImage;
     const promptForGeneration = prompt;
     const maskForGeneration = maskDataUrl;
+    const aspectForGeneration = outputAspectRatio;
 
     const regenerate = async () => {
       setLastAction(null);
@@ -685,7 +693,7 @@ const App: React.FC = () => {
             console.log('[App AI] Inpainting image and prompt prepared.');
         }
         
-        const editedImageUrl = await generateEditedImage(imageToSend, finalPrompt);
+        const editedImageUrl = await generateEditedImage(imageToSend, finalPrompt, aspectForGeneration);
         const newImageFile = dataURLtoFile(editedImageUrl, `edited-${Date.now()}.png`);
         addImageToHistory(newImageFile);
         console.log('[App AI] Generation successful, new image added to history.');
@@ -703,7 +711,7 @@ const App: React.FC = () => {
     };
 
     await regenerate();
-  }, [currentImage, prompt, addImageToHistory, maskDataUrl]);
+  }, [currentImage, prompt, addImageToHistory, maskDataUrl, outputAspectRatio]);
   
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) return;
@@ -760,18 +768,19 @@ const App: React.FC = () => {
       }
   };
 
-  const createOneClickApiHandler = (apiFn: (file: File) => Promise<string>, actionName: string) => {
+  const createOneClickApiHandler = (apiFn: (file: File, outputAspectRatio: OutputAspectRatio) => Promise<string>, actionName: string) => {
     return async () => {
       if (!currentImage) return;
 
       const imageToProcess = currentImage; // CAPTURE current image
+      const aspectToProcess = outputAspectRatio; // CAPTURE current aspect ratio
 
       const regenerate = async () => {
         setLastAction(null);
         setIsLoading(true);
         setError(null);
         try {
-          const resultUrl = await apiFn(imageToProcess);
+          const resultUrl = await apiFn(imageToProcess, aspectToProcess);
           const newImageFile = dataURLtoFile(resultUrl, `${actionName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.png`);
           addImageToHistory(newImageFile);
           setLastAction({ name: actionName, handler: regenerate });
@@ -788,7 +797,7 @@ const App: React.FC = () => {
     };
   };
 
-  const createPanelApiHandler = (apiFn: (file: File, prompt: string) => Promise<string>, actionName: string) => {
+  const createPanelApiHandler = (apiFn: (file: File, prompt: string, outputAspectRatio: OutputAspectRatio) => Promise<string>, actionName: string) => {
     return async (prompt: string) => {
       if (!currentImage) {
         throw new Error("No image available to process.");
@@ -796,13 +805,14 @@ const App: React.FC = () => {
       
       const imageToProcess = currentImage; // CAPTURE current image
       const promptToProcess = prompt;     // CAPTURE current prompt
+      const aspectToProcess = outputAspectRatio; // CAPTURE current aspect ratio
 
       const regenerate = async () => {
         setLastAction(null);
         setIsLoading(true);
         setError(null);
         try {
-          const resultUrl = await apiFn(imageToProcess, promptToProcess);
+          const resultUrl = await apiFn(imageToProcess, promptToProcess, aspectToProcess);
           const newImageFile = dataURLtoFile(resultUrl, `${actionName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.png`);
           addImageToHistory(newImageFile);
           setLastAction({ name: actionName, handler: regenerate });
@@ -835,6 +845,7 @@ const App: React.FC = () => {
 
     const imageToProcess = currentImage; // CAPTURE
     const shotTypeToProcess = shotType;   // CAPTURE
+    const aspectToProcess = outputAspectRatio; // CAPTURE
 
     const regenerate = async () => {
       setLastAction(null);
@@ -857,7 +868,7 @@ const App: React.FC = () => {
         `;
         
         console.log('[App AI] Sending request for new camera view...');
-        const resultUrl = await generateMovedCameraImage(imageToProcess, dynamicPrompt);
+        const resultUrl = await generateMovedCameraImage(imageToProcess, dynamicPrompt, aspectToProcess);
         
         const newImageFile = dataURLtoFile(resultUrl, `change-view-${Date.now()}.png`);
         addImageToHistory(newImageFile);
@@ -1336,6 +1347,15 @@ const App: React.FC = () => {
                           <button type="button" onClick={() => handleAutoOutpaint()} disabled={isLoading} className={sidebarToolButtonClass} title="Intelligently expand the image to a full scene with one click."><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Auto Expand</button>
                         </div>
                       </div>
+
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-200 mt-4 mb-3 border-b border-gray-700 pb-2">Output Settings</h3>
+                        <OutputSettingsPanel
+                          selectedAspect={outputAspectRatio}
+                          onSetAspect={setOutputAspectRatio}
+                          isDisabled={isLoading}
+                        />
+                      </div>
                       
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mt-4 mb-3 border-b border-gray-700 pb-2">Manual Edits</h3>
@@ -1360,7 +1380,13 @@ const App: React.FC = () => {
                         <div className="mt-4">
                             {activeTool === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />}
                             {activeTool === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />}
-                            {activeTool === 'crop' && <CropPanel onApplyCrop={handleApplyCrop} onSetAspect={setAspect} isLoading={isLoading} isCropping={!!completedCrop?.width && completedCrop.width > 0} />}
+                            {activeTool === 'crop' && <CropPanel 
+                                onApplyCrop={handleApplyCrop} 
+                                onSetAspect={setAspect} 
+                                isLoading={isLoading} 
+                                isCropping={!!completedCrop?.width && completedCrop.width > 0}
+                                imageAspect={imgRef.current ? imgRef.current.naturalWidth / imgRef.current.naturalHeight : undefined}
+                            />}
                             {activeTool === 'change-view' && <ChangeViewPanel onApplyViewChange={handleApplyViewChange} isLoading={isLoading} />}
                         </div>
                       </div>

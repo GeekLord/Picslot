@@ -8,7 +8,8 @@ import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 console.log('[GeminiService] Module loaded.');
 
 export type TransformType = 'pose' | 'cloths' | 'style' | 'scene';
-export type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16';
+export type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16' | '21:9' | '3:2' | '2:3' | '5:4' | '4:5';
+export type OutputAspectRatio = AspectRatio | 'auto';
 
 
 const logGenerationCost = (response: GenerateContentResponse, context: string) => {
@@ -48,6 +49,14 @@ const logGenerationCost = (response: GenerateContentResponse, context: string) =
     - INR: ₹${totalCostINR.toFixed(4)}
 ----------------------------------------`
     );
+};
+
+// Helper to add aspect ratio instruction to a prompt
+const addAspectRatioToPrompt = (prompt: string, aspectRatio: OutputAspectRatio | undefined): string => {
+    if (aspectRatio && aspectRatio !== 'auto') {
+        return `${prompt}\n\n**CRITICAL COMPOSITION DIRECTIVE:** The final output image MUST be rendered with an aspect ratio of exactly ${aspectRatio}. Intelligently expand (outpaint) or crop the scene to fit this new aspect ratio while maintaining a professional and visually appealing composition. The main subject must remain the focus.`;
+    }
+    return prompt;
 };
 
 // Helper function to convert a File object to a Gemini API Part
@@ -144,7 +153,7 @@ export const generateImageFromText = async (
         model: 'gemini-2.5-flash-image',
         contents: contents,
         config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
+            responseModalities: [Modality.IMAGE],
         },
     });
 
@@ -157,11 +166,13 @@ export const generateImageFromText = async (
  * and inpainting. For inpainting, the input image should have a transparent area.
  * @param imageToEdit The image file to be edited. For inpainting, this image must have a transparent region.
  * @param userPrompt The text prompt describing the desired edit. For inpainting, this should include instructions to fill the transparent area.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the edited image.
  */
 export const generateEditedImage = async (
     imageToEdit: File,
     userPrompt: string,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log('[GeminiService] Called generateEditedImage.');
     console.log(`[GeminiService] API_KEY available: ${!!process.env.API_KEY}`);
@@ -169,7 +180,7 @@ export const generateEditedImage = async (
     console.log('[GeminiService] GoogleGenAI client initialized.');
     const imagePart = await fileToPart(imageToEdit);
 
-    const fullPrompt = `You are a master-level professional photo editor and creative artist. Execute a sophisticated edit based on the user's request.
+    const basePrompt = `You are a master-level professional photo editor and creative artist. Execute a sophisticated edit based on the user's request.
 
 **EDIT SPECIFICATIONS:**
 - User Request: "${userPrompt}"
@@ -185,6 +196,8 @@ export const generateEditedImage = async (
     -   Any person in the image must be 100% recognizable as the same individual after the edit.
 
 **OUTPUT DIRECTIVE:** Return exclusively the final edited image with no accompanying text or explanations.`;
+    
+    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
 
     const contents = { parts: [imagePart, { text: fullPrompt }] };
 
@@ -206,17 +219,19 @@ export const generateEditedImage = async (
  * Generates an image with a filter applied using generative AI.
  * @param originalImage The original image file.
  * @param filterPrompt The text prompt describing the desired filter.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the filtered image.
  */
 export const generateFilteredImage = async (
     originalImage: File,
     filterPrompt: string,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateFilteredImage with prompt: "${filterPrompt}"`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are an elite cinematographer and color grading specialist with expertise in professional film and photography post-processing. Apply a sophisticated stylistic treatment to the entire image while maintaining photographic integrity.
+    const basePrompt = `You are an elite cinematographer and color grading specialist with expertise in professional film and photography post-processing. Apply a sophisticated stylistic treatment to the entire image while maintaining photographic integrity.
 
 **FILTER SPECIFICATION:**
 Requested Style: "${filterPrompt}"
@@ -254,7 +269,8 @@ Requested Style: "${filterPrompt}"
 
 **OUTPUT DIRECTIVE:** Return exclusively the final filtered image with professional-grade color treatment and no accompanying text.`;
 
-    const textPart = { text: prompt };
+    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
+    const textPart = { text: fullPrompt };
 
     console.log('[GeminiService] Sending image and filter prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -273,17 +289,19 @@ Requested Style: "${filterPrompt}"
  * Generates an image with a global adjustment applied using generative AI.
  * @param originalImage The original image file.
  * @param adjustmentPrompt The text prompt describing the desired adjustment.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the adjusted image.
  */
 export const generateAdjustedImage = async (
     originalImage: File,
     adjustmentPrompt: string,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateAdjustedImage with prompt: "${adjustmentPrompt}"`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are a master photography technician specializing in professional image correction and global enhancement. Execute comprehensive adjustments across the entire image using industry-standard techniques.
+    const basePrompt = `You are a master photography technician specializing in professional image correction and global enhancement. Execute comprehensive adjustments across the entire image using industry-standard techniques.
 
 **ADJUSTMENT SPECIFICATION:**
 User Request: "${adjustmentPrompt}"
@@ -321,7 +339,8 @@ User Request: "${adjustmentPrompt}"
 
 **OUTPUT DIRECTIVE:** Return exclusively the final globally adjusted image with professional-grade correction applied and no accompanying text.`;
 
-    const textPart = { text: prompt };
+    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
+    const textPart = { text: fullPrompt };
 
     console.log('[GeminiService] Sending image and adjustment prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -339,16 +358,18 @@ User Request: "${adjustmentPrompt}"
 /**
  * Generates an auto-enhanced image using generative AI.
  * @param originalImage The original image file.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the enhanced image.
  */
 export const generateAutoEnhancedImage = async (
     originalImage: File,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateAutoEnhancedImage.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are a world-renowned master photographer and digital artist with expertise in transforming images to museum-quality, award-winning standards. Execute a comprehensive enhancement that elevates this image to professional exhibition quality.
+    const basePrompt = `You are a world-renowned master photographer and digital artist with expertise in transforming images to museum-quality, award-winning standards. Execute a comprehensive enhancement that elevates this image to professional exhibition quality.
 
 **COMPREHENSIVE ENHANCEMENT PROTOCOL:**
 
@@ -389,7 +410,8 @@ export const generateAutoEnhancedImage = async (
 
 **OUTPUT DIRECTIVE:** Return exclusively the final enhanced image at professional exhibition quality with no accompanying text or explanations.`;
 
-    const textPart = { text: prompt };
+    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
+    const textPart = { text: fullPrompt };
 
     console.log('[GeminiService] Sending image and auto-enhance prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -407,16 +429,18 @@ export const generateAutoEnhancedImage = async (
 /**
  * Restores an old or damaged image using generative AI.
  * @param originalImage The original image file.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the restored image.
  */
 export const generateRestoredImage = async (
     originalImage: File,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateRestoredImage.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are a world-class master conservator and digital restoration artist specializing in museum-quality photo restoration. Transform this damaged, aged, or low-quality image into a pristine, archival-standard photograph using the most advanced restoration techniques.
+    const basePrompt = `You are a world-class master conservator and digital restoration artist specializing in museum-quality photo restoration. Transform this damaged, aged, or low-quality image into a pristine, archival-standard photograph using the most advanced restoration techniques.
 
 **COMPREHENSIVE RESTORATION PROTOCOL:**
 
@@ -462,7 +486,8 @@ export const generateRestoredImage = async (
 
 **OUTPUT DIRECTIVE:** Return exclusively the final restored image at archival conservation quality with no accompanying text or explanations.`;
 
-    const textPart = { text: prompt };
+    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
+    const textPart = { text: fullPrompt };
 
     console.log('[GeminiService] Sending image and restoration prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -480,16 +505,18 @@ export const generateRestoredImage = async (
 /**
  * Generates a studio-quality portrait from an image.
  * @param originalImage The original image file.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the portrait image.
  */
 export const generateStudioPortrait = async (
     originalImage: File,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateStudioPortrait.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are a master portrait photographer specializing in official government documentation, executive headshots, and professional credentials. Your task is to transform the provided image into a flawless, official-standard portrait, suitable for passports, visas, or corporate profiles, by re-posing the subject while meticulously preserving their identity, clothing, and hair.
+    const basePrompt = `You are a master portrait photographer specializing in official government documentation, executive headshots, and professional credentials. Your task is to transform the provided image into a flawless, official-standard portrait, suitable for passports, visas, or corporate profiles, by re-posing the subject while meticulously preserving their identity, clothing, and hair.
 
 **CORE DIRECTIVE: RE-POSE, DO NOT REPLACE.**
 
@@ -516,7 +543,8 @@ export const generateStudioPortrait = async (
 
 **OUTPUT DIRECTIVE:** Return exclusively the final re-posed official portrait. The output must show the same person, in the same clothes and with the same hair, now facing the camera directly against a neutral studio background. No other changes are permitted.`;
 
-    const textPart = { text: prompt };
+    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
+    const textPart = { text: fullPrompt };
 
     console.log('[GeminiService] Sending image and studio portrait prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -686,16 +714,32 @@ export const generateThreeViewShot = async (
 /**
  * Generates an outpainted full-body image from a partial-body image.
  * @param originalImage The original image file.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the outpainted image.
  */
 export const generateOutpaintedImage = async (
     originalImage: File,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateOutpaintedImage.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are a master-level professional photo compositor specializing in photorealistic, seamless outpainting and scene extension.
+    let prompt: string;
+    if (outputAspectRatio && outputAspectRatio !== 'auto') {
+        prompt = `You are a master-level professional photo compositor specializing in photorealistic, seamless outpainting and scene extension. Your task is to intelligently expand the provided image to a new aspect ratio of **${outputAspectRatio}**.
+            
+**CRITICAL DIRECTIVE:** The original image content must form the core of the new, larger image and must be perfectly preserved. The final composition must be natural and well-balanced.
+
+**UNIVERSAL RULES:**
+- **Contextual Awareness:** The generated content must always be a logical extension of the original scene.
+- **Photorealism:** The final image must look like a single, original, unedited photograph.
+- **Identity Preservation:** If people are present, their identity and appearance must not be changed.
+
+**OUTPUT DIRECTIVE:**
+Return only the final, complete image with the aspect ratio of ${outputAspectRatio}. Do not add any text.`;
+    } else {
+        prompt = `You are a master-level professional photo compositor specializing in photorealistic, seamless outpainting and scene extension.
 
 **YOUR TASK:**
 Intelligently expand the scene of the provided image.
@@ -719,6 +763,8 @@ Intelligently expand the scene of the provided image.
 
 **OUTPUT DIRECTIVE:**
 Return only the final, complete image. Do not add any text.`;
+    }
+
 
     const textPart = { text: prompt };
 
@@ -738,16 +784,18 @@ Return only the final, complete image. Do not add any text.`;
 /**
  * Removes the background from an image using generative AI.
  * @param originalImage The original image file.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the image with a transparent background.
  */
 export const generateRemovedBackgroundImage = async (
     originalImage: File,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateRemovedBackgroundImage.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const prompt = `You are a precision digital artist specializing in complex image segmentation and background removal for high-end commercial use. Your task is to execute a flawless extraction of the primary subject from its background.
+    const basePrompt = `You are a precision digital artist specializing in complex image segmentation and background removal for high-end commercial use. Your task is to execute a flawless extraction of the primary subject from its background.
 
 **EXTRACTION DIRECTIVE: FLAWLESS BACKGROUND REMOVAL**
 
@@ -773,7 +821,8 @@ export const generateRemovedBackgroundImage = async (
 
 **OUTPUT DIRECTIVE:** Return ONLY the final image of the subject on a transparent background. Do not include any text, explanations, or additional content.`;
 
-    const textPart = { text: prompt };
+    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
+    const textPart = { text: fullPrompt };
 
     console.log('[GeminiService] Sending image and background removal prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -792,17 +841,20 @@ export const generateRemovedBackgroundImage = async (
  * Generates an image from a different camera angle using a dynamic prompt.
  * @param originalImage The original image file.
  * @param prompt The dynamically generated prompt describing the new camera view and context.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the new image.
  */
 export const generateMovedCameraImage = async (
     originalImage: File,
     prompt: string,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateMovedCameraImage with dynamic prompt.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const textPart = { text: prompt };
+    const fullPrompt = addAspectRatioToPrompt(prompt, outputAspectRatio);
+    const textPart = { text: fullPrompt };
 
     console.log('[GeminiService] Sending image and dynamic change view prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({

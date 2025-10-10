@@ -46,6 +46,13 @@ interface ImageStudioPageProps {
   prompts: Prompt[];
 }
 
+const aspectRatios = {
+    landscape: ['21:9', '16:9', '4:3', '3:2'] as AspectRatio[],
+    square: ['1:1'] as AspectRatio[],
+    portrait: ['9:16', '3:4', '2:3'] as AspectRatio[],
+    flexible: ['5:4', '4:5'] as AspectRatio[],
+};
+
 
 const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
     const [history, setHistory] = useState<HistoryImage[]>([]);
@@ -261,13 +268,30 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                     
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">Aspect Ratio</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {(['1:1', '4:3', '3:4'] as AspectRatio[]).map(ar => (
-                                <button key={ar} onClick={() => setAspectRatio(ar)} className={`py-2 rounded-md font-semibold transition-colors ${aspectRatio === ar ? 'bg-blue-600 text-white' : 'bg-gray-700/60 hover:bg-gray-700 text-gray-300'}`}>
-                                    {ar}
-                                </button>
-                            ))}
-                        </div>
+                        {mode === 'edit' ? (
+                            <div className="p-3 bg-gray-900/50 rounded-lg text-center text-gray-400 text-sm border border-gray-700">
+                                Matches source image aspect ratio
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                {(Object.keys(aspectRatios) as (keyof typeof aspectRatios)[]).map(groupName => (
+                                    <div key={groupName}>
+                                        <p className="text-xs text-gray-400 mb-1 capitalize">{groupName}</p>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {aspectRatios[groupName].map(ar => (
+                                                <button 
+                                                    key={ar} 
+                                                    onClick={() => setAspectRatio(ar)} 
+                                                    className={`py-2 rounded-md font-semibold transition-colors text-sm ${aspectRatio === ar ? 'bg-blue-600 text-white' : 'bg-gray-700/60 hover:bg-gray-700 text-gray-300'}`}
+                                                >
+                                                    {ar}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div>
