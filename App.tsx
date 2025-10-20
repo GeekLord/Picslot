@@ -4,17 +4,15 @@
 */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage, generateMovedCameraImage, enhancePrompt, describeImage, type OutputAspectRatio } from './services/geminiService';
 import * as supabaseService from './services/supabaseService';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
 import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
-import CropPanel from './components/CropPanel';
 import ChangeViewPanel from './components/ChangeViewPanel';
 // FIX: Removed unused import for OutpaintPanel. The component is not used and its corresponding file is not a module, causing an error.
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, CropIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon, ArrowPathIcon, InboxStackIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon, ArrowPathIcon, InboxStackIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -126,7 +124,7 @@ const defaultPrompts: { title: string; prompt: string }[] = [
 ];
 
 
-type Tool = 'adjust' | 'filters' | 'crop' | 'change-view';
+type Tool = 'adjust' | 'filters' | 'change-view';
 export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings' | 'batch' | 'composer' | 'guidedTransform' | 'imageStudio';
 
 
@@ -182,11 +180,6 @@ const App: React.FC = () => {
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
   const brushCanvasRef = useRef<{ clear: () => void }>(null);
 
-  // Crop State
-  const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const [aspect, setAspect] = useState<number | undefined>();
-  
   // Output Settings State
   const [outputAspectRatio, setOutputAspectRatio] = useState<OutputAspectRatio>('auto');
 
@@ -341,15 +334,6 @@ const App: React.FC = () => {
     }
   }, [activeTool, isBrushMode]);
 
-  // Reset tool-specific state when active tool changes
-  useEffect(() => {
-    if (activeTool !== 'crop') {
-        setCrop(undefined);
-        setCompletedCrop(undefined);
-    }
-  }, [activeTool]);
-  
-
   // Create Object URLs for images in history for performance
   useEffect(() => {
     if (currentImage) {
@@ -408,8 +392,6 @@ const App: React.FC = () => {
     setHistoryIndex(newHistory.length - 1);
     console.log(`[App History] History updated. New length: ${newHistory.length}, New index: ${newHistory.length - 1}`);
     // Clear transient state
-    setCrop(undefined);
-    setCompletedCrop(undefined);
     brushCanvasRef.current?.clear();
     setMaskDataUrl(null);
     setIsBrushMode(false);
@@ -426,8 +408,6 @@ const App: React.FC = () => {
     setActiveTool(null);
     setIsBrushMode(false);
     setMaskDataUrl(null);
-    setCrop(undefined);
-    setCompletedCrop(undefined);
     setIsCompareMode(false);
     setPrompt(initialPrompt);
     setPage('editor');
@@ -587,8 +567,6 @@ const App: React.FC = () => {
         setPage('editor'); // Navigate only after data is ready
 
         // Reset editor-specific UI state
-        setCrop(undefined);
-        setCompletedCrop(undefined);
         setActiveTool(null);
         setMaskDataUrl(null);
         setIsBrushMode(false);
@@ -887,29 +865,6 @@ const App: React.FC = () => {
     
     await regenerate();
   };
-
-  const handleApplyCrop = useCallback(() => {
-    if (!completedCrop || !imgRef.current) {
-        console.warn('[App Crop] Apply crop aborted: no completed crop or image ref.');
-        return;
-    }
-    console.log('[App Crop] Applying crop.');
-    const image = imgRef.current;
-    const canvas = document.createElement('canvas');
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    canvas.width = completedCrop.width;
-    canvas.height = completedCrop.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(image, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, completedCrop.width, completedCrop.height);
-    const croppedImageUrl = canvas.toDataURL('image/png');
-    const newImageFile = dataURLtoFile(croppedImageUrl, `cropped-${Date.now()}.png`);
-    addImageToHistory(newImageFile);
-    setActiveTool(null);
-    setLastAction(null); // Crop is not a generative action
-    console.log('[App Crop] Crop applied and added to history.');
-  }, [completedCrop, addImageToHistory]);
 
   // === Top Bar Action Handlers ===
   const handleUndo = useCallback(() => {
@@ -1218,26 +1173,7 @@ const App: React.FC = () => {
                                   <p className="text-gray-300">AI is working its magic...</p>
                               </div>
                           )}
-                          {activeTool === 'crop' && crop ? (<>
-                            {console.log('[DEBUG] Rendering ReactCrop with crop state:', crop)}
-                            <ReactCrop 
-                              crop={crop} 
-                              onChange={(pixelCrop, percentCrop) => {
-                                console.log('[DEBUG] onChange - pixelCrop:', pixelCrop, 'percentCrop:', percentCrop);
-                                // FIX: The issue was using the pixelCrop (first argument) to update the state,
-                                // which was initialized with a percentage-based crop. This mismatch can cause
-                                // the component to crash. Always using the percentage-based crop from the second
-                                // argument for the controlled component state ensures consistency.
-                                setCrop(percentCrop);
-                              }} 
-                              onComplete={c => {
-                                console.log('[DEBUG] onComplete - completedCrop:', c);
-                                setCompletedCrop(c);
-                              }} 
-                              aspect={aspect} className="max-h-[70vh]">
-                                <img ref={imgRef} src={currentImageUrl} alt="Crop this image" className="w-full h-auto object-contain max-h-[70vh] rounded-xl"/>
-                            </ReactCrop></>
-                          ) : isCompareMode && originalImageUrl ? (
+                          {isCompareMode && originalImageUrl ? (
                               <CompareSlider originalImageUrl={originalImageUrl} currentImageUrl={currentImageUrl} />
                           ) : (
                             <div 
@@ -1359,34 +1295,14 @@ const App: React.FC = () => {
                       
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mt-4 mb-3 border-b border-gray-700 pb-2">Manual Edits</h3>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                             <button type="button" onClick={() => setActiveTool(activeTool === 'adjust' ? null : 'adjust')} className={mainToolButtonClass('adjust')}><AdjustmentsIcon className="w-6 h-6"/>Adjust</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'filters' ? null : 'filters')} className={mainToolButtonClass('filters')}><LayersIcon className="w-6 h-6"/>Filters</button>
-                            <button type="button" onClick={() => {
-                                console.log('[DEBUG] Crop button clicked. Current activeTool:', activeTool);
-                                if (activeTool === 'crop') {
-                                    setActiveTool(null);
-                                    console.log('[DEBUG] Deactivating crop tool.');
-                                } else {
-                                    // FIX: Explicitly type `initialCrop` as `Crop` to ensure the `unit` property is correctly typed as '%' instead of the wider `string` type. This resolves the TypeScript error where the object was not assignable to the `Crop` state.
-                                    const initialCrop: Crop = { unit: '%', x: 25, y: 25, width: 50, height: 50 };
-                                    setActiveTool('crop');
-                                    setCrop(initialCrop);
-                                    console.log('[DEBUG] Activating crop tool. Initial crop state set to:', initialCrop);
-                                }
-                            }} className={mainToolButtonClass('crop')}><CropIcon className="w-6 h-6"/>Crop</button>
                             <button type="button" onClick={() => setActiveTool(activeTool === 'change-view' ? null : 'change-view')} className={mainToolButtonClass('change-view')}><ChangeViewIcon className="w-6 h-6"/>Change View</button>
                         </div>
                         <div className="mt-4">
                             {activeTool === 'adjust' && <AdjustmentPanel onApplyAdjustment={handleApplyAdjustment} isLoading={isLoading} />}
                             {activeTool === 'filters' && <FilterPanel onApplyFilter={handleApplyFilter} isLoading={isLoading} />}
-                            {activeTool === 'crop' && <CropPanel 
-                                onApplyCrop={handleApplyCrop} 
-                                onSetAspect={setAspect} 
-                                isLoading={isLoading} 
-                                isCropping={!!completedCrop?.width && completedCrop.width > 0}
-                                imageAspect={imgRef.current ? imgRef.current.naturalWidth / imgRef.current.naturalHeight : undefined}
-                            />}
                             {activeTool === 'change-view' && <ChangeViewPanel onApplyViewChange={handleApplyViewChange} isLoading={isLoading} />}
                         </div>
                       </div>

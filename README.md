@@ -37,7 +37,6 @@ Picslot leverages advanced generative AI for complex tasks that traditionally re
 
 ### Professional Workflow Tools
 - **Compare Slider**: A dynamic slider lets you instantly compare your current edit with the original image.
-- **Crop Tool**: An intuitive cropping interface with support for common aspect ratios (1:1, 16:9, 4:3).
 - **Responsive Design**: A fully responsive layout that works seamlessly on desktop, tablet, and mobile devices.
 
 ## 🛠️ Technology Stack
