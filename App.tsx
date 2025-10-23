@@ -4,7 +4,7 @@
 */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage, generateMovedCameraImage, enhancePrompt, describeImage, type OutputAspectRatio } from './services/geminiService';
+import { generateEditedImage, generateFilteredImage, generateAdjustedImage, generateAutoEnhancedImage, generateRestoredImage, generateStudioPortrait, generateCompCard, generateThreeViewShot, generateOutpaintedImage, generateRemovedBackgroundImage, generateMovedCameraImage, enhancePrompt, describeImage, generateRandomCameraMovePrompt, type OutputAspectRatio } from './services/geminiService';
 import * as supabaseService from './services/supabaseService';
 import Header from './components/Header';
 import Spinner from './components/Spinner';
@@ -12,7 +12,7 @@ import FilterPanel from './components/FilterPanel';
 import AdjustmentPanel from './components/AdjustmentPanel';
 import ChangeViewPanel from './components/ChangeViewPanel';
 // FIX: Removed unused import for OutpaintPanel. The component is not used and its corresponding file is not a module, causing an error.
-import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon, ArrowPathIcon, InboxStackIcon } from './components/icons';
+import { UndoIcon, RedoIcon, EyeIcon, MagicWandIcon, RestoreIcon, PortraitIcon, CompCardIcon, ThreeViewIcon, ExpandIcon, ZoomInIcon, AdjustmentsIcon, LayersIcon, DownloadIcon, UploadIcon as UploadIconSVG, SaveIcon, RemoveBgIcon, BrushIcon, BookmarkIcon, LayoutGridIcon, HistoryIcon, ChangeViewIcon, InfoIcon, XMarkIcon, ClipboardIcon, CheckIcon, ArrowPathIcon, InboxStackIcon, CubeTransparentIcon } from './components/icons';
 import StartScreen from './components/StartScreen';
 import CompareSlider from './components/CompareSlider';
 import ZoomModal from './components/ZoomModal';
@@ -865,6 +865,56 @@ const App: React.FC = () => {
     
     await regenerate();
   };
+  
+  const handleRandomViewChange = async () => {
+    if (!currentImage) return;
+
+    const imageToProcess = currentImage; // CAPTURE
+    const aspectToProcess = outputAspectRatio; // CAPTURE
+
+    const regenerate = async () => {
+        setLastAction(null);
+        setIsLoading(true);
+        setError(null);
+        try {
+            console.log('[App AI] Generating random camera move prompt...');
+            const randomShotType = await generateRandomCameraMovePrompt();
+            console.log(`[App AI] Generated random prompt: "${randomShotType}"`);
+
+            console.log('[App AI] Describing image for context...');
+            const description = await describeImage(imageToProcess);
+            console.log(`[App AI] Image description for context: "${description}"`);
+
+            const dynamicPrompt = `
+              **CRITICAL IDENTITY PRESERVATION:**
+              The person in the image must be the EXACT SAME person. Do not change their facial features, ethnicity, hair, or clothing. This is the most important rule.
+
+              **SCENE CONTEXT:**
+              The original scene is: "${description}".
+
+              **NEW CINEMATIC INSTRUCTION:**
+              Re-imagine the scene by changing the camera to ${randomShotType}. The new composition should be visually interesting and different from the original, while maintaining the same subjects and general environment. The lighting and style must remain consistent with the original photo.
+            `;
+            
+            console.log('[App AI] Sending request for new random camera view...');
+            const resultUrl = await generateMovedCameraImage(imageToProcess, dynamicPrompt, aspectToProcess);
+            
+            const newImageFile = dataURLtoFile(resultUrl, `random-view-${Date.now()}.png`);
+            addImageToHistory(newImageFile);
+            console.log('[App AI] Random camera view change successful.');
+            setLastAction({ name: 'Random View', handler: regenerate });
+
+        } catch (err) {
+            console.error('[App AI] Random camera view change failed:', err);
+            const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+            setError(`Failed to generate random camera view. ${errorMessage}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    await regenerate();
+  };
 
   // === Top Bar Action Handlers ===
   const handleUndo = useCallback(() => {
@@ -1281,6 +1331,7 @@ const App: React.FC = () => {
                           <button type="button" onClick={() => handleGenerateCompCard()} disabled={isLoading} className={sidebarToolButtonClass} title="Generate a professional, multi-pose modeling composite card."><CompCardIcon className="w-5 h-5 mr-3 text-red-400"/>Composite Card</button>
                           <button type="button" onClick={() => handleGenerateThreeViewShot()} disabled={isLoading} className={sidebarToolButtonClass} title="Create a 3-view (front, side, back) reference shot of a person."><ThreeViewIcon className="w-5 h-5 mr-3 text-sky-400"/>Character Turnaround</button>
                           <button type="button" onClick={() => handleAutoOutpaint()} disabled={isLoading} className={sidebarToolButtonClass} title="Intelligently expand the image to a full scene with one click."><ExpandIcon className="w-5 h-5 mr-3 text-green-400"/>Auto Expand</button>
+                          <button type="button" onClick={handleRandomViewChange} disabled={isLoading} className={sidebarToolButtonClass} title="Move the camera to a random new angle to reveal new aspects of the scene."><CubeTransparentIcon className="w-5 h-5 mr-3 text-indigo-400"/>Random View</button>
                         </div>
                       </div>
 

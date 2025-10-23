@@ -976,6 +976,48 @@ Respond ONLY with the generated title text. Do not include any other words, prea
 };
 
 /**
+ * Generates a random, creative prompt for a camera move.
+ * @returns A promise that resolves to the camera move description string.
+ */
+export const generateRandomCameraMovePrompt = async (): Promise<string> => {
+    console.log(`[GeminiService] Called generateRandomCameraMovePrompt.`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    
+    const metaPrompt = `You are a creative cinematographer AI. Your task is to generate a single, short, creative, and random instruction for changing a camera's perspective on a scene.
+
+    The instruction should describe a cinematic shot type or camera movement.
+
+    Here are some good examples of the kind of output you should provide:
+    - "a dramatic low-angle shot looking up at the subject"
+    - "a bird's-eye view looking directly down"
+    - "a cinematic dutch angle shot"
+    - "a dynamic dolly zoom effect, pulling the background closer"
+    - "an extreme close-up on the subject's eyes"
+    - "a wide shot from the far left side"
+    - "a cinematic over-the-shoulder shot"
+    - "a stunning long shot revealing the full landscape"
+    - "a shaky, handheld point-of-view shot"
+
+    Your response MUST be ONLY the instruction phrase itself. Do not include any preamble, explanations, or quotation marks.`;
+
+    console.log('[GeminiService] Sending prompt to the model for random camera move...');
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: metaPrompt,
+    });
+    
+    console.log('[GeminiService] Received response from model for random camera move.', response);
+    const randomPrompt = response.text;
+
+    if (!randomPrompt || randomPrompt.trim() === '') {
+        throw new Error('The AI model did not return a random prompt.');
+    }
+    
+    return randomPrompt.trim().replace(/["']/g, "");
+};
+
+
+/**
  * Generates a composited image from multiple source images and a master prompt.
  * @param images An array of objects, each containing a File and its user-defined role.
  * @param masterPrompt The main instruction for how to combine the images.

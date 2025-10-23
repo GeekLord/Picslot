@@ -240,6 +240,12 @@ export const CreditCardIcon: React.FC<{ className?: string }> = ({ className }) 
     </svg>
 );
 
+export const CubeTransparentIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 7.756a4.5 4.5 0 01.242 1.986V12a4.5 4.5 0 01-4.5 4.5H6.375a4.5 4.5 0 01-4.243-5.48 4.5 4.5 0 01.242-1.986m12.256 0a4.5 4.5 0 00-4.243-5.48 4.5 4.5 0 00-.242 1.986m12.256 0L17.625 5.625m2.625 2.131l-3.375-1.948m-12.256 0L6.375 5.625m-3.375 1.948L6.375 5.625m0 0L12 2.25l5.625 3.375M3.375 7.756L12 12.5l8.625-4.744M12 12.5v9.75" />
+  </svg>
+);
+
 export const BellIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
