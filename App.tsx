@@ -35,6 +35,7 @@ import GuidedTransformPage from './components/GuidedTransformPage';
 import ImageStudioPage from './components/ImageStudioPage';
 import AssetLibraryModal from './components/AssetLibraryModal';
 import OutputSettingsPanel from './components/OutputSettingsPanel';
+import ThumbnailStudioPage from './components/ThumbnailStudioPage';
 
 
 // Helper to convert a data URL string to a File object
@@ -125,7 +126,7 @@ const defaultPrompts: { title: string; prompt: string }[] = [
 
 
 type Tool = 'adjust' | 'filters' | 'change-view';
-export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings' | 'batch' | 'composer' | 'guidedTransform' | 'imageStudio';
+export type Page = 'dashboard' | 'projects' | 'upload' | 'editor' | 'settings' | 'batch' | 'composer' | 'guidedTransform' | 'imageStudio' | 'thumbnailStudio';
 
 
 const App: React.FC = () => {
@@ -1123,7 +1124,7 @@ const App: React.FC = () => {
     console.log(`[App Render] Determining page content for page: '${page}'.`);
     // Wait for both projects AND user profile to be loaded before rendering dashboard pages.
     // This prevents showing incomplete UI (like a header with fallback names) and fixes getting stuck on refresh.
-    if (page !== 'editor' && page !== 'batch' && page !== 'composer' && page !== 'guidedTransform' && page !== 'imageStudio' && (!projectsLoaded || !userProfile)) {
+    if (page !== 'editor' && page !== 'batch' && page !== 'composer' && page !== 'guidedTransform' && page !== 'imageStudio' && page !== 'thumbnailStudio' && (!projectsLoaded || !userProfile)) {
         console.log(`[App Render] Page is not editor and data is loading. Rendering spinner. projectsLoaded: ${projectsLoaded}, userProfile: ${!!userProfile}`);
         return <Spinner size="lg" />;
     }
@@ -1141,6 +1142,7 @@ const App: React.FC = () => {
                         onNavigateToComposer={() => handleNavigate('composer')}
                         onNavigateToGuidedTransform={() => handleNavigate('guidedTransform')}
                         onNavigateToImageStudio={() => handleNavigate('imageStudio')}
+                        onNavigateToThumbnailStudio={() => handleNavigate('thumbnailStudio')}
                         onOpenPromptManager={() => setIsPromptManagerOpen(true)}
                         onOpenAssetLibrary={() => handleOpenAssetLibrary(
                             (files) => { if (files[0]) handleImageUpload(files[0]) },
@@ -1183,6 +1185,9 @@ const App: React.FC = () => {
         case 'imageStudio':
             console.log('[App Render] Rendering ImageStudioPage.');
             return <ImageStudioPage prompts={prompts} />;
+        case 'thumbnailStudio':
+            console.log('[App Render] Rendering ThumbnailStudioPage.');
+            return <ThumbnailStudioPage onOpenAssetLibrary={handleOpenAssetLibrary} />;
         case 'settings':
             console.log('[App Render] Rendering SettingsPage.');
             return <SettingsPage 
@@ -1280,8 +1285,10 @@ const App: React.FC = () => {
                               <div className="relative flex-grow">
                                   <textarea value={prompt} onChange={(e) => { setPrompt(e.target.value); setLastAction(null); }} placeholder="e.g., 'change shirt color to blue' or 'make the sky dramatic'" rows={2} className="flex-grow bg-gray-800 border border-gray-700 text-gray-200 rounded-b-lg p-4 text-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 resize-none pr-28" disabled={isLoading || (isBrushMode && !maskDataUrl)}/>
                                   <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-2">
+{/* @fi-start */}
                                       <button type="button" onClick={handleEnhancePrompt} title="Enhance Prompt with AI" className="p-2 text-gray-400 hover:text-purple-400 disabled:opacity-50 disabled:cursor-wait" disabled={isEnhancingPrompt || !prompt.trim()}>
                                         {isEnhancingPrompt ? <Spinner size="sm" /> : <MagicWandIcon className="w-5 h-5"/>}
+{/* @fi-end */}
                                       </button>
                                       <button type="button" onClick={() => setIsPromptManagerOpen(true)} title="Manage Prompts" className="p-2 text-gray-400 hover:text-blue-400">
                                         <BookmarkIcon className="w-5 h-5"/>
@@ -1402,7 +1409,7 @@ const App: React.FC = () => {
       )}
 
       <main className={`flex-grow w-full mx-auto ${
-          (page === 'editor' && currentImageUrl) || page === 'composer' || page === 'guidedTransform' || page === 'imageStudio'
+          (page === 'editor' && currentImageUrl) || page === 'composer' || page === 'guidedTransform' || page === 'imageStudio' || page === 'thumbnailStudio'
           ? 'max-w-[1800px] p-4 md:p-8'
           : 'max-w-7xl p-4 md:p-8 flex justify-center items-center'
       }`}>

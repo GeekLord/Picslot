@@ -51,12 +51,21 @@ const logGenerationCost = (response: GenerateContentResponse, context: string) =
     );
 };
 
-// Helper to add aspect ratio instruction to a prompt
-const addAspectRatioToPrompt = (prompt: string, aspectRatio: OutputAspectRatio | undefined): string => {
-    if (aspectRatio && aspectRatio !== 'auto') {
-        return `${prompt}\n\n**CRITICAL COMPOSITION DIRECTIVE:** The final output image MUST be rendered with an aspect ratio of exactly ${aspectRatio}. Intelligently expand (outpaint) or crop the scene to fit this new aspect ratio while maintaining a professional and visually appealing composition. The main subject must remain the focus.`;
+// Helper function to build the config for a generateContent call, including aspect ratio.
+const buildGenerateContentConfig = (outputAspectRatio?: OutputAspectRatio | AspectRatio) => {
+    const config: any = {
+        responseModalities: ['IMAGE'],
+        // Add a random seed to ensure variety in generated images.
+        // This prevents the model from returning the same image for the same prompt,
+        // which can happen due to deterministic behavior or caching on the model's side.
+        seed: Math.floor(Math.random() * 1000000),
+    };
+
+    if (outputAspectRatio && outputAspectRatio !== 'auto') {
+        // According to documentation for similar models, aspectRatio is a direct property of the config.
+        config.aspectRatio = outputAspectRatio;
     }
-    return prompt;
+    return config;
 };
 
 // Helper function to convert a File object to a Gemini API Part
@@ -139,7 +148,6 @@ export const generateImageFromText = async (
     
     **CRITICAL INSTRUCTIONS:**
     - The image must be visually appealing and well-composed.
-    - The final output aspect ratio must be exactly ${aspectRatio}.
 
     **USER REQUEST:**
     "${userPrompt}"
@@ -152,9 +160,7 @@ export const generateImageFromText = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: contents,
-        config: {
-            responseModalities: [Modality.IMAGE],
-        },
+        config: buildGenerateContentConfig(aspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for text-to-image.', response);
@@ -197,17 +203,13 @@ export const generateEditedImage = async (
 
 **OUTPUT DIRECTIVE:** Return exclusively the final edited image with no accompanying text or explanations.`;
     
-    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
-
-    const contents = { parts: [imagePart, { text: fullPrompt }] };
+    const contents = { parts: [imagePart, { text: basePrompt }] };
 
     console.log('[GeminiService] Sending image and prompt to the model for editing...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: contents,
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model.', response);
@@ -269,16 +271,13 @@ Requested Style: "${filterPrompt}"
 
 **OUTPUT DIRECTIVE:** Return exclusively the final filtered image with professional-grade color treatment and no accompanying text.`;
 
-    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
-    const textPart = { text: fullPrompt };
+    const textPart = { text: basePrompt };
 
     console.log('[GeminiService] Sending image and filter prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for filter.', response);
@@ -339,16 +338,13 @@ User Request: "${adjustmentPrompt}"
 
 **OUTPUT DIRECTIVE:** Return exclusively the final globally adjusted image with professional-grade correction applied and no accompanying text.`;
 
-    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
-    const textPart = { text: fullPrompt };
+    const textPart = { text: basePrompt };
 
     console.log('[GeminiService] Sending image and adjustment prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for adjustment.', response);
@@ -410,16 +406,13 @@ export const generateAutoEnhancedImage = async (
 
 **OUTPUT DIRECTIVE:** Return exclusively the final enhanced image at professional exhibition quality with no accompanying text or explanations.`;
 
-    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
-    const textPart = { text: fullPrompt };
+    const textPart = { text: basePrompt };
 
     console.log('[GeminiService] Sending image and auto-enhance prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for auto-enhancement.', response);
@@ -486,16 +479,13 @@ export const generateRestoredImage = async (
 
 **OUTPUT DIRECTIVE:** Return exclusively the final restored image at archival conservation quality with no accompanying text or explanations.`;
 
-    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
-    const textPart = { text: fullPrompt };
+    const textPart = { text: basePrompt };
 
     console.log('[GeminiService] Sending image and restoration prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for restoration.', response);
@@ -543,16 +533,13 @@ export const generateStudioPortrait = async (
 
 **OUTPUT DIRECTIVE:** Return exclusively the final re-posed official portrait. The output must show the same person, in the same clothes and with the same hair, now facing the camera directly against a neutral studio background. No other changes are permitted.`;
 
-    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
-    const textPart = { text: fullPrompt };
+    const textPart = { text: basePrompt };
 
     console.log('[GeminiService] Sending image and studio portrait prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for studio portrait.', response);
@@ -562,10 +549,12 @@ export const generateStudioPortrait = async (
 /**
  * Generates a modeling comp card from an image.
  * @param originalImage The original image file.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the comp card image.
  */
 export const generateCompCard = async (
     originalImage: File,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateCompCard.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
@@ -628,9 +617,7 @@ export const generateCompCard = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for Comp Card.', response);
@@ -640,10 +627,12 @@ export const generateCompCard = async (
 /**
  * Generates a 3-view full body shot from an image.
  * @param originalImage The original image file.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the 3-view image.
  */
 export const generateThreeViewShot = async (
     originalImage: File,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log(`[GeminiService] Called generateThreeViewShot.`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
@@ -702,9 +691,7 @@ export const generateThreeViewShot = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for 3-View Shot.', response);
@@ -725,21 +712,7 @@ export const generateOutpaintedImage = async (
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    let prompt: string;
-    if (outputAspectRatio && outputAspectRatio !== 'auto') {
-        prompt = `You are a master-level professional photo compositor specializing in photorealistic, seamless outpainting and scene extension. Your task is to intelligently expand the provided image to a new aspect ratio of **${outputAspectRatio}**.
-            
-**CRITICAL DIRECTIVE:** The original image content must form the core of the new, larger image and must be perfectly preserved. The final composition must be natural and well-balanced.
-
-**UNIVERSAL RULES:**
-- **Contextual Awareness:** The generated content must always be a logical extension of the original scene.
-- **Photorealism:** The final image must look like a single, original, unedited photograph.
-- **Identity Preservation:** If people are present, their identity and appearance must not be changed.
-
-**OUTPUT DIRECTIVE:**
-Return only the final, complete image with the aspect ratio of ${outputAspectRatio}. Do not add any text.`;
-    } else {
-        prompt = `You are a master-level professional photo compositor specializing in photorealistic, seamless outpainting and scene extension.
+    const prompt = `You are a master-level professional photo compositor specializing in photorealistic, seamless outpainting and scene extension.
 
 **YOUR TASK:**
 Intelligently expand the scene of the provided image.
@@ -754,7 +727,6 @@ Intelligently expand the scene of the provided image.
 2.  **IF THE IMAGE IS FULL-FRAME (NO TRANSPARENCY):**
     -   Intelligently expand the image on all sides to create a wider, more complete scene.
     -   The original image content should form the center of the new, larger image and must be perfectly preserved.
-    -   The aspect ratio of the final output should be a standard photographic ratio that best fits the expanded content (e.g., 4:3, 3:2, 16:9).
 
 **UNIVERSAL RULES:**
 -   **Contextual Awareness:** The generated content must always be a logical extension of the original scene.
@@ -763,7 +735,6 @@ Intelligently expand the scene of the provided image.
 
 **OUTPUT DIRECTIVE:**
 Return only the final, complete image. Do not add any text.`;
-    }
 
 
     const textPart = { text: prompt };
@@ -772,9 +743,7 @@ Return only the final, complete image. Do not add any text.`;
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for outpainting.', response);
@@ -821,16 +790,13 @@ export const generateRemovedBackgroundImage = async (
 
 **OUTPUT DIRECTIVE:** Return ONLY the final image of the subject on a transparent background. Do not include any text, explanations, or additional content.`;
 
-    const fullPrompt = addAspectRatioToPrompt(basePrompt, outputAspectRatio);
-    const textPart = { text: fullPrompt };
+    const textPart = { text: basePrompt };
 
     console.log('[GeminiService] Sending image and background removal prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for background removal.', response);
@@ -853,16 +819,13 @@ export const generateMovedCameraImage = async (
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     const originalImagePart = await fileToPart(originalImage);
 
-    const fullPrompt = addAspectRatioToPrompt(prompt, outputAspectRatio);
-    const textPart = { text: fullPrompt };
+    const textPart = { text: prompt };
 
     console.log('[GeminiService] Sending image and dynamic change view prompt to the model...');
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for moved camera.', response);
@@ -1016,16 +979,194 @@ export const generateRandomCameraMovePrompt = async (): Promise<string> => {
     return randomPrompt.trim().replace(/["']/g, "");
 };
 
+// @fi-start
+/**
+ * Generates a high-CTR thumbnail image.
+ * @param title The title for the thumbnail (e.g., video title).
+ * @param description Optional description for more context.
+ * @param guidingImage Optional image to guide the composition.
+ * @param aspectRatio The desired aspect ratio.
+ * @returns A promise that resolves to the data URL of the thumbnail.
+ */
+export const generateThumbnailImage = async (
+    title: string,
+    description?: string,
+    guidingImage?: File,
+    aspectRatio: AspectRatio = '16:9'
+): Promise<string> => {
+    console.log(`[GeminiService] Called generateThumbnailImage with title: "${title}"`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    
+    const parts = [];
+
+    let prompt = `
+You are an expert YouTube thumbnail designer with a deep understanding of what drives clicks (high CTR). Your task is to create a visually stunning, attention-grabbing thumbnail.
+
+**CRITICAL INSTRUCTIONS:**
+1.  **Maximize Click-Through Rate (CTR):** The design must be bold, high-contrast, and easily readable at small sizes. Use vibrant colors and clear imagery.
+2.  **Incorporate Title Text:** The video title is the most important element. You MUST prominently feature the text from the title in a large, bold, and stylish font. The text should be a core part of the design, not just an overlay.
+3.  **Reflect Content:** The visuals should accurately and excitingly represent the content described.
+4.  **Composition:** Create a dynamic and professional composition. Use principles like the rule of thirds and leading lines.
+
+---
+
+**CONTENT DETAILS:**
+-   **Title to Feature:** "${title}"
+-   **Description (for context):** "${description || 'No description provided.'}"
+
+---
+`;
+
+    if (guidingImage) {
+        const imagePart = await fileToPart(guidingImage);
+        parts.push(imagePart);
+        prompt += `
+**GUIDING IMAGE:**
+An image has been provided. Use this image as a strong visual reference. You can:
+-   Incorporate the subject from the image.
+-   Use the style and color palette of the image.
+-   Re-imagine the scene from the image in a more dramatic way suitable for a thumbnail.
+**Identity Preservation:** If the guiding image contains a person, you MUST preserve their exact facial features and identity.
+`;
+    } else {
+        prompt += `
+**VISUAL DIRECTION:**
+Since no guiding image was provided, create all visuals from scratch based on the title and description. Be creative and impactful.
+`;
+    }
+
+    prompt += "\n**OUTPUT DIRECTIVE:** Return only the final, complete thumbnail image. Do not include any text outside of the image itself.";
+
+    parts.push({ text: prompt });
+
+    console.log('[GeminiService] Sending thumbnail request to the model...');
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: { parts },
+        config: buildGenerateContentConfig(aspectRatio),
+    });
+
+    console.log('[GeminiService] Received response from model for thumbnail.', response);
+    return handleApiResponse(response, 'thumbnail-generation');
+};
+
+/**
+ * Generates an image by applying a transformation (e.g., pose, style) from a reference image to a subject image.
+ * @param subjectImage The main image containing the subject.
+ * @param referenceImage The image providing the transformation (e.g., pose, style).
+ * @param userPrompt Optional text instructions to guide the transformation.
+ * @param transformType The type of transformation to perform.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
+ * @returns A promise that resolves to the data URL of the transformed image.
+ */
+export const generateGuidedTransform = async (
+    subjectImage: File,
+    referenceImage: File,
+    userPrompt: string,
+    transformType: TransformType,
+    outputAspectRatio: OutputAspectRatio = 'auto'
+): Promise<string> => {
+    console.log(`[GeminiService] Called generateGuidedTransform with type: ${transformType}`);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+    const subjectPart = await fileToPart(subjectImage);
+    const referencePart = await fileToPart(referenceImage);
+
+    let masterPrompt = '';
+    
+    // Construct prompt based on transform type
+    switch (transformType) {
+        case 'pose':
+            masterPrompt = `
+You are a master digital artist specializing in pose and scene replication. Your task is to transfer the EXACT POSE from the reference image onto the subject from the subject image.
+
+**CRITICAL INSTRUCTIONS:**
+1.  **Identity Preservation (Subject):** The person in the subject image MUST remain the exact same person. Preserve their facial features, ethnicity, clothing, and hair. Do not change their identity.
+2.  **Pose Transfer (Reference):** The final output MUST show the subject person in the exact same body pose as the person in the reference image.
+3.  **Scene & Style:** If the user provides additional instructions, use them to create the background and overall style. If not, create a simple, neutral studio background.
+4.  **User Instructions:** "${userPrompt}"
+
+**INPUTS:**
+-   **Subject Image:** Contains the person whose identity, clothes, and hair to keep.
+-   **Reference Image:** Contains the pose to apply.
+
+**OUTPUT DIRECTIVE:** Return only the final image.`;
+            break;
+        case 'cloths':
+            masterPrompt = `
+You are a master digital stylist. Your task is to apply the clothing from the reference image onto the person from the subject image.
+
+**CRITICAL INSTRUCTIONS:**
+1.  **Identity Preservation (Subject):** The person in the subject image MUST remain the exact same person. Preserve their facial features, ethnicity, and hair. Do not change their identity.
+2.  **Clothing Transfer (Reference):** The final output MUST show the subject person wearing the exact clothing from the reference image. Adapt the fit to the subject's body.
+3.  **Pose & Scene:** The subject should be in a natural pose, standing, unless specified otherwise by the user. If the user provides additional instructions for the scene, use them. Otherwise, use a simple, neutral studio background.
+4.  **User Instructions:** "${userPrompt}"
+
+**INPUTS:**
+-   **Subject Image:** Contains the person to dress.
+-   **Reference Image:** Contains the clothing to apply.
+
+**OUTPUT DIRECTIVE:** Return only the final image.`;
+            break;
+        case 'style':
+            masterPrompt = `
+You are a master artist specializing in style transfer. Your task is to apply the artistic style of the reference image to the content of the subject image.
+
+**CRITICAL INSTRUCTIONS:**
+1.  **Content Preservation (Subject):** The final output MUST retain the core subject matter, composition, and layout of the subject image.
+2.  **Style Transfer (Reference):** The final output MUST be rendered in the exact artistic style (colors, textures, brush strokes, overall mood) of the reference image.
+3.  **User Instructions:** "${userPrompt}"
+
+**INPUTS:**
+-   **Subject Image:** Contains the content to keep.
+-   **Reference Image:** Contains the style to apply.
+
+**OUTPUT DIRECTIVE:** Return only the final image.`;
+            break;
+        case 'scene':
+            masterPrompt = `
+You are a master photo compositor. Your task is to place the subject from the subject image into the scene from the reference image.
+
+**CRITICAL INSTRUCTIONS:**
+1.  **Subject Extraction:** Perfectly extract the primary subject (person or object) from the subject image.
+2.  **Scene Integration:** Seamlessly integrate the extracted subject into the reference image scene. The lighting, shadows, perspective, and scale must be realistic and consistent.
+3.  **Identity Preservation:** If the subject is a person, their identity, facial features, and clothing must be preserved.
+4.  **User Instructions:** "${userPrompt}"
+
+**INPUTS:**
+-   **Subject Image:** Contains the person/object to place.
+-   **Reference Image:** Contains the background scene.
+
+**OUTPUT DIRECTIVE:** Return only the final composited image.`;
+            break;
+        default:
+            throw new Error(`Invalid transform type: ${transformType}`);
+    }
+
+    const contents = { parts: [subjectPart, referencePart, { text: masterPrompt }] };
+
+    console.log(`[GeminiService] Sending images and prompt to the model for guided transform (${transformType})...`);
+    const response: GenerateContentResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: contents,
+        config: buildGenerateContentConfig(outputAspectRatio),
+    });
+
+    console.log('[GeminiService] Received response from model for guided transform.', response);
+    return handleApiResponse(response, `guided-transform-${transformType}`);
+};
+// @fi-end
 
 /**
  * Generates a composited image from multiple source images and a master prompt.
  * @param images An array of objects, each containing a File and its user-defined role.
  * @param masterPrompt The main instruction for how to combine the images.
+ * @param outputAspectRatio The desired aspect ratio for the final output image.
  * @returns A promise that resolves to the data URL of the final composited image.
  */
 export const generateCompositedImage = async (
     images: { file: File; role: string }[],
-    masterPrompt: string
+    masterPrompt: string,
+    outputAspectRatio: OutputAspectRatio = 'auto'
 ): Promise<string> => {
     console.log('[GeminiService] Called generateCompositedImage.');
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
@@ -1063,139 +1204,10 @@ You are provided with the following image assets. The user has described the rol
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: allParts },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
-    console.log('[GeminiService] Received response from model for composition.', response);
-    return handleApiResponse(response, 'composition');
+    console.log('[GeminiService] Received response from model for scene composition.', response);
+    return handleApiResponse(response, 'scene-composition');
 };
-
-/**
- * Generates an image by transforming a subject image based on a reference image and a specified transform type.
- * @param subjectImage The primary image containing the subject or content.
- * @param referenceImage The secondary image providing the pose, clothing, style, or scene.
- * @param userPrompt Optional additional instructions.
- * @param transformType The type of transformation to perform.
- * @returns A promise that resolves to the data URL of the final image.
- */
-export const generateGuidedTransform = async (
-    subjectImage: File,
-    referenceImage: File,
-    userPrompt: string,
-    transformType: TransformType
-): Promise<string> => {
-    console.log(`[GeminiService] Called generateGuidedTransform with type: ${transformType}.`);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-
-    const subjectImagePart = await fileToPart(subjectImage);
-    const referenceImagePart = await fileToPart(referenceImage);
-
-    let fullPrompt = '';
-
-    switch (transformType) {
-        case 'pose':
-            fullPrompt = `You are a master AI digital artist specializing in photorealistic character recomposition. Your task is to extract a pose from a reference image and apply it to a subject from a source photograph, creating a new, seamless, and realistic photo.
-
-**CRITICAL DIRECTIVES (NON-NEGOTIABLE):**
-1.  **ABSOLUTE IDENTITY PRESERVATION:** The person in the final image MUST be the **exact same person** from the [SUBJECT IMAGE]. Do NOT alter their facial features, bone structure, ethnicity, unique characteristics, hairstyle, or clothing. The subject's entire appearance is the source of truth and must be perfectly replicated.
-2.  **PHOTOREALISTIC OUTPUT:** The final output MUST be a **high-quality, realistic photograph**. The style, lighting, and quality must match the [SUBJECT IMAGE].
-3.  **POSE REFERENCE ONLY:** The [REFERENCE IMAGE] is to be used **exclusively** as a reference for the body's pose. Completely ignore its artistic style, clothing, and subject identity.
-
-**IMAGE ROLES:**
--   **[SUBJECT IMAGE]:** Provides the person's identity, face, clothing, hair, and the required **photorealistic style**.
--   **[REFERENCE IMAGE]:** Provides the physical pose **only**.
-
-**INSTRUCTIONS:**
-1.  Recreate the subject from the [SUBJECT IMAGE] in the exact pose shown in the [REFERENCE IMAGE].
-2.  Maintain the original clothing, hair, and accessories from the [SUBJECT IMAGE].
-3.  ${userPrompt ? `Apply the following user instructions: "${userPrompt}"` : 'Generate a simple, neutral studio background that complements the subject.'}
-
-**OUTPUT DIRECTIVE:** Return only the final, composited, photorealistic image.`;
-            break;
-
-        case 'cloths':
-            fullPrompt = `You are a master AI digital stylist and photo compositor. Your task is to perform a virtual "try-on" by taking only the clothing from a reference image and putting it on the person from a subject image.
-
-**CRITICAL DIRECTIVES (NON-NEGOTIABLE):**
-
-1.  **ABSOLUTE IDENTITY PRESERVATION (FAILURE CONDITION):**
-    -   The final image MUST feature the **exact same person** from the **[SUBJECT IMAGE]**.
-    -   You are forbidden from using the person, face, body, or hair from the **[REFERENCE IMAGE]**. Using the person from the reference image is a complete failure of this task.
-    -   Preserve the facial features, bone structure, ethnicity, unique characteristics, and hairstyle from the **[SUBJECT IMAGE]** with 100% accuracy.
-
-2.  **CLOTHING EXTRACTION ONLY:**
-    -   The **[REFERENCE IMAGE]** is to be used **exclusively** as a source for the clothing/outfit.
-    -   You MUST completely **ignore** the person, face, body, hair, pose, and background of the **[REFERENCE IMAGE]**.
-
-**IMAGE ROLES:**
--   **[SUBJECT IMAGE]:** The source of truth for the **PERSON**. You will use this person's face, hair, and body.
--   **[REFERENCE IMAGE]:** The source of truth for the **CLOTHING**. You will only use the outfit from this image.
-
-**INSTRUCTIONS:**
-1.  Identify the person in the **[SUBJECT IMAGE]**.
-2.  Identify the complete outfit in the **[REFERENCE IMAGE]**.
-3.  Create a new, photorealistic image showing the person from the **[SUBJECT IMAGE]** wearing the outfit from the **[REFERENCE IMAGE]**.
-4.  The pose and background can be changed to best suit the new clothing, creating a natural and visually appealing composition. The new pose should be realistic and flattering.
-5.  ${userPrompt ? `Apply the following user instructions: "${userPrompt}"` : ''}
-
-**FINAL CHECK:** Does the output image contain the person from the [SUBJECT IMAGE]? If not, you have failed. The person from the [REFERENCE IMAGE] must not appear in the output.
-
-**OUTPUT DIRECTIVE:** Return only the final, photorealistic image of the subject wearing the new clothes.`;
-            break;
-
-        case 'style':
-            fullPrompt = `You are a master AI style transfer artist. Your task is to apply the complete artistic style from a reference image onto a content image, preserving the original content and composition.
-
-**CRITICAL DIRECTIVES (NON-NEGOTIABLE):**
-1.  **CONTENT PRESERVATION:** The final image must contain the **exact same subjects, objects, and composition** as the [CONTENT IMAGE]. Do not add, remove, or change the arrangement of elements. If a person is present, their identity, clothing, and pose must remain unchanged.
-2.  **STYLE TRANSFER ONLY:** You are only transferring the aesthetic (color palette, lighting, texture, brush strokes, etc.), not the content, from the [STYLE IMAGE].
-
-**IMAGE ROLES:**
--   **[CONTENT IMAGE]:** This image provides the scene, subjects, and composition to be preserved.
--   **[STYLE IMAGE]:** This image provides the complete artistic style to be applied.
-
-**INSTRUCTIONS:**
-1.  Re-render the [CONTENT IMAGE] with the exact artistic style of the [STYLE IMAGE].
-2.  This includes a faithful transfer of color grading, lighting, texture, and overall mood.
-3.  ${userPrompt ? `Apply the following user instructions to fine-tune the transfer: "${userPrompt}"` : ''}
-
-**OUTPUT DIRECTIVE:** Return only the final, style-transferred image.`;
-            break;
-
-        case 'scene':
-            fullPrompt = `You are a master AI photo compositor and environmental artist. Your task is to realistically place the subject from one image into the scene of another.
-
-**CRITICAL DIRECTIVES (NON-NEGOTIABLE):**
-1.  **FACIAL IDENTITY PRESERVATION:** The person in the final image MUST have the **exact same face** and identity as the person in the [SUBJECT IMAGE]. Do not alter their facial features, bone structure, or ethnicity.
-2.  **SEAMLESS INTEGRATION:** The final result must be a single, cohesive, and photorealistic image. The lighting, shadows, perspective, and scale of the subject must perfectly match the new environment.
-
-**IMAGE ROLES:**
--   **[SUBJECT IMAGE]:** This image provides the person/object to be placed in the new scene.
--   **[SCENE IMAGE]:** This image provides the new background and environment.
-
-**INSTRUCTIONS:**
-1.  Seamlessly and realistically composite the person from the [SUBJECT IMAGE] into the environment from the [SCENE IMAGE].
-2.  The subject's clothing and hairstyle **MAY BE MODIFIED** to logically fit the new scene (e.g., a winter coat in a snowy scene, a swimsuit at a beach).
-3.  The lighting on the subject MUST be re-rendered to match the lighting of the new scene.
-4.  ${userPrompt ? `Apply the following user instructions for the composition: "${userPrompt}"` : ''}
-
-**OUTPUT DIRECTIVE:** Return only the final, seamlessly composited, photorealistic image.`;
-            break;
-    }
-
-    const allParts = [subjectImagePart, referenceImagePart, { text: fullPrompt }];
-
-    console.log(`[GeminiService] Sending images and prompt to the model for guided transform (${transformType})...`);
-    const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: allParts },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
-    });
-
-    console.log(`[GeminiService] Received response from model for guided transform (${transformType}).`, response);
-    return handleApiResponse(response, `guided-transform-${transformType}`);
-};
+// @fi-end

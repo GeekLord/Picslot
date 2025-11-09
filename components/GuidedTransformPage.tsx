@@ -195,7 +195,7 @@ const GuidedTransformPage: React.FC<GuidedTransformPageProps> = ({ onOpenAssetLi
         setOutputUrl(null);
 
         try {
-            const resultUrl = await generateGuidedTransform(subject.file, reference.file, prompt, transformType);
+            const resultUrl = await generateGuidedTransform(subject.file, reference.file, prompt, transformType, 'auto');
             setOutputUrl(resultUrl);
             setShowRegenerate(true);
         } catch (err: any) {

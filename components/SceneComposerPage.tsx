@@ -129,7 +129,7 @@ const SceneComposerPage: React.FC<SceneComposerPageProps> = ({ onOpenAssetLibrar
                 file: img.file,
                 role: img.role || 'Image asset', // Provide a default role if empty
             }));
-            const resultDataUrl = await generateCompositedImage(imagesToProcess, masterPrompt);
+            const resultDataUrl = await generateCompositedImage(imagesToProcess, masterPrompt, 'auto');
             const resultFile = dataURLtoFile(resultDataUrl, `composed-scene-${Date.now()}.png`);
             const newUrl = URL.createObjectURL(resultFile);
             objectUrlsRef.current.add(newUrl); // Track new URL

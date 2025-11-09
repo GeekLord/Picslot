@@ -6,7 +6,7 @@
 import React from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Project, UserProfile } from '../types';
-import { LayoutGridIcon, BookmarkIcon, PlusIcon, InboxStackIcon, RectangleStackIcon, SwitchHorizontalIcon, PhotoIcon } from './icons';
+import { LayoutGridIcon, BookmarkIcon, PlusIcon, InboxStackIcon, RectangleStackIcon, SwitchHorizontalIcon, PhotoIcon, TicketIcon } from './icons';
 import ProjectCard from './ProjectCard';
 
 interface DashboardProps {
@@ -19,12 +19,13 @@ interface DashboardProps {
   onNavigateToComposer: () => void;
   onNavigateToGuidedTransform: () => void;
   onNavigateToImageStudio: () => void;
+  onNavigateToThumbnailStudio: () => void;
   onOpenPromptManager: () => void;
   onOpenAssetLibrary: () => void;
   onSelectProject: (project: Project) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects, onNavigateToProjects, onStartNewProject, onNavigateToBatch, onNavigateToComposer, onNavigateToGuidedTransform, onNavigateToImageStudio, onOpenPromptManager, onOpenAssetLibrary, onSelectProject }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects, onNavigateToProjects, onStartNewProject, onNavigateToBatch, onNavigateToComposer, onNavigateToGuidedTransform, onNavigateToImageStudio, onNavigateToThumbnailStudio, onOpenPromptManager, onOpenAssetLibrary, onSelectProject }) => {
   const cardClass = "group relative bg-gray-800/50 border border-gray-700/60 rounded-xl p-6 transition-all duration-300 hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1 flex flex-col items-start text-left";
   const displayName = userProfile?.display_name || user.email?.split('@')[0];
 
@@ -58,6 +59,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, recentProjects
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1">AI Image Studio</h3>
                 <p className="text-gray-400">Generate original images from text.</p>
+              </button>
+               <button type="button" onClick={onNavigateToThumbnailStudio} className={cardClass}>
+                <div className="flex items-center justify-center w-12 h-12 bg-yellow-600/20 text-yellow-400 rounded-lg mb-4">
+                  <TicketIcon className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-1">AI Thumbnail Studio</h3>
+                <p className="text-gray-400">Generate high-CTR thumbnails.</p>
               </button>
               <button type="button" onClick={onNavigateToBatch} className={cardClass}>
                 <div className="flex items-center justify-center w-12 h-12 bg-purple-600/20 text-purple-400 rounded-lg mb-4">

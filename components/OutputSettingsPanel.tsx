@@ -12,12 +12,11 @@ interface OutputSettingsPanelProps {
   isDisabled: boolean;
 }
 
-const aspectRatios: { label: string, values: OutputAspectRatio[] }[] = [
-    { label: 'Automatic', values: ['auto'] },
-    { label: 'Landscape', values: ['21:9', '16:9', '4:3', '3:2'] },
-    { label: 'Square', values: ['1:1'] },
-    { label: 'Portrait', values: ['9:16', '3:4', '2:3'] },
-    { label: 'Flexible', values: ['5:4', '4:5'] }
+const aspectRatios: { label: string, hint: string, values: OutputAspectRatio[] }[] = [
+    { label: 'Automatic', hint: 'AI decides the best fit', values: ['auto'] },
+    { label: 'Landscape', hint: 'Widescreen, Banners, YouTube', values: ['16:9', '3:2', '4:3', '21:9'] },
+    { label: 'Portrait', hint: 'Stories, Reels, Social Posts', values: ['9:16', '2:3', '3:4', '4:5'] },
+    { label: 'Square & Other', hint: 'Profile Pictures, Posts', values: ['1:1', '5:4'] },
 ];
 
 const OutputSettingsPanel: React.FC<OutputSettingsPanelProps> = ({ selectedAspect, onSetAspect, isDisabled }) => {
@@ -42,12 +41,13 @@ const OutputSettingsPanel: React.FC<OutputSettingsPanelProps> = ({ selectedAspec
 
   return (
     <div className="w-full flex flex-col gap-4 animate-fade-in">
-      {aspectRatios.map(({ label, values }) => {
-        const gridColsClass = values.length <= 2 ? `grid-cols-2` : values.length === 3 ? 'grid-cols-3' : `grid-cols-4`;
+      {aspectRatios.map(({ label, hint, values }) => {
+        const gridColsClass = values.length <= 2 ? `grid-cols-${values.length}` : `grid-cols-4`;
         
         return (
           <div key={label}>
-              {label !== 'Automatic' && <p className="text-xs text-gray-400 mb-1">{label}</p>}
+              <p className="text-sm font-semibold text-gray-300">{label}</p>
+              <p className="text-xs text-gray-400 mb-2">{hint}</p>
               <div className={`grid ${gridColsClass} gap-2`}>
                 {renderButtons(values)}
               </div>

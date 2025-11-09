@@ -46,12 +46,11 @@ interface ImageStudioPageProps {
   prompts: Prompt[];
 }
 
-const aspectRatios = {
-    landscape: ['21:9', '16:9', '4:3', '3:2'] as AspectRatio[],
-    square: ['1:1'] as AspectRatio[],
-    portrait: ['9:16', '3:4', '2:3'] as AspectRatio[],
-    flexible: ['5:4', '4:5'] as AspectRatio[],
-};
+const aspectRatios: { label: string, hint: string, values: AspectRatio[] }[] = [
+    { label: 'Landscape', hint: 'Widescreen, YouTube', values: ['16:9', '3:2', '4:3', '21:9'] },
+    { label: 'Portrait', hint: 'Stories, Social', values: ['9:16', '2:3', '3:4', '4:5'] },
+    { label: 'Square & Other', hint: 'Posts, Profile Pics', values: ['1:1', '5:4'] }
+];
 
 
 const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
@@ -274,11 +273,11 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                             </div>
                         ) : (
                             <div className="flex flex-col gap-3">
-                                {(Object.keys(aspectRatios) as (keyof typeof aspectRatios)[]).map(groupName => (
-                                    <div key={groupName}>
-                                        <p className="text-xs text-gray-400 mb-1 capitalize">{groupName}</p>
+                                {aspectRatios.map(({ label, hint, values }) => (
+                                    <div key={label}>
+                                        <p className="text-xs text-gray-400 mb-1">{label} <span className="text-gray-500">- {hint}</span></p>
                                         <div className="grid grid-cols-4 gap-2">
-                                            {aspectRatios[groupName].map(ar => (
+                                            {values.map(ar => (
                                                 <button 
                                                     key={ar} 
                                                     onClick={() => setAspectRatio(ar)} 
