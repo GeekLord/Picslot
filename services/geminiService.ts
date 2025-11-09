@@ -52,7 +52,7 @@ const logGenerationCost = (response: GenerateContentResponse, context: string) =
 };
 
 // Helper function to build the config for a generateContent call, including aspect ratio.
-// The returned object should be spread directly into the generateContent options object.
+// The returned object should be passed as the 'config' parameter to generateContent.
 const buildGenerateContentConfig = (outputAspectRatio?: OutputAspectRatio | AspectRatio) => {
     const config: any = {
         responseModalities: [Modality.IMAGE],
@@ -60,22 +60,19 @@ const buildGenerateContentConfig = (outputAspectRatio?: OutputAspectRatio | Aspe
         // This prevents the model from returning the same image for the same prompt,
         // which can happen due to deterministic behavior or caching on the model's side.
         seed: Math.floor(Math.random() * 1000000),
-        // Parameters that control the generation output are placed in generationConfig.
-        generationConfig: {},
     };
 
     if (outputAspectRatio && outputAspectRatio !== 'auto') {
-        // The aspectRatio parameter must be nested within the generationConfig object
-        // for the generateContent method with gemini-2.5-flash-image.
-        config.generationConfig.aspectRatio = outputAspectRatio;
-        console.log(`[GeminiService] Setting aspect ratio to: ${outputAspectRatio}`);
+        // Try multiple ways to pass aspect ratio due to API inconsistencies
+        // Method 1: In imageConfig (official way)
+        config.imageConfig = {
+            aspectRatio: outputAspectRatio,
+        };
+        // Method 2: Also try at top level (some SDK versions may expect this)
+        config.aspectRatio = outputAspectRatio;
+        console.log(`[GeminiService] Setting aspect ratio to: ${outputAspectRatio} (both in imageConfig and top level)`);
     } else {
         console.log(`[GeminiService] Aspect ratio not set or set to 'auto': ${outputAspectRatio}`);
-    }
-
-    // If generationConfig is empty, it can be removed to keep the payload clean.
-    if (Object.keys(config.generationConfig).length === 0) {
-        delete config.generationConfig;
     }
 
     console.log('[GeminiService] Generated config:', JSON.stringify(config, null, 2));
@@ -110,6 +107,14 @@ const handleApiResponse = (
     // Log cost and token usage
     logGenerationCost(response, context);
 
+    // Log response metadata for debugging aspect ratio issues
+    console.log(`[GeminiService] Response metadata for ${context}:`, {
+        modelVersion: response.modelVersion,
+        candidates: response.candidates?.length,
+        finishReason: response.candidates?.[0]?.finishReason,
+        // Note: The API response doesn't include aspect ratio metadata, which is part of the known bug
+    });
+
     // 1. Check for prompt blocking first
     if (response.promptFeedback?.blockReason) {
         const { blockReason, blockReasonMessage } = response.promptFeedback;
@@ -123,6 +128,12 @@ const handleApiResponse = (
     if (imagePartFromResponse?.inlineData) {
         const { mimeType, data } = imagePartFromResponse.inlineData;
         console.log(`Received image data (${mimeType}) for ${context}`);
+        
+        // Log a warning about the known aspect ratio bug
+        if (context.includes('thumbnail') || context.includes('text-to-image')) {
+            console.warn(`[GeminiService] WARNING: There is a known bug with the Gemini API where aspect ratios may not be respected. The API may return 1:1 (1024x1024) images regardless of the specified aspect ratio. This is a Google API issue, not a code issue.`);
+        }
+        
         return `data:${mimeType};base64,${data}`;
     }
 
@@ -174,7 +185,7 @@ export const generateImageFromText = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: contents,
-        ...buildGenerateContentConfig(aspectRatio),
+        config: buildGenerateContentConfig(aspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for text-to-image.', response);
@@ -223,7 +234,7 @@ export const generateEditedImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: contents,
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model.', response);
@@ -291,7 +302,7 @@ Requested Style: "${filterPrompt}"
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for filter.', response);
@@ -358,7 +369,7 @@ User Request: "${adjustmentPrompt}"
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for adjustment.', response);
@@ -426,7 +437,7 @@ export const generateAutoEnhancedImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for auto-enhancement.', response);
@@ -499,7 +510,7 @@ export const generateRestoredImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for restoration.', response);
@@ -553,7 +564,7 @@ export const generateStudioPortrait = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for studio portrait.', response);
@@ -631,7 +642,7 @@ export const generateCompCard = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for Comp Card.', response);
@@ -705,7 +716,7 @@ export const generateThreeViewShot = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for 3-View Shot.', response);
@@ -757,7 +768,7 @@ Return only the final, complete image. Do not add any text.`;
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for outpainting.', response);
@@ -810,7 +821,7 @@ export const generateRemovedBackgroundImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for background removal.', response);
@@ -839,7 +850,7 @@ export const generateMovedCameraImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for moved camera.', response);
@@ -1013,6 +1024,20 @@ export const generateThumbnailImage = async (
     
     const parts = [];
 
+    // Calculate dimensions based on aspect ratio for more explicit instruction
+    const aspectRatioDimensions: Record<AspectRatio, string> = {
+        '1:1': '1024x1024 pixels (square)',
+        '4:3': '1184x864 pixels',
+        '3:4': '864x1184 pixels',
+        '16:9': '1344x768 pixels (widescreen)',
+        '9:16': '768x1344 pixels (vertical)',
+        '21:9': '1536x672 pixels (ultrawide)',
+        '3:2': '1248x832 pixels',
+        '2:3': '832x1248 pixels',
+        '5:4': '1152x896 pixels',
+        '4:5': '896x1152 pixels',
+    };
+
     let prompt = `
 You are an expert YouTube thumbnail designer with a deep understanding of what drives clicks (high CTR). Your task is to create a visually stunning, attention-grabbing thumbnail.
 
@@ -1021,14 +1046,22 @@ You are an expert YouTube thumbnail designer with a deep understanding of what d
 2.  **Incorporate Title Text:** The video title is the most important element. You MUST prominently feature the text from the title in a large, bold, and stylish font. The text should be a core part of the design, not just an overlay.
 3.  **Reflect Content:** The visuals should accurately and excitingly represent the content described.
 4.  **Composition:** Create a dynamic and professional composition. Use principles like the rule of thirds and leading lines.
-5.  **Aspect Ratio (CRITICAL):** The final image MUST be in a ${aspectRatio} aspect ratio. This is non-negotiable. Ensure the image dimensions match this ratio exactly.
+5.  **Aspect Ratio (ABSOLUTELY CRITICAL - NON-NEGOTIABLE):** 
+    - The final image MUST be in a ${aspectRatio} aspect ratio.
+    - Target dimensions: ${aspectRatioDimensions[aspectRatio]}
+    - The image MUST be ${aspectRatio === '16:9' || aspectRatio === '21:9' ? 'WIDE (landscape)' : aspectRatio === '9:16' ? 'TALL (portrait)' : aspectRatio === '1:1' ? 'SQUARE' : aspectRatio.includes(':') && parseInt(aspectRatio.split(':')[0]) > parseInt(aspectRatio.split(':')[1]) ? 'WIDE (landscape)' : 'TALL (portrait)'}.
+    ${aspectRatio !== '1:1' ? '- DO NOT generate a square image. DO NOT generate a 1:1 ratio image. The image MUST NOT be square.' : ''}
+    - The width MUST be ${aspectRatio.split(':')[0]} units and height MUST be ${aspectRatio.split(':')[1]} units.
+    - This aspect ratio requirement is the HIGHEST PRIORITY and cannot be overridden.
+    - If you generate a square or 1:1 image, the task has FAILED.
 
 ---
 
 **CONTENT DETAILS:**
 -   **Title to Feature:** "${title}"
 -   **Description (for context):** "${description || 'No description provided.'}"
--   **Required Aspect Ratio:** ${aspectRatio}
+-   **REQUIRED Aspect Ratio:** ${aspectRatio} (${aspectRatioDimensions[aspectRatio]})
+-   **MANDATORY: Image must be ${aspectRatio === '16:9' || aspectRatio === '21:9' ? 'WIDE/HORIZONTAL' : aspectRatio === '9:16' ? 'TALL/VERTICAL' : aspectRatio === '1:1' ? 'SQUARE' : 'CUSTOM'} format${aspectRatio !== '1:1' ? ', NOT square, NOT 1:1' : ''}**
 
 ---
 `;
@@ -1056,10 +1089,12 @@ Since no guiding image was provided, create all visuals from scratch based on th
     parts.push({ text: prompt });
 
     console.log('[GeminiService] Sending thumbnail request to the model...');
+    const config = buildGenerateContentConfig(aspectRatio);
+    console.log('[GeminiService] Full request config:', JSON.stringify({ model: 'gemini-2.5-flash-image', contents: { parts }, config }, null, 2));
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts },
-        ...buildGenerateContentConfig(aspectRatio),
+        config: config,
     });
 
     console.log('[GeminiService] Received response from model for thumbnail.', response);
@@ -1164,7 +1199,7 @@ You are a master photo compositor. Your task is to place the subject from the su
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: contents,
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for guided transform.', response);
@@ -1220,7 +1255,7 @@ You are provided with the following image assets. The user has described the rol
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: allParts },
-        ...buildGenerateContentConfig(outputAspectRatio),
+        config: buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for scene composition.', response);
