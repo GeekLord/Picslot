@@ -68,6 +68,9 @@ const buildGenerateContentConfig = (outputAspectRatio?: OutputAspectRatio | Aspe
         // The aspectRatio parameter must be nested within the generationConfig object
         // for the generateContent method with gemini-2.5-flash-image.
         config.generationConfig.aspectRatio = outputAspectRatio;
+        console.log(`[GeminiService] Setting aspect ratio to: ${outputAspectRatio}`);
+    } else {
+        console.log(`[GeminiService] Aspect ratio not set or set to 'auto': ${outputAspectRatio}`);
     }
 
     // If generationConfig is empty, it can be removed to keep the payload clean.
@@ -75,6 +78,7 @@ const buildGenerateContentConfig = (outputAspectRatio?: OutputAspectRatio | Aspe
         delete config.generationConfig;
     }
 
+    console.log('[GeminiService] Generated config:', JSON.stringify(config, null, 2));
     return config;
 };
 
@@ -1004,7 +1008,7 @@ export const generateThumbnailImage = async (
     guidingImage?: File,
     aspectRatio: AspectRatio = '16:9'
 ): Promise<string> => {
-    console.log(`[GeminiService] Called generateThumbnailImage with title: "${title}"`);
+    console.log(`[GeminiService] Called generateThumbnailImage with title: "${title}", aspectRatio: "${aspectRatio}"`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     
     const parts = [];
@@ -1017,12 +1021,14 @@ You are an expert YouTube thumbnail designer with a deep understanding of what d
 2.  **Incorporate Title Text:** The video title is the most important element. You MUST prominently feature the text from the title in a large, bold, and stylish font. The text should be a core part of the design, not just an overlay.
 3.  **Reflect Content:** The visuals should accurately and excitingly represent the content described.
 4.  **Composition:** Create a dynamic and professional composition. Use principles like the rule of thirds and leading lines.
+5.  **Aspect Ratio (CRITICAL):** The final image MUST be in a ${aspectRatio} aspect ratio. This is non-negotiable. Ensure the image dimensions match this ratio exactly.
 
 ---
 
 **CONTENT DETAILS:**
 -   **Title to Feature:** "${title}"
 -   **Description (for context):** "${description || 'No description provided.'}"
+-   **Required Aspect Ratio:** ${aspectRatio}
 
 ---
 `;
