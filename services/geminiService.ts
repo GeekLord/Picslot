@@ -52,6 +52,7 @@ const logGenerationCost = (response: GenerateContentResponse, context: string) =
 };
 
 // Helper function to build the config for a generateContent call, including aspect ratio.
+// The returned object should be spread directly into the generateContent options object.
 const buildGenerateContentConfig = (outputAspectRatio?: OutputAspectRatio | AspectRatio) => {
     const config: any = {
         responseModalities: [Modality.IMAGE],
@@ -169,7 +170,7 @@ export const generateImageFromText = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: contents,
-        config: buildGenerateContentConfig(aspectRatio),
+        ...buildGenerateContentConfig(aspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for text-to-image.', response);
@@ -218,7 +219,7 @@ export const generateEditedImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: contents,
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model.', response);
@@ -286,7 +287,7 @@ Requested Style: "${filterPrompt}"
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for filter.', response);
@@ -353,7 +354,7 @@ User Request: "${adjustmentPrompt}"
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for adjustment.', response);
@@ -421,7 +422,7 @@ export const generateAutoEnhancedImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for auto-enhancement.', response);
@@ -494,7 +495,7 @@ export const generateRestoredImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for restoration.', response);
@@ -548,7 +549,7 @@ export const generateStudioPortrait = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for studio portrait.', response);
@@ -626,7 +627,7 @@ export const generateCompCard = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for Comp Card.', response);
@@ -700,7 +701,7 @@ export const generateThreeViewShot = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for 3-View Shot.', response);
@@ -752,7 +753,7 @@ Return only the final, complete image. Do not add any text.`;
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for outpainting.', response);
@@ -805,7 +806,7 @@ export const generateRemovedBackgroundImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for background removal.', response);
@@ -834,7 +835,7 @@ export const generateMovedCameraImage = async (
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [originalImagePart, textPart] },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for moved camera.', response);
@@ -1052,7 +1053,7 @@ Since no guiding image was provided, create all visuals from scratch based on th
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts },
-        config: buildGenerateContentConfig(aspectRatio),
+        ...buildGenerateContentConfig(aspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for thumbnail.', response);
@@ -1157,7 +1158,7 @@ You are a master photo compositor. Your task is to place the subject from the su
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: contents,
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for guided transform.', response);
@@ -1213,7 +1214,7 @@ You are provided with the following image assets. The user has described the rol
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: allParts },
-        config: buildGenerateContentConfig(outputAspectRatio),
+        ...buildGenerateContentConfig(outputAspectRatio),
     });
 
     console.log('[GeminiService] Received response from model for scene composition.', response);
