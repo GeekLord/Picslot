@@ -13,31 +13,32 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 - **Version Snapshots**: Save named "snapshots" of your project at any point in its history. This allows you to create different versions of your work and restore them later.
 - **Personalized Profiles**: A dedicated settings page lets you set a custom display name, professional title, bio, website link, and upload a profile photo for a personalized experience.
 
-### Intelligent Prompting & Workflow
-- **Prompt Manager**: A full CRUD (Create, Read, Update, Delete) interface for your favorite prompts. Save, manage, and reuse your best prompts.
+### Creative Studios & Power Tools
+- **AI Image Studio**: A dedicated text-to-image workspace. Generate multiple images, track your creative history, and experiment with different prompts and aspect ratios.
+- **AI Thumbnail Studio**: Create high-CTR, attention-grabbing thumbnails for your content. Combine text, guiding images, and AI generation to make your videos stand out.
+- **Batch Editor**: Supercharge your workflow by applying the same AI action—like background removal or auto-enhancement—to dozens of images at once.
+- **AI Scene Composer**: Combine multiple images and a text prompt to create entirely new, composite scenes. Define roles for each image (e.g., "subject," "background") for precise control.
+- **Guided Transform**: Transfer characteristics between images. Apply the pose, clothing, or artistic style from one image to another while preserving the subject's identity.
+- **One-Click AI Superpowers**: Leverage advanced generative AI for complex tasks that traditionally require expert skills:
+    - **Auto Enhance**: A single click improves your image's lighting, color balance, sharpness, and overall clarity.
+    - **Remove Background**: Instantly removes the background from your photo, leaving a clean, transparent cutout.
+    - **Restore Image**: Magically repair old, blurry, or damaged photos, removing scratches and restoring faded colors.
+    - **Studio Portrait**: Convert any casual photo into a professional, forward-facing headshot with a neutral studio background.
+    - **Magic Expand (Outpainting)**: Expands a cropped photo to a full-body shot with a plausible, AI-generated background.
+    - **Composite Card Generator**: Automatically create a professional, multi-pose modeling composite card.
+    - **Character Turnaround (3-View Shot)**: Produce a technical three-view (front, side, back) reference shot, ideal for character design or fashion.
+
+### Intelligent Workflow & Asset Management
+- **Prompt Manager**: A full CRUD (Create, Read, Update, Delete) interface for your favorite prompts. Save, manage, reuse, and even share your best prompts with other users.
 - **AI Prompt Enhancer**: A one-click tool that uses AI to rewrite your prompts, adding professional details to help you achieve better results.
-- **Share Prompts**: Share your creations with other Picslot users directly via their email address.
+- **Cloud Asset Library**: Save your uploaded or generated images to a personal, cloud-based library. Reuse your assets across all tools—from the Scene Composer to the Batch Editor—without needing to re-upload.
 - **Start with Templates**: Kickstart your creativity with a gallery of pre-configured templates. Select a style to load a sample image and a professionally crafted prompt directly into the editor.
-- **Asset Library**: Save your uploaded or generated images to a personal, cloud-based library. Reuse your assets across all tools—from the Scene Composer to the Batch Editor—without needing to re-upload.
+- **Compare Slider**: A dynamic slider lets you instantly compare your current edit with the original image.
+- **Responsive Design**: A fully responsive layout that works seamlessly on desktop, tablet, and mobile devices.
 
 ### Core AI Editing Suite
 - **Generative Mask**: Use the brush tool to paint over any part of an image and replace, add, or remove elements with pinpoint accuracy based on your text prompt.
 - **Creative Filters & Adjustments**: Apply a range of artistic filters or professional adjustments (like blurring the background or adding studio lighting) using simple text descriptions.
-
-### 🤖 One-Click AI Superpowers
-Picslot leverages advanced generative AI for complex tasks that traditionally require expert skills:
-
-- **Auto Enhance**: A single click improves your image's lighting, color balance, sharpness, and overall clarity.
-- **Remove Background**: Instantly removes the background from your photo, leaving a clean, transparent cutout.
-- **Restore Image**: Magically repair old, blurry, or damaged photos, removing scratches and restoring faded colors.
-- **Studio Portrait**: Convert any casual photo into a professional, forward-facing headshot with a neutral studio background, while preserving the subject's identity.
-- **Magic Expand (Outpainting)**: Expands a cropped photo to a full-body shot with a plausible, AI-generated background that matches the original context.
-- **Composite Card Generator**: Automatically create a professional, multi-pose modeling composite card, complete with estimated stats, styled in form-fitting athletic wear.
-- **Character Turnaround (3-View Shot)**: Produce a technical three-view (front, side, back) full-body reference shot, ideal for character design or fashion.
-
-### Professional Workflow Tools
-- **Compare Slider**: A dynamic slider lets you instantly compare your current edit with the original image.
-- **Responsive Design**: A fully responsive layout that works seamlessly on desktop, tablet, and mobile devices.
 
 ## 🛠️ Technology Stack
 
@@ -171,6 +172,11 @@ Follow these instructions to set up and run the project locally.
 │   ├── AssetLibraryModal.tsx # UI for managing saved user images
 │   ├── SettingsPage.tsx    # User settings and profile management
 │   ├── SnapshotsModal.tsx  # UI for managing project version history
+│   ├── ImageStudioPage.tsx # Text-to-image generation workspace
+│   ├── ThumbnailStudioPage.tsx # AI thumbnail creator
+│   ├── BatchEditorPage.tsx   # Tool for processing multiple images
+│   ├── SceneComposerPage.tsx # Tool for combining multiple images
+│   ├── GuidedTransformPage.tsx # Tool for style/pose transfer
 │   └── ...and many other UI components
 ├── types.ts            # Centralized TypeScript type definitions
 └── README.md           # This file
