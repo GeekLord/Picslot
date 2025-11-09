@@ -54,17 +54,26 @@ const logGenerationCost = (response: GenerateContentResponse, context: string) =
 // Helper function to build the config for a generateContent call, including aspect ratio.
 const buildGenerateContentConfig = (outputAspectRatio?: OutputAspectRatio | AspectRatio) => {
     const config: any = {
-        responseModalities: ['IMAGE'],
+        responseModalities: [Modality.IMAGE],
         // Add a random seed to ensure variety in generated images.
         // This prevents the model from returning the same image for the same prompt,
         // which can happen due to deterministic behavior or caching on the model's side.
         seed: Math.floor(Math.random() * 1000000),
+        // Parameters that control the generation output are placed in generationConfig.
+        generationConfig: {},
     };
 
     if (outputAspectRatio && outputAspectRatio !== 'auto') {
-        // According to documentation for similar models, aspectRatio is a direct property of the config.
-        config.aspectRatio = outputAspectRatio;
+        // The aspectRatio parameter must be nested within the generationConfig object
+        // for the generateContent method with gemini-2.5-flash-image.
+        config.generationConfig.aspectRatio = outputAspectRatio;
     }
+
+    // If generationConfig is empty, it can be removed to keep the payload clean.
+    if (Object.keys(config.generationConfig).length === 0) {
+        delete config.generationConfig;
+    }
+
     return config;
 };
 
