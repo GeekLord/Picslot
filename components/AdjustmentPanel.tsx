@@ -54,7 +54,7 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
             key={preset.name}
             onClick={() => handlePresetClick(preset.prompt)}
             disabled={isLoading}
-            className={`w-full text-center bg-gray-700/60 border-2 border-transparent text-gray-200 font-semibold py-3 px-2 rounded-md transition-all duration-200 ease-in-out hover:bg-gray-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed ${selectedPresetPrompt === preset.prompt ? 'border-blue-500' : 'border-gray-700/60'}`}
+            className={`w-full text-center bg-slate-200 dark:bg-slate-700/60 border-2 text-slate-800 dark:text-slate-200 font-semibold py-3 px-2 rounded-md transition-all duration-200 ease-in-out hover:bg-slate-300 dark:hover:bg-slate-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed ${selectedPresetPrompt === preset.prompt ? 'border-violet-500' : 'border-transparent dark:border-slate-700/60'}`}
           >
             {preset.name}
           </button>
@@ -66,7 +66,7 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
         value={customPrompt}
         onChange={handleCustomChange}
         placeholder="Or describe an adjustment..."
-        className="flex-grow bg-gray-900/50 border border-gray-600 text-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 text-base"
+        className="flex-grow bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-violet-500 focus:outline-none transition w-full disabled:cursor-not-allowed disabled:opacity-60 text-base"
         disabled={isLoading}
       />
 
@@ -75,7 +75,7 @@ const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ onApplyAdjustment, is
             <button
                 type="button"
                 onClick={handleApply}
-                className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 text-base disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-br from-violet-500 to-cyan-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/40 hover:-translate-y-px active:scale-95 text-base disabled:from-slate-500 disabled:to-slate-600 disabled:shadow-none disabled:cursor-not-allowed"
                 disabled={isLoading || !activePrompt.trim()}
             >
                 Apply Adjustment

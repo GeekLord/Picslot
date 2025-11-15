@@ -60,7 +60,7 @@ const ZoomModal: React.FC<ZoomModalProps> = ({ isOpen, onClose, imageUrl }) => {
 
     return (
         <div 
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm"
             onClick={onClose}
             role="dialog"
             aria-modal="true"
@@ -68,7 +68,7 @@ const ZoomModal: React.FC<ZoomModalProps> = ({ isOpen, onClose, imageUrl }) => {
             <div className="absolute top-4 right-4 flex items-center gap-3 z-10">
                 <button
                     onClick={(e) => { e.stopPropagation(); setIsMagnifierActive(!isMagnifierActive); }}
-                    className={`p-2 rounded-full text-white transition-colors ${isMagnifierActive ? 'bg-blue-600' : 'bg-black/40 hover:bg-black/70'}`}
+                    className={`p-2 rounded-full text-white transition-colors ${isMagnifierActive ? 'bg-violet-500' : 'bg-black/40 hover:bg-black/70'}`}
                     aria-label="Toggle magnifier"
                     title="Toggle Magnifier"
                 >

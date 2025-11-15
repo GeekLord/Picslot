@@ -95,13 +95,13 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
         }
     };
     
-    const inputClass = "w-full bg-gray-900/50 border border-gray-600 text-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition text-base";
-    const buttonClass = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md shadow-blue-500/20 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:text-gray-400";
+    const inputClass = "w-full bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-violet-500 focus:outline-none transition text-base";
+    const buttonClass = "bg-violet-500 hover:bg-violet-600 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md shadow-violet-500/20 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed disabled:text-slate-500 dark:disabled:text-slate-400";
 
     return (
-        <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-8 animate-fade-in">
-            <h2 className="text-2xl font-bold text-white mb-1">Public Profile</h2>
-            <p className="text-gray-400 mb-6">This information may be displayed publicly.</p>
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-xl p-8 animate-fade-in">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Public Profile</h2>
+            <p className="text-slate-500 dark:text-slate-400 mb-6">This information may be displayed publicly.</p>
             
             <div className="flex flex-col items-center md:items-start md:flex-row gap-8 mb-8">
                 {/* Avatar Uploader */}
@@ -115,11 +115,11 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
                         accept="image/png, image/jpeg, image/webp"
                         disabled={isUploadingAvatar}
                     />
-                    <label htmlFor="avatar-upload" className="block relative w-32 h-32 rounded-full cursor-pointer group bg-gray-700 overflow-hidden">
+                    <label htmlFor="avatar-upload" className="block relative w-32 h-32 rounded-full cursor-pointer group bg-slate-200 dark:bg-slate-700 overflow-hidden">
                         {avatarUrl ? (
                             <img src={avatarUrl} alt="Profile Avatar" className="w-full h-full object-cover"/>
                         ) : (
-                            <UserCircleIcon className="w-full h-full text-gray-500" />
+                            <UserCircleIcon className="w-full h-full text-slate-400 dark:text-slate-500" />
                         )}
 
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -131,7 +131,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
                 {/* Form Fields */}
                 <form onSubmit={handleSubmit} className="flex-grow w-full flex flex-col gap-6">
                     <div>
-                        <label htmlFor="displayName" className="block text-sm font-medium text-gray-300 mb-2">Display Name</label>
+                        <label htmlFor="displayName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Display Name</label>
                         <input
                             id="displayName"
                             type="text"
@@ -144,7 +144,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
                     </div>
                     
                     <div>
-                        <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">Professional Title</label>
+                        <label htmlFor="title" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Professional Title</label>
                         <input
                             id="title"
                             type="text"
@@ -157,7 +157,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
                     </div>
 
                     <div>
-                        <label htmlFor="bio" className="block text-sm font-medium text-gray-300 mb-2">Bio</label>
+                        <label htmlFor="bio" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bio</label>
                         <textarea
                             id="bio"
                             value={bio}
@@ -167,11 +167,11 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
                             rows={4}
                             maxLength={300}
                         />
-                        <p className="text-right text-xs text-gray-500 mt-1">{bio.length} / 300</p>
+                        <p className="text-right text-xs text-slate-400 dark:text-slate-500 mt-1">{bio.length} / 300</p>
                     </div>
 
                     <div>
-                        <label htmlFor="website" className="block text-sm font-medium text-gray-300 mb-2">Website</label>
+                        <label htmlFor="website" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Website</label>
                         <input
                             id="website"
                             type="url"
@@ -184,8 +184,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ userProfile, onSave }
                     </div>
                     
                     <div className="flex justify-end items-center gap-4">
-                        {success && <p className="text-green-400 text-sm animate-fade-in">{success}</p>}
-                        {error && <p className="text-red-400 text-sm">{error}</p>}
+                        {success && <p className="text-green-600 dark:text-green-400 text-sm animate-fade-in">{success}</p>}
+                        {error && <p className="text-rose-600 dark:text-rose-400 text-sm">{error}</p>}
                         <button type="submit" disabled={!isChanged || isLoading} className={buttonClass}>
                             {isLoading ? <Spinner size="sm" /> : 'Save Changes'}
                         </button>

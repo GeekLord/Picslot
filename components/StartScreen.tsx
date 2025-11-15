@@ -53,7 +53,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onFileSelect, onOpenAssetLibr
 
   return (
     <div 
-      className={`w-full max-w-5xl mx-auto text-center p-8 transition-all duration-300 rounded-2xl border-2 ${isDraggingOver ? 'bg-blue-500/10 border-dashed border-blue-400' : 'border-transparent'}`}
+      className={`w-full max-w-5xl mx-auto text-center p-8 transition-all duration-300 rounded-2xl border-2 ${isDraggingOver ? 'bg-violet-500/10 border-dashed border-violet-400' : 'border-transparent'}`}
       onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true); }}
       onDragLeave={() => setIsDraggingOver(false)}
       onDrop={(e) => {
@@ -63,21 +63,21 @@ const StartScreen: React.FC<StartScreenProps> = ({ onFileSelect, onOpenAssetLibr
       }}
     >
       <div className="flex flex-col items-center gap-6 animate-fade-in">
-        <h1 className="text-5xl font-extrabold tracking-tight text-gray-100 sm:text-6xl md:text-7xl animated-tagline">
+        <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 sm:text-6xl md:text-7xl animated-tagline">
           <span>Professional</span>{' '}
           <span>Photo</span>{' '}
           <span>Magic</span>
           <br />
           <span>with</span>{' '}
-          <span className="text-blue-400 animated-glow">Simple</span>{' '}
-          <span className="text-blue-400 animated-glow">Words.</span>
+          <span className="text-violet-500 animated-glow">Simple</span>{' '}
+          <span className="text-violet-500 animated-glow">Words.</span>
         </h1>
-        <p className="max-w-2xl text-lg text-gray-400 md:text-xl">
+        <p className="max-w-2xl text-lg text-slate-500 dark:text-slate-400 md:text-xl">
           Retouch photos, apply creative filters, or make professional adjustments using simple text prompts. No complex tools needed.
         </p>
 
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <label htmlFor="image-upload-start" className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white bg-blue-600 rounded-full cursor-pointer group hover:bg-blue-500 transition-colors">
+            <label htmlFor="image-upload-start" className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white bg-violet-500 rounded-full cursor-pointer group hover:bg-violet-600 transition-colors">
                 <UploadIcon className="w-6 h-6 mr-3 transition-transform duration-500 ease-in-out group-hover:rotate-[360deg] group-hover:scale-110" />
                 Upload Image
             </label>
@@ -85,36 +85,36 @@ const StartScreen: React.FC<StartScreenProps> = ({ onFileSelect, onOpenAssetLibr
              <button
                 type="button"
                 onClick={onOpenAssetLibrary}
-                className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-gray-200 bg-gray-700/60 border border-gray-600 rounded-full cursor-pointer hover:bg-gray-700 hover:text-white transition-colors"
+                className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-slate-800 dark:text-slate-200 bg-slate-200 dark:bg-slate-700/60 border border-slate-300 dark:border-slate-600 rounded-full cursor-pointer hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
                 <LayoutGridIcon className="w-6 h-6 mr-3" />
                 Choose from Library
             </button>
         </div>
-        <p className="text-sm text-gray-500 -mt-2">or drag & drop, or paste from clipboard</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500 -mt-2">or drag & drop, or paste from clipboard</p>
 
         <div className="mt-16 w-full">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="bg-black/20 p-6 rounded-lg border border-gray-700/50 flex flex-col items-center text-center">
-                    <div className="flex items-center justify-center w-12 h-12 bg-gray-700 rounded-full mb-4">
-                       <MagicWandIcon className="w-6 h-6 text-blue-400" />
+                <div className="bg-white/50 dark:bg-black/20 p-6 rounded-lg border border-slate-200 dark:border-slate-800/50 flex flex-col items-center text-center">
+                    <div className="flex items-center justify-center w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full mb-4">
+                       <MagicWandIcon className="w-6 h-6 text-violet-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-100">Precise Retouching</h3>
-                    <p className="mt-2 text-gray-400">Click any point on your image to remove blemishes, change colors, or add elements with pinpoint accuracy.</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Precise Retouching</h3>
+                    <p className="mt-2 text-slate-600 dark:text-slate-400">Click any point on your image to remove blemishes, change colors, or add elements with pinpoint accuracy.</p>
                 </div>
-                <div className="bg-black/20 p-6 rounded-lg border border-gray-700/50 flex flex-col items-center text-center">
-                    <div className="flex items-center justify-center w-12 h-12 bg-gray-700 rounded-full mb-4">
-                       <PaletteIcon className="w-6 h-6 text-blue-400" />
+                <div className="bg-white/50 dark:bg-black/20 p-6 rounded-lg border border-slate-200 dark:border-slate-800/50 flex flex-col items-center text-center">
+                    <div className="flex items-center justify-center w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full mb-4">
+                       <PaletteIcon className="w-6 h-6 text-violet-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-100">Creative Filters</h3>
-                    <p className="mt-2 text-gray-400">Transform photos with artistic styles. From vintage looks to futuristic glows, find or create the perfect filter.</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Creative Filters</h3>
+                    <p className="mt-2 text-slate-600 dark:text-slate-400">Transform photos with artistic styles. From vintage looks to futuristic glows, find or create the perfect filter.</p>
                 </div>
-                <div className="bg-black/20 p-6 rounded-lg border border-gray-700/50 flex flex-col items-center text-center">
-                    <div className="flex items-center justify-center w-12 h-12 bg-gray-700 rounded-full mb-4">
-                       <SunIcon className="w-6 h-6 text-blue-400" />
+                <div className="bg-white/50 dark:bg-black/20 p-6 rounded-lg border border-slate-200 dark:border-slate-800/50 flex flex-col items-center text-center">
+                    <div className="flex items-center justify-center w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full mb-4">
+                       <SunIcon className="w-6 h-6 text-violet-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-100">Pro Adjustments</h3>
-                    <p className="mt-2 text-gray-400">Enhance lighting, blur backgrounds, or change the mood. Get studio-quality results without complex tools.</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Pro Adjustments</h3>
+                    <p className="mt-2 text-slate-600 dark:text-slate-400">Enhance lighting, blur backgrounds, or change the mood. Get studio-quality results without complex tools.</p>
                 </div>
             </div>
         </div>

@@ -132,10 +132,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
   if (needsConfirmation) {
     return (
         <div className="w-full max-w-md mx-auto text-center">
-          <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in">
-            <h2 className="text-2xl font-bold text-white mb-2">Check your inbox</h2>
-            <p className="text-gray-400 mb-6">
-              We've sent a confirmation link to <span className="font-semibold text-blue-400">{email}</span>. Please click the link to activate your account.
+          <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Check your inbox</h2>
+            <p className="text-slate-500 dark:text-slate-400 mb-6">
+              We've sent a confirmation link to <span className="font-semibold text-violet-500 dark:text-violet-400">{email}</span>. Please click the link to activate your account.
             </p>
             <button
               type="button"
@@ -143,7 +143,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
                 setNeedsConfirmation(false);
                 switchView('login');
               }}
-              className="font-semibold text-blue-400 hover:text-blue-300"
+              className="font-semibold text-violet-500 dark:text-violet-400 hover:text-violet-600 dark:hover:text-violet-300"
             >
               Back to Login
             </button>
@@ -155,10 +155,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
   if (resetEmailSent) {
     return (
         <div className="w-full max-w-md mx-auto text-center">
-          <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in">
-            <h2 className="text-2xl font-bold text-white mb-2">Check your inbox</h2>
-            <p className="text-gray-400 mb-6">
-              If an account exists for <span className="font-semibold text-blue-400">{email}</span>, we've sent a password reset link.
+          <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Check your inbox</h2>
+            <p className="text-slate-500 dark:text-slate-400 mb-6">
+              If an account exists for <span className="font-semibold text-violet-500 dark:text-violet-400">{email}</span>, we've sent a password reset link.
             </p>
             <button
               type="button"
@@ -166,7 +166,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
                 setResetEmailSent(false);
                 switchView('login');
               }}
-              className="font-semibold text-blue-400 hover:text-blue-300"
+              className="font-semibold text-violet-500 dark:text-violet-400 hover:text-violet-600 dark:hover:text-violet-300"
             >
               Back to Login
             </button>
@@ -175,26 +175,26 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
     );
   }
 
-  const inputClass = "w-full bg-gray-800 border border-gray-700 text-gray-200 rounded-lg p-3 text-base focus:ring-2 focus:ring-blue-500 focus:outline-none transition";
-  const buttonClass = "w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center";
-  const googleButtonClass = "w-full bg-gray-200 text-gray-800 font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out hover:-translate-y-px active:scale-95 flex items-center justify-center gap-3";
-  const demoButtonClass = "w-full bg-gray-700/50 border border-gray-600 text-gray-200 font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out hover:bg-gray-700 hover:-translate-y-px active:scale-95 flex items-center justify-center gap-3 mb-4";
+  const inputClass = "w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 rounded-lg p-3 text-base focus:ring-2 focus:ring-violet-500 focus:outline-none transition";
+  const buttonClass = "w-full bg-gradient-to-br from-violet-500 to-cyan-500 text-white font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/40 hover:-translate-y-px active:scale-95 disabled:from-slate-500 disabled:to-slate-600 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center";
+  const googleButtonClass = "w-full bg-white dark:bg-slate-200 text-slate-800 font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out hover:-translate-y-px active:scale-95 flex items-center justify-center gap-3 border border-slate-300 dark:border-transparent shadow-sm hover:shadow-md";
+  const demoButtonClass = "w-full bg-slate-200 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-bold py-3 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out hover:bg-slate-300 dark:hover:bg-slate-700 hover:-translate-y-px active:scale-95 flex items-center justify-center gap-3 mb-4";
 
   return (
     <div className={isModalMode ? "w-full max-w-md mx-auto" : "min-h-screen flex flex-col items-center justify-center p-4"}>
       {!isModalMode && (
           <div className="flex justify-center items-center gap-3 mb-6">
-              <SparkleIcon className="w-8 h-8 text-blue-400" />
-              <h1 className="text-3xl font-bold tracking-tight text-gray-100">Picslot</h1>
+              <SparkleIcon className="w-8 h-8 text-violet-500" />
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Picslot</h1>
           </div>
       )}
       
-      <div className="relative bg-gray-800/50 border border-gray-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in w-full">
+      <div className="relative bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 rounded-xl p-8 backdrop-blur-lg shadow-2xl animate-fade-in w-full">
           {isModalMode && onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="absolute top-3 right-3 p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors"
+              className="absolute top-3 right-3 p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               aria-label="Close"
             >
               <XMarkIcon className="w-6 h-6" />
@@ -203,25 +203,25 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
 
           {view === 'login' && (
             <>
-              <h2 className="text-2xl font-bold text-white mb-1">Welcome Back</h2>
-              <p className="text-gray-400 mb-6">Sign in to continue to Picslot</p>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Welcome Back</h2>
+              <p className="text-slate-500 dark:text-slate-400 mb-6">Sign in to continue to Picslot</p>
             </>
           )}
           {view === 'register' && (
             <>
-              <h2 className="text-2xl font-bold text-white mb-1">Create an Account</h2>
-              <p className="text-gray-400 mb-6">Get started with your AI photo editor</p>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Create an Account</h2>
+              <p className="text-slate-500 dark:text-slate-400 mb-6">Get started with your AI photo editor</p>
             </>
           )}
           {view === 'forgotPassword' && (
             <>
-              <h2 className="text-2xl font-bold text-white mb-1">Reset Password</h2>
-              <p className="text-gray-400 mb-6">Enter your email to get reset instructions.</p>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Reset Password</h2>
+              <p className="text-slate-500 dark:text-slate-400 mb-6">Enter your email to get reset instructions.</p>
             </>
           )}
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-300 p-3 rounded-lg mb-4 text-center">
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 p-3 rounded-lg mb-4 text-center">
               {error}
             </div>
           )}
@@ -243,11 +243,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
 
               {view === 'login' && (
                 <div className="flex items-center justify-between mt-2 mb-2">
-                  <label htmlFor="rememberMe" className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
-                    <input id="rememberMe" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" />
+                  <label htmlFor="rememberMe" className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 cursor-pointer">
+                    <input id="rememberMe" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="w-4 h-4 text-violet-600 bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded focus:ring-violet-500" />
                     Remember Me
                   </label>
-                  <button type="button" onClick={() => switchView('forgotPassword')} className="text-sm font-semibold text-blue-400 hover:text-blue-300">
+                  <button type="button" onClick={() => switchView('forgotPassword')} className="text-sm font-semibold text-violet-500 dark:text-violet-400 hover:text-violet-600 dark:hover:text-violet-300">
                     Forgot Password?
                   </button>
                 </div>
@@ -263,9 +263,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
           {view === 'login' && (
             <>
               <div className="my-6 flex items-center gap-4">
-                <hr className="w-full border-gray-600" />
-                <span className="text-gray-500 font-semibold">OR</span>
-                <hr className="w-full border-gray-600" />
+                <hr className="w-full border-slate-300 dark:border-slate-600" />
+                <span className="text-slate-400 dark:text-slate-500 font-semibold text-sm">OR</span>
+                <hr className="w-full border-slate-300 dark:border-slate-600" />
               </div>
               <button type="button" onClick={handleDemoLogin} className={demoButtonClass} disabled={isLoading}>
                 {isLoading ? <Spinner size="sm" /> : 'Login as Demo User'}
@@ -280,9 +280,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
           {view === 'register' && (
              <>
                 <div className="my-6 flex items-center gap-4">
-                    <hr className="w-full border-gray-600" />
-                    <span className="text-gray-500 font-semibold">OR</span>
-                    <hr className="w-full border-gray-600" />
+                    <hr className="w-full border-slate-300 dark:border-slate-600" />
+                    <span className="text-slate-400 dark:text-slate-500 font-semibold text-sm">OR</span>
+                    <hr className="w-full border-slate-300 dark:border-slate-600" />
                 </div>
                 <button type="button" onClick={handleGoogleLogin} className={googleButtonClass}>
                     <GoogleIcon className="w-6 h-6" />
@@ -293,25 +293,25 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ initialView = 'login', isModalM
 
           <div className="mt-6 text-center">
             {view === 'login' && (
-                <p className="text-gray-400">
+                <p className="text-slate-500 dark:text-slate-400">
                 Don't have an account?{' '}
-                <button type="button" onClick={() => switchView('register')} className="font-semibold text-blue-400 hover:text-blue-300">
+                <button type="button" onClick={() => switchView('register')} className="font-semibold text-violet-500 dark:text-violet-400 hover:text-violet-600 dark:hover:text-violet-300">
                     Sign up
                 </button>
                 </p>
             )}
             {view === 'register' && (
-                <p className="text-gray-400">
+                <p className="text-slate-500 dark:text-slate-400">
                 Already have an account?{' '}
-                <button type="button" onClick={() => switchView('login')} className="font-semibold text-blue-400 hover:text-blue-300">
+                <button type="button" onClick={() => switchView('login')} className="font-semibold text-violet-500 dark:text-violet-400 hover:text-violet-600 dark:hover:text-violet-300">
                     Sign in
                 </button>
                 </p>
             )}
             {view === 'forgotPassword' && (
-                <p className="text-gray-400">
+                <p className="text-slate-500 dark:text-slate-400">
                 Remembered your password?{' '}
-                <button type="button" onClick={() => switchView('login')} className="font-semibold text-blue-400 hover:text-blue-300">
+                <button type="button" onClick={() => switchView('login')} className="font-semibold text-violet-500 dark:text-violet-400 hover:text-violet-600 dark:hover:text-violet-300">
                     Back to Sign in
                 </button>
                 </p>

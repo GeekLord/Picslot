@@ -24,18 +24,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, userProfile, onProfil
         const isActive = activeTab === tab;
         return `flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg transition-all duration-200 text-base font-semibold ${
             isActive 
-                ? 'bg-gray-700/80 text-white shadow-sm' 
-                : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'
+                ? 'bg-slate-200 dark:bg-slate-700/80 text-slate-900 dark:text-white shadow-sm' 
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white'
         }`;
     };
     
-    const disabledNavItemClass = `flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg text-base font-semibold text-gray-600 cursor-not-allowed`;
+    const disabledNavItemClass = `flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg text-base font-semibold text-slate-400 dark:text-slate-600 cursor-not-allowed`;
 
 
     return (
         <div className="w-full max-w-6xl mx-auto animate-fade-in flex flex-col md:flex-row gap-8 lg:gap-12">
             <aside className="w-full md:w-1/4 lg:w-1/5 flex-shrink-0">
-                <h1 className="text-2xl font-bold text-white mb-6 px-4 md:px-0">Settings</h1>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 px-4 md:px-0">Settings</h1>
                 <nav className="flex flex-col gap-2">
                     <button type="button" onClick={() => setActiveTab('profile')} className={navItemClass('profile')}>
                         <IdentificationIcon className="w-5 h-5" /> Profile

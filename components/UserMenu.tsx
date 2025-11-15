@@ -43,11 +43,11 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, userProfile, onLogout, onNavi
 
   return (
     <div className="relative" ref={menuRef}>
-      <button type="button" onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 rounded-full p-1 text-sm font-semibold text-gray-300 hover:bg-gray-700/50 transition-colors">
+      <button type="button" onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 rounded-full p-1 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors">
         {avatarUrl ? (
-          <img src={avatarUrl} alt="User avatar" className="w-8 h-8 rounded-full object-cover bg-gray-700" />
+          <img src={avatarUrl} alt="User avatar" className="w-8 h-8 rounded-full object-cover bg-slate-300 dark:bg-slate-700" />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+          <div className="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center text-white font-bold">
             {userInitial}
           </div>
         )}
@@ -56,22 +56,22 @@ const UserMenu: React.FC<UserMenuProps> = ({ user, userProfile, onLogout, onNavi
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-md bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none animate-fade-in-fast z-50">
+        <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-md bg-white dark:bg-slate-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none animate-fade-in-fast z-50">
           <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="menu-button">
-            <button type="button" onClick={() => {}} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem" disabled>
+            <button type="button" onClick={() => {}} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem" disabled>
               <UserCircleIcon className="w-5 h-5" /> Profile
             </button>
-            <button type="button" onClick={(e) => { e.preventDefault(); handleNavigation('settings'); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700" role="menuitem">
+            <button type="button" onClick={(e) => { e.preventDefault(); handleNavigation('settings'); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" role="menuitem">
               <Cog6ToothIcon className="w-5 h-5" /> Settings
             </button>
-            <button type="button" onClick={() => {}} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem" disabled>
+            <button type="button" onClick={() => {}} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem" disabled>
               <CreditCardIcon className="w-5 h-5" /> Billing
             </button>
-            <button type="button" onClick={() => {}} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem" disabled>
+            <button type="button" onClick={() => {}} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed" role="menuitem" disabled>
               <BellIcon className="w-5 h-5" /> Notifications
             </button>
-            <div className="border-t border-gray-700 my-1"></div>
-            <button type="button" onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-gray-700" role="menuitem">
+            <div className="border-t border-slate-200 dark:border-slate-700 my-1"></div>
+            <button type="button" onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-700" role="menuitem">
               <LogoutIcon className="w-5 h-5" /> Logout
             </button>
           </div>

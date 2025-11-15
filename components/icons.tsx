@@ -49,6 +49,13 @@ export const SunIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
+export const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+  </svg>
+);
+
+
 export const SparkleIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
@@ -360,4 +367,22 @@ export const TicketIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-1.5h5.25m-5.25 0h3m-3 0h-3m-2.25-4.5h16.5M5.25 6H9m-3.75 0v.75m0-3v-2.25m13.5 0v2.25m0-2.25v-2.25m0 2.25v3.75m-13.5-3.75v3.75m-3.75 0h16.5m-16.5 0h16.5" />
     </svg>
+);
+
+export const ArrowRightIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+  </svg>
+);
+
+export const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.742-.586 9.094 9.094 0 0 0-1.28-4.331 9.094 9.094 0 0 0-4.062-3.535M12 18.72a9.094 9.094 0 0 1-3.742-.586 9.094 9.094 0 0 1 1.28-4.331 9.094 9.094 0 0 1 4.062-3.535m0 8.452a9.094 9.094 0 0 0-4.28-1.332 9.094 9.094 0 0 0-4.062 3.535 9.094 9.094 0 0 0 1.28 4.331 9.094 9.094 0 0 0 3.742.586M12 18.72a9.094 9.094 0 0 0 4.28-1.332 9.094 9.094 0 0 0 4.062 3.535 9.094 9.094 0 0 0-1.28 4.331 9.094 9.094 0 0 0-3.742.586M9 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm0 0A2.25 2.25 0 0 0 6.75 12v.25a.75.75 0 0 0 1.5 0v-.25A2.25 2.25 0 0 0 9 9.75Zm6 0a2.25 2.25 0 0 1 2.25 2.25v.25a.75.75 0 0 1-1.5 0v-.25A2.25 2.25 0 0 1 15 9.75Z" />
+  </svg>
+);
+
+export const ChartBarIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 0 1 3 21v-7.875M12.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v12.375c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 0 1 12.75 21V8.625M20.25 18c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v3.375c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 0 1 20.25 21v-3Z" />
+  </svg>
 );

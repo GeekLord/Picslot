@@ -121,7 +121,7 @@ const ChangeViewPanel: React.FC<ChangeViewPanelProps> = ({ onApplyViewChange, is
 
   return (
     <div className="w-full flex flex-col gap-4 animate-fade-in">
-        <p className="text-sm text-gray-400 -mt-2">Drag the 3D gizmo to set the camera angle and height.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 -mt-2">Drag the 3D gizmo to set the camera angle and height.</p>
         
         {/* 3D Gizmo */}
         <div className="flex justify-center items-center my-4 h-48 select-none">
@@ -141,7 +141,7 @@ const ChangeViewPanel: React.FC<ChangeViewPanelProps> = ({ onApplyViewChange, is
                     }}
                 >
                     {/* Subject Icon */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-400/80 border-2 border-blue-200"></div>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-violet-400/80 border-2 border-violet-200"></div>
                     
                     {/* Camera Icon */}
                     <div 
@@ -150,8 +150,8 @@ const ChangeViewPanel: React.FC<ChangeViewPanelProps> = ({ onApplyViewChange, is
                            transform: `translateZ(80px) rotateY(180deg) rotateX(${-rotation.x}deg)`, // Counter-rotate to face center
                         }}
                     >
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center shadow-lg">
-                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-300 flex items-center justify-center shadow-lg">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                            </svg>
@@ -160,7 +160,7 @@ const ChangeViewPanel: React.FC<ChangeViewPanelProps> = ({ onApplyViewChange, is
 
                     {/* Ground Plane */}
                     <div 
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-gray-700/20 rounded-full border border-dashed border-gray-600"
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-slate-200/50 dark:bg-slate-700/20 rounded-full border border-dashed border-slate-300 dark:border-slate-600"
                         style={{
                             transform: 'translateY(20px) rotateX(90deg)'
                         }}
@@ -171,14 +171,14 @@ const ChangeViewPanel: React.FC<ChangeViewPanelProps> = ({ onApplyViewChange, is
 
         {/* Distance Slider */}
         <div className="px-4">
-            <label htmlFor="distance" className="block text-sm font-medium text-gray-300 mb-1">Distance: <span className="font-bold text-white">{getDistanceDescription(distance)}</span></label>
-            <input id="distance" type="range" min="0" max="100" step="1" value={distance} onChange={(e) => setDistance(Number(e.target.value))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+            <label htmlFor="distance" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Distance: <span className="font-bold text-slate-900 dark:text-white">{getDistanceDescription(distance)}</span></label>
+            <input id="distance" type="range" min="0" max="100" step="1" value={distance} onChange={(e) => setDistance(Number(e.target.value))} className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer" />
         </div>
 
         {/* Prompt Preview */}
-        <div className="mt-2 p-3 bg-gray-900/50 rounded-lg border border-gray-600">
-            <p className="text-xs text-gray-400 mb-1">Generated Prompt:</p>
-            <p className="text-sm text-gray-200 font-mono">{finalPrompt}</p>
+        <div className="mt-2 p-3 bg-slate-100 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-600">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Generated Prompt:</p>
+            <p className="text-sm text-slate-700 dark:text-slate-200 font-mono">{finalPrompt}</p>
         </div>
 
         {/* Apply Button */}
@@ -186,7 +186,7 @@ const ChangeViewPanel: React.FC<ChangeViewPanelProps> = ({ onApplyViewChange, is
             <button
                 type="button"
                 onClick={handleApply}
-                className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-px active:scale-95 text-base disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-br from-violet-500 to-cyan-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/40 hover:-translate-y-px active:scale-95 text-base disabled:from-slate-500 disabled:to-slate-600 disabled:shadow-none disabled:cursor-not-allowed"
                 disabled={isLoading || !finalPrompt.trim()}
             >
                 Apply View Change

@@ -184,6 +184,9 @@ const App: React.FC = () => {
   // Output Settings State
   const [outputAspectRatio, setOutputAspectRatio] = useState<OutputAspectRatio>('auto');
 
+  // FIX: Add theme state management for Header and HomePage components.
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
   const imgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -204,6 +207,30 @@ const App: React.FC = () => {
   });
 
   // === Effects ===
+
+  // FIX: Add theme toggle handler and effects to manage light/dark mode.
+  const handleToggleTheme = useCallback(() => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
+
+  // Load saved theme from localStorage on initial render
+  useEffect(() => {
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+      if (savedTheme) {
+          setTheme(savedTheme);
+      }
+  }, []);
+
+  // Apply theme class to document and save to localStorage on change
+  useEffect(() => {
+      const root = document.documentElement;
+      if (theme === 'dark') {
+          root.classList.add('dark');
+      } else {
+          root.classList.remove('dark');
+      }
+      localStorage.setItem('theme', theme);
+  }, [theme]);
 
   // Auth Effect: Minimal, only sets the user object from Supabase auth state.
   useEffect(() => {
@@ -1098,7 +1125,8 @@ const App: React.FC = () => {
     console.log('[App Render] User is NULL. Rendering HomePage.');
     return (
       <>
-        <HomePage onOpenAuthModal={handleOpenAuthModal} />
+        {/* FIX: Pass theme and onToggleTheme props to HomePage to satisfy its prop types. */}
+        <HomePage onOpenAuthModal={handleOpenAuthModal} theme={theme} onToggleTheme={handleToggleTheme} />
         {isAuthModalOpen && (
           <div 
             className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm"
@@ -1389,6 +1417,9 @@ const App: React.FC = () => {
         page={page}
         onNavigate={handleNavigate}
         isEditorActive={!!currentImageUrl}
+        // FIX: Pass theme and onToggleTheme props to Header to satisfy its prop types.
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
       
       {page === 'editor' && currentImageUrl && (
