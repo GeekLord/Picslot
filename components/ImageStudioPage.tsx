@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -14,6 +15,7 @@ import { generateEditedImage } from '../services/geminiService';
 import PromptSelector from './PromptSelector';
 import type { Prompt } from '../types';
 import ImageStudioZoomModal from './ImageStudioZoomModal';
+import LoadingOverlay from './LoadingOverlay';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -51,6 +53,34 @@ const aspectRatios: { label: string, hint: string, values: AspectRatio[] }[] = [
     { label: 'Portrait', hint: 'Stories, Social', values: ['9:16', '2:3', '3:4', '4:5'] },
     { label: 'Square & Other', hint: 'Posts, Profile Pics', values: ['1:1', '5:4'] }
 ];
+
+// Helper component to render a visual icon for the aspect ratio
+const AspectRatioIcon: React.FC<{ ratio: AspectRatio }> = ({ ratio }) => {
+    // Calculate dimensions for the icon box based on the ratio string (e.g., "16:9")
+    let width = 14;
+    let height = 14;
+    
+    if (typeof ratio === 'string') {
+        const [w, h] = ratio.split(':').map(Number);
+        if (!isNaN(w) && !isNaN(h)) {
+            // Normalize to fit within a 14x14 box (smaller for this view)
+            if (w > h) {
+                width = 14;
+                height = (h / w) * 14;
+            } else {
+                height = 14;
+                width = (w / h) * 14;
+            }
+        }
+    }
+
+    return (
+        <div 
+            className="border border-current rounded-sm" 
+            style={{ width: `${width}px`, height: `${height}px` }}
+        />
+    );
+};
 
 
 const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
@@ -209,15 +239,12 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
 
 
     return (
-        <div className="w-full flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)]">
+        <div className="w-full flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] animate-fade-in">
             {/* Main Content */}
             <main className="w-full lg:w-2/3 flex-shrink-0 flex flex-col">
-                <div className="flex-grow w-full bg-black/20 rounded-xl flex items-center justify-center p-4">
+                <div className="flex-grow w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center p-4 relative shadow-sm">
                     {isLoading ? (
-                        <div className="text-center">
-                            <Spinner size="lg" />
-                            <p className="mt-4 text-gray-400">Generating your masterpiece...</p>
-                        </div>
+                        <LoadingOverlay message="Generating your masterpiece..." />
                     ) : selectedImage ? (
                         <div className="relative w-full h-full group">
                             <button type="button" onClick={handleOpenZoom} className="w-full h-full block">
@@ -235,19 +262,19 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                             </a>
                         </div>
                     ) : (
-                        <div className="text-center text-gray-500">
-                             <PhotoIcon className="w-24 h-24 mx-auto"/>
-                             <h2 className="mt-4 text-2xl font-bold text-gray-300">AI Image Studio</h2>
-                             <p className="max-w-md mt-2">Your generated images will appear here. Use the controls on the right to start creating.</p>
+                        <div className="text-center text-slate-400 dark:text-gray-500">
+                             <PhotoIcon className="w-24 h-24 mx-auto text-slate-300 dark:text-gray-600"/>
+                             <h2 className="mt-4 text-2xl font-bold text-slate-700 dark:text-gray-300">AI Image Studio</h2>
+                             <p className="max-w-md mt-2 text-slate-500 dark:text-gray-500">Your generated images will appear here. Use the controls on the right to start creating.</p>
                         </div>
                     )}
                 </div>
             </main>
 
             {/* Sidebar */}
-            <aside className="w-full lg:w-1/3 bg-gray-800/50 border border-gray-700/80 rounded-xl flex flex-col">
-                <div className="p-4 flex flex-col gap-4 border-b border-gray-700">
-                    <h2 className="text-xl font-bold text-white">Controls</h2>
+            <aside className="w-full lg:w-1/3 bg-white dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700/80 rounded-xl flex flex-col shadow-sm">
+                <div className="p-4 flex flex-col gap-4 border-b border-slate-200 dark:border-gray-700">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Controls</h2>
 
                     <div className="relative flex flex-col gap-0">
                         <PromptSelector prompts={prompts} onSelect={setPrompt} />
@@ -256,33 +283,38 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                             onChange={e => setPrompt(e.target.value)}
                             placeholder="A cinematic shot of an astronaut on a horse..."
                             rows={3}
-                            className="w-full bg-gray-800 border border-t-0 border-gray-700 text-gray-200 rounded-b-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none pr-12"
+                            className="w-full bg-slate-100 dark:bg-gray-800 border border-t-0 border-slate-300 dark:border-gray-700 text-slate-900 dark:text-gray-200 rounded-b-lg p-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none pr-12"
                         />
                          <div className="absolute top-[calc(50%-28px)] right-3 flex items-center gap-2">
-                            <button type="button" onClick={handleEnhancePrompt} title="Enhance Prompt with AI" className="p-2 text-gray-400 hover:text-purple-400 disabled:opacity-50 disabled:cursor-wait" disabled={isEnhancing || !prompt.trim()}>
+                            <button type="button" onClick={handleEnhancePrompt} title="Enhance Prompt with AI" className="p-2 text-slate-400 dark:text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 disabled:opacity-50 disabled:cursor-wait" disabled={isEnhancing || !prompt.trim()}>
                                 {isEnhancing ? <Spinner size="sm" /> : <MagicWandIcon className="w-5 h-5"/>}
                             </button>
                         </div>
                     </div>
                     
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Aspect Ratio</label>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Aspect Ratio</label>
                         {mode === 'edit' ? (
-                            <div className="p-3 bg-gray-900/50 rounded-lg text-center text-gray-400 text-sm border border-gray-700">
+                            <div className="p-3 bg-slate-100 dark:bg-gray-900/50 rounded-lg text-center text-slate-500 dark:text-gray-400 text-sm border border-slate-200 dark:border-gray-700">
                                 Matches source image aspect ratio
                             </div>
                         ) : (
                             <div className="flex flex-col gap-3">
                                 {aspectRatios.map(({ label, hint, values }) => (
                                     <div key={label}>
-                                        <p className="text-xs text-gray-400 mb-1">{label} <span className="text-gray-500">- {hint}</span></p>
+                                        <p className="text-xs text-slate-500 dark:text-gray-400 mb-1">{label} <span className="text-slate-400 dark:text-gray-500">- {hint}</span></p>
                                         <div className="grid grid-cols-4 gap-2">
                                             {values.map(ar => (
                                                 <button 
                                                     key={ar} 
                                                     onClick={() => setAspectRatio(ar)} 
-                                                    className={`py-2 rounded-md font-semibold transition-colors text-sm ${aspectRatio === ar ? 'bg-blue-600 text-white' : 'bg-gray-700/60 hover:bg-gray-700 text-gray-300'}`}
+                                                    className={`py-2 rounded-md font-semibold transition-colors text-sm flex items-center justify-center gap-1 ${
+                                                        aspectRatio === ar 
+                                                        ? 'bg-blue-600 text-white' 
+                                                        : 'bg-slate-200 dark:bg-gray-700/60 hover:bg-slate-300 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300'
+                                                    }`}
                                                 >
+                                                    <AspectRatioIcon ratio={ar} />
                                                     {ar}
                                                 </button>
                                             ))}
@@ -294,23 +326,42 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                     </div>
 
                     <div>
-                         <label className="block text-sm font-medium text-gray-300 mb-2">Mode</label>
-                         <div className="flex bg-gray-700/60 p-1 rounded-lg">
-                            <button onClick={() => setMode('generate')} className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${mode === 'generate' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>Generate New</button>
-                            <button onClick={() => setMode('edit')} disabled={!canEdit} className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${mode === 'edit' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'} disabled:text-gray-500 disabled:cursor-not-allowed`}>Edit Selected</button>
+                         <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-2">Mode</label>
+                         <div className="flex bg-slate-200 dark:bg-gray-700/60 p-1 rounded-lg">
+                            <button 
+                                onClick={() => setMode('generate')} 
+                                className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${
+                                    mode === 'generate' 
+                                    ? 'bg-blue-600 text-white shadow-sm' 
+                                    : 'text-slate-600 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                Generate New
+                            </button>
+                            <button 
+                                onClick={() => setMode('edit')} 
+                                disabled={!canEdit} 
+                                className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${
+                                    mode === 'edit' 
+                                    ? 'bg-blue-600 text-white shadow-sm' 
+                                    : 'text-slate-600 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-gray-700'
+                                } disabled:text-slate-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed`}
+                            >
+                                Edit Selected
+                            </button>
                          </div>
                     </div>
                     
-                    {error && <p className="text-red-400 bg-red-500/10 p-2 rounded-md text-sm">{error}</p>}
+                    {error && <p className="text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-500/10 p-2 rounded-md text-sm">{error}</p>}
                     
                     <div className="flex flex-col gap-2">
-                        <button onClick={() => handleGenerate(false)} disabled={isLoading || !prompt.trim()} className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-px active:scale-95 disabled:from-gray-600 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center">
+                        <button onClick={() => handleGenerate(false)} disabled={isLoading || !prompt.trim()} className="w-full bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-px active:scale-95 disabled:from-slate-400 dark:disabled:from-gray-600 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center">
                            {isLoading ? <Spinner /> : <><SparkleIcon className="w-5 h-5 mr-2"/>Generate</>}
                         </button>
                          {lastAction && !isLoading && (
                              <button
                                 onClick={() => handleGenerate(true)}
-                                className="w-full bg-gray-700/60 hover:bg-gray-700 border border-gray-600 text-gray-200 font-bold py-2 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 text-base active:scale-95 animate-fade-in"
+                                className="w-full bg-slate-200 dark:bg-gray-700/60 hover:bg-slate-300 dark:hover:bg-gray-700 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 font-bold py-2 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 text-base active:scale-95 animate-fade-in"
                                 title="Try generating again"
                             >
                                 <ArrowPathIcon className="w-5 h-5" />
@@ -322,11 +373,11 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
 
                 <div className="flex-grow p-4 flex flex-col min-h-0">
                     <div className="flex justify-between items-center mb-2">
-                        <h2 className="text-xl font-bold text-white">History</h2>
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">History</h2>
                         <button
                             onClick={handleDownloadAll}
                             disabled={history.length === 0 || isZipping}
-                            className="flex items-center gap-2 bg-gray-700/80 hover:bg-gray-700 text-gray-200 font-semibold py-1 px-3 rounded-md transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex items-center gap-2 bg-slate-200 dark:bg-gray-700/80 hover:bg-slate-300 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 font-semibold py-1 px-3 rounded-md transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isZipping ? (
                                 <>
@@ -343,7 +394,15 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                         {history.length > 0 ? (
                              <div className="grid grid-cols-3 gap-2">
                                 {history.map(item => (
-                                    <button key={item.id} onClick={() => setSelectedImageId(item.id)} className={`group relative aspect-square rounded-md overflow-hidden bg-black border-2 transition-colors ${selectedImageId === item.id ? 'border-blue-500' : 'border-transparent hover:border-gray-500'}`}>
+                                    <button 
+                                        key={item.id} 
+                                        onClick={() => setSelectedImageId(item.id)} 
+                                        className={`group relative aspect-square rounded-md overflow-hidden bg-slate-100 dark:bg-black border-2 transition-colors ${
+                                            selectedImageId === item.id 
+                                            ? 'border-blue-500' 
+                                            : 'border-transparent hover:border-slate-400 dark:hover:border-gray-500'
+                                        }`}
+                                    >
                                         <img src={item.url} alt={item.prompt} className="w-full h-full object-cover" />
                                         <button onClick={(e) => { e.stopPropagation(); handleRemoveHistoryItem(item.id); }} className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100">
                                             <XMarkIcon className="w-4 h-4" />
@@ -352,7 +411,7 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                                 ))}
                              </div>
                         ) : (
-                            <div className="h-full flex items-center justify-center text-center text-gray-500 text-sm">
+                            <div className="h-full flex items-center justify-center text-center text-slate-400 dark:text-gray-500 text-sm">
                                 <p>Your generated images will appear here.</p>
                             </div>
                         )}

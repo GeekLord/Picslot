@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -36,6 +37,7 @@ import ImageStudioPage from './components/ImageStudioPage';
 import AssetLibraryModal from './components/AssetLibraryModal';
 import OutputSettingsPanel from './components/OutputSettingsPanel';
 import ThumbnailStudioPage from './components/ThumbnailStudioPage';
+import LoadingOverlay from './components/LoadingOverlay';
 
 
 // Helper to convert a data URL string to a File object
@@ -1096,6 +1098,36 @@ const App: React.FC = () => {
       console.log(`[App Snapshot] Snapshot deleted.`);
   };
 
+  // === Keyboard Shortcuts ===
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (page !== 'editor') return;
+
+      // Check for Cmd (Mac) or Ctrl (Windows)
+      const isModifier = e.metaKey || e.ctrlKey;
+
+      if (isModifier && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isLoading && prompt.trim() && (!isBrushMode || maskDataUrl)) {
+           handleGenerate();
+        }
+      } else if (isModifier && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        if (canRedo && !isLoading) {
+           handleRedo();
+        }
+      } else if (isModifier && (e.key === 'z' || e.key === 'Z')) {
+         e.preventDefault();
+         if (canUndo && !isLoading) {
+            handleUndo();
+         }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [page, isLoading, prompt, isBrushMode, maskDataUrl, handleGenerate, canUndo, canRedo, handleUndo, handleRedo]);
+
 
   // === RENDER LOGIC ===
 
@@ -1250,12 +1282,7 @@ const App: React.FC = () => {
                 <div className="flex-grow w-full max-w-[1800px] mx-auto flex flex-col md:flex-row gap-8">
                   <div className="flex-grow flex flex-col gap-4 items-center md:w-[65%] lg:w-[70%]">
                       <div className="relative w-full shadow-2xl rounded-xl overflow-hidden bg-black/20 group">
-                          {isLoading && (
-                              <div className="absolute inset-0 bg-black/70 z-30 flex flex-col items-center justify-center gap-4 animate-fade-in">
-                                  <Spinner size="lg" />
-                                  <p className="text-gray-300">AI is working its magic...</p>
-                              </div>
-                          )}
+                          {isLoading && <LoadingOverlay message={`Processing ${lastAction?.name || 'image'}...`} />}
                           {isCompareMode && originalImageUrl ? (
                               <CompareSlider originalImageUrl={originalImageUrl} currentImageUrl={currentImageUrl} />
                           ) : (
@@ -1323,7 +1350,7 @@ const App: React.FC = () => {
                                       </button>
                                   </div>
                               </div>
-                              <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed self-stretch" disabled={isLoading || !prompt.trim() || (isBrushMode && !maskDataUrl)}>Generate</button>
+                              <button type="submit" className="bg-gradient-to-br from-blue-600 to-blue-500 text-white font-bold py-4 px-6 text-lg rounded-lg transition-all duration-300 ease-in-out shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/40 hover:translate-y-px active:scale-95 disabled:from-gray-600 disabled:to-gray-700 disabled:shadow-none disabled:cursor-not-allowed self-stretch" disabled={isLoading || !prompt.trim() || (isBrushMode && !maskDataUrl)} title="Generate Image (Cmd/Ctrl + Enter)">Generate</button>
                           </form>
                           {!isLoading && lastAction && (
                             <div className="w-full mt-2 animate-fade-in">
@@ -1402,7 +1429,7 @@ const App: React.FC = () => {
   };
   
   return (
-    <div className="min-h-screen text-gray-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300">
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -1425,8 +1452,8 @@ const App: React.FC = () => {
       {page === 'editor' && currentImageUrl && (
           <div className="w-full bg-gray-900/70 backdrop-blur-sm border-b border-gray-700/80 p-2 flex items-center justify-between gap-2 sticky top-[65px] z-40">
             <div className="flex items-center gap-2">
-                <button type="button" onClick={handleUndo} disabled={!canUndo || isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><UndoIcon className="w-5 h-5"/>Undo</button>
-                <button type="button" onClick={handleRedo} disabled={!canRedo || isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><RedoIcon className="w-5 h-5"/>Redo</button>
+                <button type="button" onClick={handleUndo} disabled={!canUndo || isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Undo (Cmd/Ctrl + Z)"><UndoIcon className="w-5 h-5"/>Undo</button>
+                <button type="button" onClick={handleRedo} disabled={!canRedo || isLoading} className="flex items-center gap-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Redo (Cmd/Ctrl + Shift + Z)"><RedoIcon className="w-5 h-5"/>Redo</button>
                 <button type="button" onClick={handleReset} disabled={!canUndo || isLoading} className="bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 font-semibold py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Reset</button>
             </div>
             <div className="flex items-center gap-2">

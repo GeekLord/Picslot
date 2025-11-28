@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -12,6 +13,7 @@ interface CompareSliderProps {
 
 const CompareSlider: React.FC<CompareSliderProps> = ({ originalImageUrl, currentImageUrl }) => {
   const [sliderPosition, setSliderPosition] = useState(50); // Percentage from 0 to 100
+  const [isInteracting, setIsInteracting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
@@ -25,11 +27,13 @@ const CompareSlider: React.FC<CompareSliderProps> = ({ originalImageUrl, current
 
   const handleInteractionStart = (clientX: number) => {
     isDragging.current = true;
+    setIsInteracting(true);
     handleMove(clientX);
   };
   
   const handleInteractionEnd = () => {
     isDragging.current = false;
+    setIsInteracting(false);
   };
   
   const handleInteractionMove = (clientX: number) => {
@@ -57,7 +61,7 @@ const CompareSlider: React.FC<CompareSliderProps> = ({ originalImageUrl, current
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-h-[70vh] overflow-hidden rounded-xl select-none cursor-ew-resize"
+      className="relative w-full max-h-[70vh] overflow-hidden rounded-xl select-none cursor-ew-resize group"
       onMouseDown={(e) => handleInteractionStart(e.clientX)}
       onTouchStart={(e) => handleInteractionStart(e.touches[0].clientX)}
     >
@@ -68,6 +72,13 @@ const CompareSlider: React.FC<CompareSliderProps> = ({ originalImageUrl, current
         draggable={false}
         className="w-full h-auto object-contain max-h-[70vh] rounded-xl pointer-events-none"
       />
+      
+      {/* "After" Label */}
+      <div 
+        className={`absolute top-4 right-4 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded transition-opacity duration-300 pointer-events-none ${isInteracting ? 'opacity-0' : 'opacity-100'}`}
+      >
+        Edited
+      </div>
 
       {/* Original (Before) Image - Top Layer, Clipped */}
       <div
@@ -80,6 +91,12 @@ const CompareSlider: React.FC<CompareSliderProps> = ({ originalImageUrl, current
           draggable={false}
           className="w-full h-auto object-contain max-h-[70vh] rounded-xl pointer-events-none"
         />
+        {/* "Before" Label (inside the clipped container) */}
+        <div 
+            className={`absolute top-4 left-4 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded transition-opacity duration-300 pointer-events-none ${isInteracting ? 'opacity-0' : 'opacity-100'}`}
+        >
+            Original
+        </div>
       </div>
 
       {/* Slider Handle */}
