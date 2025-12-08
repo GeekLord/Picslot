@@ -63,14 +63,12 @@ const buildGenerateContentConfig = (outputAspectRatio?: OutputAspectRatio | Aspe
     };
 
     if (outputAspectRatio && outputAspectRatio !== 'auto') {
-        // Try multiple ways to pass aspect ratio due to API inconsistencies
         // Method 1: In imageConfig (official way)
         config.imageConfig = {
             aspectRatio: outputAspectRatio,
         };
-        // Method 2: Also try at top level (some SDK versions may expect this)
-        config.aspectRatio = outputAspectRatio;
-        console.log(`[GeminiService] Setting aspect ratio to: ${outputAspectRatio} (both in imageConfig and top level)`);
+        // Method 2: Removed top-level aspectRatio to avoid API validation errors.
+        console.log(`[GeminiService] Setting aspect ratio to: ${outputAspectRatio}`);
     } else {
         console.log(`[GeminiService] Aspect ratio not set or set to 'auto': ${outputAspectRatio}`);
     }
@@ -1022,75 +1020,33 @@ export const generateThumbnailImage = async (
     console.log(`[GeminiService] Called generateThumbnailImage with title: "${title}", aspectRatio: "${aspectRatio}"`);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
     
-    const parts = [];
+    // Explicitly type the parts array to avoid any 'any' type issues
+    const parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [];
 
-    // Calculate dimensions based on aspect ratio for more explicit instruction
-    const aspectRatioDimensions: Record<AspectRatio, string> = {
-        '1:1': '1024x1024 pixels (square)',
-        '4:3': '1184x864 pixels',
-        '3:4': '864x1184 pixels',
-        '16:9': '1344x768 pixels (widescreen)',
-        '9:16': '768x1344 pixels (vertical)',
-        '21:9': '1536x672 pixels (ultrawide)',
-        '3:2': '1248x832 pixels',
-        '2:3': '832x1248 pixels',
-        '5:4': '1152x896 pixels',
-        '4:5': '896x1152 pixels',
-    };
-
-    let prompt = `
-You are an expert YouTube thumbnail designer with a deep understanding of what drives clicks (high CTR). Your task is to create a visually stunning, attention-grabbing thumbnail.
-
-**CRITICAL INSTRUCTIONS:**
-1.  **Maximize Click-Through Rate (CTR):** The design must be bold, high-contrast, and easily readable at small sizes. Use vibrant colors and clear imagery.
-2.  **Incorporate Title Text:** The video title is the most important element. You MUST prominently feature the text from the title in a large, bold, and stylish font. The text should be a core part of the design, not just an overlay.
-3.  **Reflect Content:** The visuals should accurately and excitingly represent the content described.
-4.  **Composition:** Create a dynamic and professional composition. Use principles like the rule of thirds and leading lines.
-5.  **Aspect Ratio (ABSOLUTELY CRITICAL - NON-NEGOTIABLE):** 
-    - The final image MUST be in a ${aspectRatio} aspect ratio.
-    - Target dimensions: ${aspectRatioDimensions[aspectRatio]}
-    - The image MUST be ${aspectRatio === '16:9' || aspectRatio === '21:9' ? 'WIDE (landscape)' : aspectRatio === '9:16' ? 'TALL (portrait)' : aspectRatio === '1:1' ? 'SQUARE' : aspectRatio.includes(':') && parseInt(aspectRatio.split(':')[0]) > parseInt(aspectRatio.split(':')[1]) ? 'WIDE (landscape)' : 'TALL (portrait)'}.
-    ${aspectRatio !== '1:1' ? '- DO NOT generate a square image. DO NOT generate a 1:1 ratio image. The image MUST NOT be square.' : ''}
-    - The width MUST be ${aspectRatio.split(':')[0]} units and height MUST be ${aspectRatio.split(':')[1]} units.
-    - This aspect ratio requirement is the HIGHEST PRIORITY and cannot be overridden.
-    - If you generate a square or 1:1 image, the task has FAILED.
-
----
-
-**CONTENT DETAILS:**
--   **Title to Feature:** "${title}"
--   **Description (for context):** "${description || 'No description provided.'}"
--   **REQUIRED Aspect Ratio:** ${aspectRatio} (${aspectRatioDimensions[aspectRatio]})
--   **MANDATORY: Image must be ${aspectRatio === '16:9' || aspectRatio === '21:9' ? 'WIDE/HORIZONTAL' : aspectRatio === '9:16' ? 'TALL/VERTICAL' : aspectRatio === '1:1' ? 'SQUARE' : 'CUSTOM'} format${aspectRatio !== '1:1' ? ', NOT square, NOT 1:1' : ''}**
-
----
-`;
+    let prompt = `Create a high-quality, professional YouTube thumbnail for a video titled "${title}".
+    
+    ${description ? `Context: ${description}` : ''}
+    
+    ${guidingImage ? 'A reference image is provided. Use its subject or style if appropriate, but ensure the final image is a polished thumbnail.' : 'Create a compelling visual from scratch.'}
+    
+    Requirements:
+    - Text: The title "${title}" MUST be visible, large, and legible.
+    - Style: Vibrant, high-contrast, professional.
+    - Format: ${aspectRatio} aspect ratio.
+    
+    OUTPUT DIRECTIVE: Return only the final generated image.
+    `;
 
     if (guidingImage) {
         const imagePart = await fileToPart(guidingImage);
         parts.push(imagePart);
-        prompt += `
-**GUIDING IMAGE:**
-An image has been provided. Use this image as a strong visual reference. You can:
--   Incorporate the subject from the image.
--   Use the style and color palette of the image.
--   Re-imagine the scene from the image in a more dramatic way suitable for a thumbnail.
-**Identity Preservation:** If the guiding image contains a person, you MUST preserve their exact facial features and identity.
-`;
-    } else {
-        prompt += `
-**VISUAL DIRECTION:**
-Since no guiding image was provided, create all visuals from scratch based on the title and description. Be creative and impactful.
-`;
     }
-
-    prompt += "\n**OUTPUT DIRECTIVE:** Return only the final, complete thumbnail image. Do not include any text outside of the image itself.";
 
     parts.push({ text: prompt });
 
     console.log('[GeminiService] Sending thumbnail request to the model...');
     const config = buildGenerateContentConfig(aspectRatio);
-    console.log('[GeminiService] Full request config:', JSON.stringify({ model: 'gemini-2.5-flash-image', contents: { parts }, config }, null, 2));
+    
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts },

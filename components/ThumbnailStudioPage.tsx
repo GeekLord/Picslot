@@ -9,6 +9,7 @@ import Spinner from './Spinner';
 import * as geminiService from '../services/geminiService';
 import type { AspectRatio } from '../services/geminiService';
 import ZoomModal from './ZoomModal';
+import LoadingOverlay from './LoadingOverlay';
 
 // Helper to convert a data URL string to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
@@ -270,14 +271,11 @@ const ThumbnailStudioPage: React.FC<ThumbnailStudioPageProps> = ({ onOpenAssetLi
                 </div>
 
                 {/* Output Panel */}
-                <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 flex flex-col gap-4">
+                <div className="bg-gray-800/50 border border-gray-700/80 rounded-xl p-6 flex flex-col gap-4 relative">
                      <h2 className="text-2xl font-bold text-white">2. Result</h2>
-                     <div className="flex-grow w-full bg-black/20 rounded-lg flex items-center justify-center aspect-video">
+                     <div className="flex-grow w-full bg-black/20 rounded-lg flex items-center justify-center aspect-video relative overflow-hidden">
                         {isLoading ? (
-                            <div className="text-center">
-                                <Spinner size="lg"/>
-                                <p className="mt-4 text-gray-400">AI is crafting your thumbnail...</p>
-                            </div>
+                            <LoadingOverlay message="Designing your thumbnail..." />
                         ) : outputUrl ? (
                             <div className="group relative w-full h-full">
                                 <button type="button" onClick={() => setIsZoomModalOpen(true)} className="w-full h-full block">
