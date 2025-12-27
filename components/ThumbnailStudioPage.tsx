@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -41,13 +42,8 @@ const aspectRatios: { label: string, value: AspectRatio, hint: string }[] = [
     { label: '16:9', value: '16:9', hint: 'YouTube, Widescreen' },
     { label: '9:16', value: '9:16', hint: 'Shorts, Stories, Reels' },
     { label: '1:1', value: '1:1', hint: 'Instagram Post' },
-    { label: '4:5', value: '4:5', hint: 'Instagram Portrait' },
     { label: '4:3', value: '4:3', hint: 'Standard Digital' },
-    { label: '3:2', value: '3:2', hint: 'Classic Photo' },
-    { label: '2:3', value: '2:3', hint: 'Classic Photo' },
     { label: '3:4', value: '3:4', hint: 'Standard Portrait' },
-    { label: '5:4', value: '5:4', hint: 'Large Format' },
-    { label: '21:9', value: '21:9', hint: 'Cinematic Banner' },
 ];
 
 const AspectSelector: React.FC<{ selected: AspectRatio, onSelect: (ar: AspectRatio) => void, disabled: boolean }> = ({ selected, onSelect, disabled }) => (

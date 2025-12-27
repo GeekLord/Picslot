@@ -15,9 +15,7 @@ interface OutputSettingsPanelProps {
 
 const aspectRatios: { label: string, hint: string, values: OutputAspectRatio[] }[] = [
     { label: 'Automatic', hint: 'AI decides the best fit', values: ['auto'] },
-    { label: 'Landscape', hint: 'Widescreen, Banners, YouTube', values: ['16:9', '3:2', '4:3', '21:9'] },
-    { label: 'Portrait', hint: 'Stories, Reels, Social Posts', values: ['9:16', '2:3', '3:4', '4:5'] },
-    { label: 'Square & Other', hint: 'Profile Pictures, Posts', values: ['1:1', '5:4'] },
+    { label: 'Standard', hint: 'Common photo & video ratios', values: ['1:1', '4:3', '3:4', '16:9', '9:16'] },
 ];
 
 // Helper component to render a visual icon for the aspect ratio
@@ -79,7 +77,7 @@ const OutputSettingsPanel: React.FC<OutputSettingsPanelProps> = ({ selectedAspec
   return (
     <div className="w-full flex flex-col gap-4 animate-fade-in">
       {aspectRatios.map(({ label, hint, values }) => {
-        const gridColsClass = values.length <= 2 ? `grid-cols-${values.length}` : `grid-cols-4`;
+        const gridColsClass = values.length <= 2 ? `grid-cols-${values.length}` : `grid-cols-3`;
         
         return (
           <div key={label}>

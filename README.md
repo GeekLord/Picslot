@@ -44,7 +44,7 @@ Picslot is a powerful, web-based AI photo editor that simplifies professional im
 
 - **Frontend**: React, TypeScript, Tailwind CSS
 - **Backend-as-a-Service**: Supabase (Authentication, PostgreSQL Database, Storage)
-- **AI Engine**: Google Gemini API (`gemini-2.5-flash-image` model for vision, `gemini-2.5-flash` for text tasks)
+- **AI Engine**: Google Gemini API (`gemini-2.5-flash-image` model for vision-to-image and editing, `gemini-3-flash-preview` for text tasks)
 - **Core Libraries**:
   - `react-image-crop` for the interactive cropping UI.
 - **Bundling**: The project is set up to run directly in the browser using ES Modules and an `importmap`, requiring no local bundling or installation.
@@ -160,7 +160,7 @@ Follow these instructions to set up and run the project locally.
 ├── index.html          # Main HTML entry point with importmap and env setup
 ├── index.tsx           # Main React application entry point
 ├── App.tsx             # Root component containing the main application logic and UI
-├── SQL.md              # Single source of truth for the Supabase database schema
+├── SQL.md              # Single source of truth for the database schema
 ├── services/
 │   ├── geminiService.ts# Functions for interacting with the Gemini API
 │   └── supabaseService.ts# Functions for Supabase (Auth, DB, Storage)

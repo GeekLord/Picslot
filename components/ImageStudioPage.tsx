@@ -49,9 +49,7 @@ interface ImageStudioPageProps {
 }
 
 const aspectRatios: { label: string, hint: string, values: AspectRatio[] }[] = [
-    { label: 'Landscape', hint: 'Widescreen, YouTube', values: ['16:9', '3:2', '4:3', '21:9'] },
-    { label: 'Portrait', hint: 'Stories, Social', values: ['9:16', '2:3', '3:4', '4:5'] },
-    { label: 'Square & Other', hint: 'Posts, Profile Pics', values: ['1:1', '5:4'] }
+    { label: 'Standard', hint: 'Gemini Optimized Ratios', values: ['1:1', '4:3', '3:4', '16:9', '9:16'] }
 ];
 
 // Helper component to render a visual icon for the aspect ratio
@@ -303,7 +301,7 @@ const ImageStudioPage: React.FC<ImageStudioPageProps> = ({ prompts }) => {
                                 {aspectRatios.map(({ label, hint, values }) => (
                                     <div key={label}>
                                         <p className="text-xs text-slate-500 dark:text-gray-400 mb-1">{label} <span className="text-slate-400 dark:text-gray-500">- {hint}</span></p>
-                                        <div className="grid grid-cols-4 gap-2">
+                                        <div className="grid grid-cols-3 gap-2">
                                             {values.map(ar => (
                                                 <button 
                                                     key={ar} 
