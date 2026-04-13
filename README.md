@@ -141,9 +141,13 @@ Follow these instructions to set up and run the project locally.
 2.  **Run the Application:**
     Since this project uses modern browser features and no build step, you can run it with any simple local web server. If you have Node.js installed, you can use `serve`:
     
-    First, install `serve`:
+    First, install `serve` (or use `npx serve` to avoid a global install):
     ```bash
     npm install -g serve
+    ```
+    Optionally verify the app builds cleanly before serving it:
+    ```bash
+    npm run build
     ```
     Then, run it from the project's root directory:
     ```bash
