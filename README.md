@@ -139,7 +139,7 @@ Follow these instructions to set up and run the project locally.
     ```
 
 2.  **Run the Application:**
-    Since this project uses modern browser features and no build step, you can run it with any simple local web server. If you have Node.js installed, you can use `serve`:
+    Since this project uses modern browser features and no build step, you can run it with any simple local web server. If you have Node.js installed, you can use `serve` or any equivalent static server:
     
     First, install `serve` (or use `npx serve` to avoid a global install):
     ```bash
