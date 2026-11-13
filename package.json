@@ -12,15 +12,15 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "@google/genai": "0.10.0",
-    "@supabase/supabase-js": "^2.44.4",
-    "jszip": "3.10.1",
+    "@supabase/supabase-js": "^2.119.0",
+    "jszip": "3.10.2",
     "file-saver": "2.0.5",
-    "react-image-crop": "^11.0.10"
+    "react-image-crop": "^11.1.2"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.20.5",
     "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "typescript": "~5.9.3",
+    "vite": "^6.4.6"
   }
 }
