@@ -12,7 +12,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "@google/genai": "0.10.0",
-    "@supabase/supabase-js": "^2.119.0",
+    "@supabase/supabase-js": "^2.119.2",
     "jszip": "3.10.2",
     "file-saver": "2.0.5",
     "react-image-crop": "^11.1.2"
